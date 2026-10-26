@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
+  <meta name="theme-color" content="#07090a"/>
+  <meta name="description" content="IRISPECTRA ATLAS — An immersive, interactive exploration of the human iris. Discover the structures and textures of your own eye."/>
+  <title>IRISPECTRA — The World Within</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
+  <link rel="stylesheet" href="./styles.css"/>
+</head>
+<body>
+  <div class="page-noise" aria-hidden="true"></div>
+  <div class="screen-loader" id="loader" aria-hidden="true"><div class="loader-mark"><span></span><span></span><span></span></div><p>INITIALIZING ATLAS <span id="loadCount">00</span>%</p></div>
+  <nav class="nav" aria-label="Main navigation">
+    <a href="#top" class="brand" aria-label="Irispectra Atlas home"><span class="brand-symbol" aria-hidden="true"><i></i><i></i><i></i></span><span>IRISPECTRA<small>ATLAS PROJECT</small></span></a>
+    <span class="nav-center">AN EXPLORATION OF THE HUMAN EYE&nbsp; / &nbsp;VOL. 001</span>
+    <button class="nav-action" id="navUpload"><span>START WITH YOUR EYE</span><span class="button-arrow">↗</span></button>
+  </nav>
+  <main id="top">
+    <section class="hero" id="hero" aria-label="Immersive iris explorer">
+      <div class="hero-ambient" aria-hidden="true"></div>
+      <div class="section-coordinates" aria-hidden="true">EYE / HUMAN / 001<br/>A PERSONAL UNIVERSE</div>
+      <div class="hero-copy">
+        <div class="eyebrow"><span class="live-pulse"></span> THE INTERACTIVE IRIS ATLAS <span class="eyebrow-number">001 / 004</span></div>
+        <h1>THE<br/><em>WORLD</em><br/>WITHIN<span class="period">.</span></h1>
+        <p>Every eye holds a landscape.<br/>Discover the extraordinary architecture<br/>hidden in yours.</p>
+        <div class="hero-actions">
+          <button id="heroUpload" class="action-primary">EXPLORE YOUR EYE <span>↗</span></button>
+          <button id="heroDemo" class="action-secondary">EXPLORE THE DEMO <span>↘</span></button>
+        </div>
+      </div>
+      <div class="eye-zone" id="eyeZone" aria-label="Interactive three-dimensional iris viewer">
+        <div class="orbital-haze" aria-hidden="true"></div>
+        <div class="orbit orbit-a" aria-hidden="true"></div>
+        <div class="orbit orbit-b" aria-hidden="true"></div>
+        <div class="orbit orbit-c" aria-hidden="true"></div>
+        <div class="orbit orbit-d" aria-hidden="true"></div>
+        <div class="eye-3d" id="eye3d">
+          <div class="eye-graphic" id="eyeGraphic">
+            <canvas id="eyeCanvas" width="1400" height="1400" aria-label="Magnifiable iris with pupil and visible surface texture"></canvas>
+            <div class="iris-specular" aria-hidden="true"></div>
+          </div>
+          <button class="hotspot hotspot-a" data-topic="collarette" aria-label="Explore the collarette"><span></span></button>
+          <button class="hotspot hotspot-b" data-topic="fibers" aria-label="Explore radial texture"><span></span></button>
+          <button class="hotspot hotspot-c" data-topic="limbal" aria-label="Explore outer iris boundary"><span></span></button>
+          <button class="hotspot hotspot-d" data-topic="pupil" aria-label="Explore the pupil"><span></span></button>
+        </div>
+        <div class="iris-floating-label iris-label-top" aria-hidden="true"><span class="label-line"></span> STRUCTURE / 01</div>
+        <div class="iris-floating-label iris-label-bottom" aria-hidden="true">FIG. 001 — IRIS MORPHOLOGY <span class="label-line"></span></div>
+        <div class="eye-direction" aria-hidden="true">N<br/>│<br/>+</div>
+        <div class="interaction-tip" id="interactionTip"><span class="tip-icon">↔</span> DRAG TO ORBIT &nbsp;·&nbsp; SCROLL TO ZOOM</div>
+        <div class="insight-tooltip" id="insightTooltip" hidden><span id="tooltipIndex">01 / STRUCTURE</span><strong id="tooltipTitle">Collarette</strong><p id="tooltipBody"></p><button id="tooltipClose" aria-label="Close annotation">×</button></div>
+      </div>
+      <div class="hero-status left-status">OPTICAL ATLAS / <span id="statusMode">DEMO SPECIMEN</span><br/><span class="status-secondary">NO CLINICAL INTERPRETATION</span></div>
+      <div class="hero-status right-status"><span class="stat-dot"></span> INTERACTIVE ENVIRONMENT<br/><span class="status-secondary">IMAGE / 01 — READY</span></div>
+      <div class="hero-scroll"><span>SCROLL TO DESCEND</span><span class="scroll-line"></span></div>
+    </section>
+    <section class="viewer-section" id="explore">
+      <div class="section-kicker"><span class="index-square">01</span> / THE EXPLORER <span>VISUAL FIELD — LIVE</span></div>
+      <div class="viewer-heading"><h2>LOOK<br/><em>CLOSER.</em></h2><div><p>Anatomy is rarely ordinary up close. Navigate your iris. Trace its patterns. Follow the details.</p><span>WHAT YOU SEE IS ONLY THE BEGINNING.</span></div></div>
+      <div class="viewer-panel">
+        <div class="viewer-panel-head"><span><i class="mini-pulse"></i> LIVE EXPLORER</span><span id="specimenCode">SPECIMEN — DEMO 001</span><span>IRIS / 2.5D</span></div>
+        <div class="viewer-window" id="viewerWindow"><canvas id="detailCanvas" width="1200" height="700" aria-label="Interactive macro view of iris"></canvas><div class="viewer-crosshair"></div><div class="viewer-bottom-left">MAGNIFICATION <strong id="detailMag">2.40×</strong></div><div class="viewer-bottom-right">SCROLL / DRAG TO INSPECT</div></div>
+        <div class="viewer-toolbar">
+          <div class="zoom-controls"><span class="toolbar-label">MAGNIFICATION</span><button id="zoomOut" aria-label="Zoom out">−</button><input type="range" id="zoomSlider" min="1" max="5" value="1.35" step="0.05" aria-label="Magnification"/><button id="zoomIn" aria-label="Zoom in">+</button><span id="zoomReadout">1.35×</span></div>
+          <div class="viewer-tools"><button id="toggleLabels" aria-pressed="true"><span class="tool-icon">◎</span> ANNOTATIONS <span id="annoState">ON</span></button><button id="resetView"><span class="tool-icon">↺</span> RESET</button><button id="exportArt"><span class="tool-icon">↧</span> EXPORT IMAGE</button></div>
+        </div>
+      </div>
+    </section>
+    <section class="structures" id="structures">
+      <div class="section-kicker"><span class="index-square">02</span> / READING THE LANDSCAPE <span>VISIBLE ANATOMY</span></div>
+      <div class="structures-top"><div><span class="minor-label">ONE ORGAN. INFINITE DETAIL.</span><h2>A MAP OF<br/><em>YOU.</em></h2></div><p>The iris is more than color. It is a richly textured anatomical structure — full of folds, radial patterns and subtle boundaries. Discover what these visible features are called.</p></div>
+      <div class="structure-grid">
+        <button class="structure-card" data-topic="collarette"><span class="card-index">01 / INNER LANDSCAPE</span><div class="card-visual visual-collarette"><span class="mini-eye"></span><span class="mini-reticle"></span></div><span class="structure-title">The collarette <b>↗</b></span><span class="structure-caption">A textured ring around the pupil</span></button>
+        <button class="structure-card" data-topic="fibers"><span class="card-index">02 / SURFACE DETAIL</span><div class="card-visual visual-fibers"><span class="mini-eye"></span><span class="mini-reticle"></span></div><span class="structure-title">Radial pattern <b>↗</b></span><span class="structure-caption">Fine lines and stromal texture</span></button>
+        <button class="structure-card" data-topic="limbal"><span class="card-index">03 / OUTER BOUNDARY</span><div class="card-visual visual-limbal"><span class="mini-eye"></span><span class="mini-reticle"></span></div><span class="structure-title">The iris edge <b>↗</b></span><span class="structure-caption">Where the iris meets surrounding tissue</span></button>
+      </div>
+    </section>
+    <section class="personal" id="personal">
+      <div class="personal-glow"></div><div class="personal-label">03 / YOUR OWN LANDSCAPE</div>
+      <div class="personal-inner"><span class="starlet">✳</span><h2>NOW, DISCOVER<br/><em>YOUR OWN.</em></h2><p>Upload a close-up of your eye. We'll turn it into an interactive visual atlas — ready to explore, magnify and keep. Your photo stays in this browser for this prototype.</p><button class="action-light" id="personalUpload">UPLOAD YOUR EYE <span>↗</span></button><div class="personal-caption">NO ACCOUNT REQUIRED &nbsp; / &nbsp; PRIVATE BROWSER PROCESSING</div></div>
+    </section>
+    <footer class="footer"><a class="footer-brand" href="#top">IRISPECTRA <span>®</span></a><p>THE SCIENCE OF SEEING.<br/>THE ART OF LOOKING.</p><div><span>ATLAS EXPERIENCE / PROTOTYPE 01</span><span>FOR VISUAL EXPLORATION ONLY — NOT A MEDICAL DEVICE OR DIAGNOSIS.</span></div><a class="back-top" href="#top">BACK TO TOP ↑</a></footer>
+  </main>
+  <dialog id="uploadDialog" class="upload-dialog"><div class="dialog-shell"><button class="dialog-close" id="closeDialog" aria-label="Close dialog">×</button><div class="dialog-head"><span class="minor-label">PERSONAL ATLAS / STEP 01</span><h2>YOUR EYE.<br/><em>YOUR UNIVERSE.</em></h2><p>Choose a clear, close-up photograph with the iris visible. No image is uploaded to a server.</p></div><label class="drop-zone" id="dropZone"><input type="file" id="photoInput" accept="image/png,image/jpeg,image/webp,image/heic,image/heif"/><span class="drop-symbol">⌖</span><strong>SELECT AN EYE PHOTOGRAPH</strong><small>OR DROP AN IMAGE HERE · JPG / PNG / WEBP</small></label><div class="crop-section" id="cropSection" hidden><canvas id="cropCanvas" width="640" height="330"></canvas><div class="crop-controls"><label>HORIZONTAL <input type="range" id="cropX" min="0" max="100" value="50"/></label><label>VERTICAL <input type="range" id="cropY" min="0" max="100" value="50"/></label><label>IRIS SIZE <input type="range" id="cropSize" min="12" max="48" value="28"/></label></div><button class="action-primary crop-confirm" id="confirmCrop">CREATE MY ATLAS <span>↗</span></button></div><p class="privacy-note">VISUAL DEMONSTRATION, NOT AUTOMATED IRIS DETECTION. ALIGN THE CIRCLE OVER YOUR IRIS. NO DIAGNOSTIC CLAIMS OR HEALTH INFERENCES.</p></div></dialog>
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+  <script src="./app.js" defer></script>
+</body>
+</html>
