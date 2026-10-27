@@ -219,7 +219,7 @@ function exitFundus(){
  drawDots();setZoom(.10);
 }
 function reset(){
- clearTimeout(fundusTimer);current.fundusTransition=false;
+ clearTimeout(fundusTimer);current.fundusTransition=false;$('enterBtn').disabled=false;
  if(current.fundus)exitFundus();if(current.rear)toggleRear();current.selected=null;current.focusTarget.set(0,0,0);current.targetYaw=0;current.targetPitch=0;setZoom(.10);$('infoPanel').hidden=true;clearSelection()}
 function approach(p){current.selected=p;if(current.fundus)current.fundusTarget.copy(p);else current.focusTarget.copy(p);setZoom(.84);$('infoPanel').hidden=true}
 let domPins=[];
