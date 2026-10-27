@@ -103,7 +103,7 @@ function setPhotographicDemo(){
  const image=new Image();image.crossOrigin='anonymous';setSpecimenLabel('LOADING / REFERENCE PHOTO');
  image.onload=()=>{
   // The reference is a CC BY-SA macro photograph, not a 3D patient scan.
-  specimenMode='reference';current.demo=true;makeTexture(photoToIris(image));irisMaterial.bumpScale=.003;irisMaterial.roughness=.92;irisMaterial.clearcoat=.025;
+  specimenMode='reference';current.demo=true;makeTexture(photoToIris(image));irisMaterial.bumpScale=.008;irisMaterial.roughness=.76;irisMaterial.clearcoat=.13;
   setSpecimenLabel('PHOTO / MCORRENS',true);
   $('modeLabel').textContent='REAL IRIS PHOTO / MODELED 3D SURFACE';setNotice('MACRO SPECIMEN LOADED · DEPTH ILLUSTRATIVE');
  };
@@ -244,9 +244,14 @@ function makeCornea(){
  const mat=new THREE.MeshPhysicalMaterial({color:0xe2faf7,transparent:true,opacity:.022,roughness:.025,metalness:0,clearcoat:1,clearcoatRoughness:.012,ior:1.376,depthWrite:false,side:THREE.DoubleSide});
  cornea=new THREE.Mesh(geom,mat);cornea.renderOrder=9;eyeGroup.add(cornea);
  // restrained studio softbox reflected in the wet corneal surface
- const glintGeo=new THREE.CircleGeometry(.081,64),glintMat=new THREE.MeshBasicMaterial({color:0xe8f6e7,transparent:true,opacity:.075,depthWrite:false});
+ const glintGeo=new THREE.CircleGeometry(.081,64),glintMat=new THREE.MeshBasicMaterial({color:0xe8f6e7,transparent:true,opacity:.16,depthWrite:false});
  let glint=new THREE.Mesh(glintGeo,glintMat);glint.scale.set(.68,1.8,1);glint.rotation.z=-.32;glint.position.set(-.24,.23,1.303);glint.renderOrder=10;eyeGroup.add(glint);
- const tiny=new THREE.Mesh(new THREE.CircleGeometry(.021,32),new THREE.MeshBasicMaterial({color:0xffffff,transparent:true,opacity:.33,depthWrite:false}));tiny.position.set(.23,-.13,1.296);tiny.renderOrder=10;eyeGroup.add(tiny);
+ const tiny=new THREE.Mesh(new THREE.CircleGeometry(.021,32),new THREE.MeshBasicMaterial({color:0xffffff,transparent:true,opacity:.55,depthWrite:false}));tiny.position.set(.23,-.13,1.296);tiny.renderOrder=10;eyeGroup.add(tiny);
+ const softbox=new THREE.Mesh(new THREE.PlaneGeometry(.20,.33),new THREE.MeshBasicMaterial({color:0xe5faf8,transparent:true,opacity:.12,depthWrite:false,side:THREE.DoubleSide}));
+ softbox.rotation.z=-.35;softbox.position.set(.33,.28,1.302);softbox.renderOrder=10;eyeGroup.add(softbox);
+ const glimmer=new THREE.Mesh(new THREE.PlaneGeometry(.07,.26),new THREE.MeshBasicMaterial({color:0xffffff,transparent:true,opacity:.10,depthWrite:false,side:THREE.DoubleSide}));
+ glimmer.rotation.z=.28;glimmer.position.set(.47,.05,1.289);glimmer.renderOrder=10;eyeGroup.add(glimmer);
+
 }
 
 function makePosteriorAnatomy(){
@@ -313,16 +318,16 @@ function addScleralVessels(){
 function makeScene(){
  renderer=new THREE.WebGLRenderer({canvas,antialias:true,alpha:true,powerPreference:'high-performance'});
  renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,1.7));renderer.setSize(innerWidth,innerHeight);
- renderer.outputColorSpace=THREE.SRGBColorSpace;renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=1.48;
+ renderer.outputColorSpace=THREE.SRGBColorSpace;renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=1.24;
  scene=new THREE.Scene();camera=new THREE.PerspectiveCamera(37,innerWidth/innerHeight,.007,100);eyeGroup=new THREE.Group();scene.add(eyeGroup);
- scene.add(new THREE.AmbientLight(0xc8d2c9,1.2));
- const lightA=new THREE.DirectionalLight(0xffdfbf,2.45);lightA.position.set(-3,4,6);scene.add(lightA);lighting=lightA;
- const lightB=new THREE.DirectionalLight(0xbadcd8,.85);lightB.position.set(4,-1,5);scene.add(lightB);
+ scene.add(new THREE.AmbientLight(0xc8d2c9,.8));
+ const lightA=new THREE.DirectionalLight(0xffead5,2.85);lightA.position.set(-3,4,6);scene.add(lightA);lighting=lightA;
+ const lightB=new THREE.DirectionalLight(0xbadcd8,1.15);lightB.position.set(4,-1,5);scene.add(lightB);
  const lightC=new THREE.PointLight(0xffffff,.7);lightC.position.set(-1,0,4);scene.add(lightC);
  const scleraGeo=new THREE.BufferGeometry(),verts=[],indices=[],steps=160,levels=110,R=1.23,t0=Math.asin(.645/R);
  for(let j=0;j<=levels;j++){let theta=t0+(Math.PI-t0)*j/levels;for(let i=0;i<=steps;i++){let phi=i/steps*2*Math.PI,rr=R*Math.sin(theta);verts.push(rr*Math.cos(phi),rr*Math.sin(phi),R*Math.cos(theta));if(j<levels&&i<steps){let n=j*(steps+1)+i;indices.push(n,n+1,n+steps+1,n+1,n+steps+2,n+steps+1)}}}
  scleraGeo.setAttribute('position',new THREE.Float32BufferAttribute(verts,3));scleraGeo.setIndex(indices);scleraGeo.computeVertexNormals();
- eyeWhite=new THREE.Mesh(scleraGeo,new THREE.MeshPhysicalMaterial({color:0xe2ded6,roughness:.45,clearcoat:.46,clearcoatRoughness:.16,side:THREE.DoubleSide}));eyeWhite.renderOrder=0;eyeGroup.add(eyeWhite);
+ eyeWhite=new THREE.Mesh(scleraGeo,new THREE.MeshPhysicalMaterial({color:0xe9e8e1,roughness:.31,clearcoat:.68,clearcoatRoughness:.11,side:THREE.DoubleSide}));eyeWhite.renderOrder=0;eyeGroup.add(eyeWhite);
  addScleralVessels();
  // recess in which the pupil sits
  const hole=new THREE.Mesh(new THREE.CylinderGeometry(.18,.18,.13,128,1,true),new THREE.MeshStandardMaterial({color:0x090a09,roughness:1,side:THREE.DoubleSide}));hole.rotation.x=Math.PI/2;hole.position.z=1.19;hole.renderOrder=2;eyeGroup.add(hole);
@@ -373,7 +378,9 @@ function updatePassiveDepth(){
  window.IrispectraScience?.indicate?.(stage===0?0:stage===1||stage===2?1:stage);
 }
 
-function animate(){requestAnimationFrame(animate);renderCamera();updateLightSimulation();updatePassiveDepth();updateDeepWorld();if(current.demo&&current.animate&&current.targetZoom<.19&&!pointers.size){let t=performance.now()*.00018;eyeGroup.rotation.y=Math.sin(t)*.018;eyeGroup.rotation.x=Math.cos(t*.73)*.009}else{eyeGroup.rotation.x=lerp(eyeGroup.rotation.x,0,.03);eyeGroup.rotation.y=lerp(eyeGroup.rotation.y,0,.03)}
+function animate(){requestAnimationFrame(animate);renderCamera();updateLightSimulation();updatePassiveDepth();updateDeepWorld();
+ if(!current.selected&&!current.fundus&&!current.rear&&current.zoom<.35&&!pointers.size){const t=performance.now()*.001;current.targetYaw+=Math.sin(t*.44)*.000017;current.targetPitch+=Math.cos(t*.37)*.000013;}
+if(current.demo&&current.animate&&current.targetZoom<.19&&!pointers.size){let t=performance.now()*.00018;eyeGroup.rotation.y=Math.sin(t)*.018;eyeGroup.rotation.x=Math.cos(t*.73)*.009}else{eyeGroup.rotation.x=lerp(eyeGroup.rotation.x,0,.03);eyeGroup.rotation.y=lerp(eyeGroup.rotation.y,0,.03)}
  updateDots();renderer.render(scene,camera)}
 function setZoom(value){
  // Zoom is reversible and never silently changes anatomical scenes.
