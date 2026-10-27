@@ -77,13 +77,26 @@ function setSpecimenLabel(message,credit=false){
  $('textureStatus').textContent=message;
  const a=$('specimenCredit');if(a)a.hidden=!credit;
 }
+
 function photoToIris(img,cx=.50,cy=.49,r=.345){
- const side=Math.min(img.naturalWidth||img.width,img.naturalHeight||img.height),radius=side*r;
- const out=document.createElement('canvas');out.width=out.height=2048;
- const c=out.getContext('2d',{willReadFrequently:false});c.fillStyle='#16100c';c.fillRect(0,0,2048,2048);
- c.drawImage(img,side*cx-radius,side*cy-radius,radius*2,radius*2,0,0,2048,2048);
- // Preserve the natural uneven amber crypts; dark pupil and sclera are separate 3D materials.
- return out;
+ const side=Math.min(img.naturalWidth||img.width,img.naturalHeight||img.height),outer=side*r;
+ const src=document.createElement('canvas');src.width=img.naturalWidth||img.width;src.height=img.naturalHeight||img.height;
+ const sc=src.getContext('2d',{willReadFrequently:true});sc.drawImage(img,0,0);
+ const source=sc.getImageData(0,0,src.width,src.height).data,out=document.createElement('canvas');out.width=out.height=1024;
+ const c=out.getContext('2d'),result=c.createImageData(1024,1024),data=result.data;
+ // Preserve real iris pixels; remap pupil-to-limbus annulus, never copy dark pupil pixels.
+ const inner=outer*.345,px=cx*(img.naturalWidth||img.width),py=cy*(img.naturalHeight||img.height);
+ for(let y=0;y<1024;y++)for(let x=0;x<1024;x++){
+  const dx=(x-512)/512,dy=(y-512)/512,rr=Math.hypot(dx,dy),index=(y*1024+x)*4;
+  if(rr>.999){data[index+3]=0;continue;}
+  const t=clamp((rr-.30)/.70,0,1);
+  const angle=Math.atan2(dy,dx);
+  const radius=inner+(outer-inner)*t;
+  const sx=clamp(Math.round(px+Math.cos(angle)*radius),0,src.width-1),sy=clamp(Math.round(py+Math.sin(angle)*radius),0,src.height-1);
+  const k=(sy*src.width+sx)*4;
+  data[index]=source[k];data[index+1]=source[k+1];data[index+2]=source[k+2];data[index+3]=255;
+ }
+ c.putImageData(result,0,0);return out;
 }
 function setPhotographicDemo(){
  const image=new Image();image.crossOrigin='anonymous';setSpecimenLabel('LOADING / REFERENCE PHOTO');
@@ -105,6 +118,32 @@ function makeTexture(source){
  if(texture)texture.dispose();texture=new THREE.CanvasTexture(source);texture.colorSpace=THREE.SRGBColorSpace;texture.anisotropy=Math.min(12,renderer.capabilities.getMaxAnisotropy());texture.needsUpdate=true;
  if(irisMaterial){irisMaterial.map=texture;irisMaterial.bumpMap=current.demo?texture:null;irisMaterial.bumpScale=current.demo ? 0.015 : 0;irisMaterial.roughness=current.demo?.88:.93;irisMaterial.clearcoat=.025;irisMaterial.needsUpdate=true;}
 }
+
+let lightIntensity=.38,targetLight=.38,simPupil=.195;
+function updateLightSimulation(){
+ lightIntensity=lerp(lightIntensity,targetLight,.035);
+ const desired=lerp(.255,.13,lightIntensity);
+ simPupil=lerp(simPupil,desired,.045);
+ // Mesh geometry resampling alters iris inner opening while retaining outer limbus.
+ if(!iris)return;
+ const a=iris.geometry.attributes.position,uv=iris.geometry.attributes.uv,segments=300,rings=103;
+ for(let j=0;j<=rings;j++){
+  const r=simPupil+(.63-simPupil)*j/rings;
+  for(let i=0;i<=segments;i++){
+   const index=j*(segments+1)+i,angle=i/segments*Math.PI*2,x=Math.cos(angle)*r,y=Math.sin(angle)*r;
+   a.setXYZ(index,x,y,zIris(r,angle));
+   uv.setXY(index,.5+x/1.26,.5+y/1.26);
+  }
+ }
+ a.needsUpdate=true;uv.needsUpdate=true;iris.geometry.computeVertexNormals();
+ if(pupil){pupil.scale.setScalar(simPupil/.189)}
+ // Pupil edge rings are tagged when built.
+ eyeGroup.children.forEach(m=>{if(m.userData.pupilEdge)m.scale.setScalar(simPupil/.195)});
+ if(lighting)lighting.intensity=lerp(1.1,4.0,lightIntensity);
+ renderer.toneMappingExposure=lerp(1.12,1.68,lightIntensity);
+ $('lightValue')&&($('lightValue').textContent=Math.round(lightIntensity*100)+'%');
+}
+
 function makeIris(){
  const segments=300, rings=103,verts=[],uv=[],indices=[];for(let j=0;j<=rings;j++){const r=.195+(.63-.195)*j/rings;for(let i=0;i<=segments;i++){let a=i/segments*Math.PI*2,xx=Math.cos(a)*r,yy=Math.sin(a)*r;verts.push(xx,yy,zIris(r,a));uv.push(.5+xx/1.26,.5+yy/1.26);if(j<rings&&i<segments){let n=j*(segments+1)+i;indices.push(n,n+1,n+segments+1,n+1,n+segments+2,n+segments+1)}}}
  const geo=new THREE.BufferGeometry();geo.setAttribute('position',new THREE.Float32BufferAttribute(verts,3));geo.setAttribute('uv',new THREE.Float32BufferAttribute(uv,2));geo.setIndex(indices);geo.computeVertexNormals();
@@ -206,7 +245,7 @@ function makeScene(){
  renderer.outputColorSpace=THREE.SRGBColorSpace;renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=1.48;
  scene=new THREE.Scene();camera=new THREE.PerspectiveCamera(37,innerWidth/innerHeight,.007,100);eyeGroup=new THREE.Group();scene.add(eyeGroup);
  scene.add(new THREE.AmbientLight(0xc8d2c9,1.2));
- const lightA=new THREE.DirectionalLight(0xffdfbf,2.45);lightA.position.set(-3,4,6);scene.add(lightA);
+ const lightA=new THREE.DirectionalLight(0xffdfbf,2.45);lightA.position.set(-3,4,6);scene.add(lightA);lighting=lightA;
  const lightB=new THREE.DirectionalLight(0xbadcd8,.85);lightB.position.set(4,-1,5);scene.add(lightB);
  const lightC=new THREE.PointLight(0xffffff,.7);lightC.position.set(-1,0,4);scene.add(lightC);
  const scleraGeo=new THREE.BufferGeometry(),verts=[],indices=[],steps=160,levels=110,R=1.23,t0=Math.asin(.645/R);
@@ -217,7 +256,7 @@ function makeScene(){
  // recess in which the pupil sits
  const hole=new THREE.Mesh(new THREE.CylinderGeometry(.18,.18,.13,128,1,true),new THREE.MeshStandardMaterial({color:0x090a09,roughness:1,side:THREE.DoubleSide}));hole.rotation.x=Math.PI/2;hole.position.z=1.19;hole.renderOrder=2;eyeGroup.add(hole);
  pupil=new THREE.Mesh(new THREE.CircleGeometry(.189,128),new THREE.MeshBasicMaterial({color:0x030504}));pupil.position.z=1.13;pupil.renderOrder=2;eyeGroup.add(pupil);
- makeIris();rim(.195,1.215,0x181c14,.013);rim(.623,1.116,0x151e1c,.019);makeCornea();makePosteriorAnatomy();fundusStage=createFundusStage();scene.add(fundusStage.group); // clean eye-only frame
+ makeIris();const pupilRim=rim(.195,1.215,0x181c14,.013);pupilRim.userData.pupilEdge=true;rim(.623,1.116,0x151e1c,.019);makeCornea();makePosteriorAnatomy();fundusStage=createFundusStage();scene.add(fundusStage.group); // clean eye-only frame
  drawDots();resize();window.addEventListener('resize',resize);setPhotographicDemo();
  $('loading').classList.add('hidden');animate();
 }
@@ -242,7 +281,7 @@ function renderCamera(){
  current.focusTarget.set(0,0,lerp(0,1.13,dFocus));
  }
 }
-function animate(){requestAnimationFrame(animate);renderCamera();if(current.demo&&current.animate&&current.targetZoom<.19&&!pointers.size){let t=performance.now()*.00018;eyeGroup.rotation.y=Math.sin(t)*.018;eyeGroup.rotation.x=Math.cos(t*.73)*.009}else{eyeGroup.rotation.x=lerp(eyeGroup.rotation.x,0,.03);eyeGroup.rotation.y=lerp(eyeGroup.rotation.y,0,.03)}
+function animate(){requestAnimationFrame(animate);renderCamera();updateLightSimulation();if(current.demo&&current.animate&&current.targetZoom<.19&&!pointers.size){let t=performance.now()*.00018;eyeGroup.rotation.y=Math.sin(t)*.018;eyeGroup.rotation.x=Math.cos(t*.73)*.009}else{eyeGroup.rotation.x=lerp(eyeGroup.rotation.x,0,.03);eyeGroup.rotation.y=lerp(eyeGroup.rotation.y,0,.03)}
  updateDots();renderer.render(scene,camera)}
 function setZoom(value){
  // Zoom is reversible and never silently changes anatomical scenes.
@@ -313,7 +352,8 @@ function pointerSetup(){let pinchDistance=0;
 function openDialog(id){$(id).hidden=false;current.animate=false}
 function closeDialog(id){$(id).hidden=true;current.animate=true}
 function connectUi(){
- $('zoomIn').onclick=()=>setZoom(current.targetZoom+.12);$('zoomOut').onclick=()=>setZoom(current.targetZoom-.12);$('zoomRange').oninput=e=>setZoom(Number(e.target.value)/100);
+ $('lightRange')?.addEventListener('input',e=>{targetLight=Number(e.target.value)/100});
+  $('zoomIn').onclick=()=>setZoom(current.targetZoom+.12);$('zoomOut').onclick=()=>setZoom(current.targetZoom-.12);$('zoomRange').oninput=e=>setZoom(Number(e.target.value)/100);
  $('enterBtn').onclick=()=>{if(current.fundus){exitFundus();return;}if(current.targetZoom>.65){enterFundus();return;}current.selected=null;current.focusTarget.set(0,0,1.13);setZoom(.78)};
   $('fundusBtn').onclick=()=>current.fundus?exitFundus():enterFundus();
  $('resetBtn').onclick=reset;$('exploreBtn').onclick=()=>{reset();setActive('exploreBtn')};
