@@ -77,18 +77,19 @@ function setSpecimenLabel(message,credit=false){
  $('textureStatus').textContent=message;
  const a=$('specimenCredit');if(a)a.hidden=!credit;
 }
-function photoToIris(img,cx=.492,cy=.477,r=.37){
+function photoToIris(img,cx=.50,cy=.49,r=.345){
  const side=Math.min(img.naturalWidth||img.width,img.naturalHeight||img.height),radius=side*r;
  const out=document.createElement('canvas');out.width=out.height=2048;
  const c=out.getContext('2d',{willReadFrequently:false});c.fillStyle='#16100c';c.fillRect(0,0,2048,2048);
  c.drawImage(img,side*cx-radius,side*cy-radius,radius*2,radius*2,0,0,2048,2048);
+ // Preserve the natural uneven amber crypts; dark pupil and sclera are separate 3D materials.
  return out;
 }
 function setPhotographicDemo(){
  const image=new Image();image.crossOrigin='anonymous';setSpecimenLabel('LOADING / REFERENCE PHOTO');
  image.onload=()=>{
   // The reference is a CC BY-SA macro photograph, not a 3D patient scan.
-  specimenMode='reference';current.demo=true;makeTexture(photoToIris(image));irisMaterial.bumpScale=.004;
+  specimenMode='reference';current.demo=true;makeTexture(photoToIris(image));irisMaterial.bumpScale=.003;irisMaterial.roughness=.92;irisMaterial.clearcoat=.025;
   setSpecimenLabel('PHOTO / MCORRENS',true);
   $('modeLabel').textContent='REAL IRIS PHOTO / MODELED 3D SURFACE';setNotice('MACRO SPECIMEN LOADED · DEPTH ILLUSTRATIVE');
  };
@@ -102,7 +103,7 @@ function switchToSynthetic(){
 
 function makeTexture(source){
  if(texture)texture.dispose();texture=new THREE.CanvasTexture(source);texture.colorSpace=THREE.SRGBColorSpace;texture.anisotropy=Math.min(12,renderer.capabilities.getMaxAnisotropy());texture.needsUpdate=true;
- if(irisMaterial){irisMaterial.map=texture;irisMaterial.bumpMap=current.demo?texture:null;irisMaterial.bumpScale=current.demo ? 0.015 : 0;irisMaterial.roughness=.8;irisMaterial.needsUpdate=true;}
+ if(irisMaterial){irisMaterial.map=texture;irisMaterial.bumpMap=current.demo?texture:null;irisMaterial.bumpScale=current.demo ? 0.015 : 0;irisMaterial.roughness=current.demo?.88:.93;irisMaterial.clearcoat=.025;irisMaterial.needsUpdate=true;}
 }
 function makeIris(){
  const segments=300, rings=103,verts=[],uv=[],indices=[];for(let j=0;j<=rings;j++){const r=.195+(.63-.195)*j/rings;for(let i=0;i<=segments;i++){let a=i/segments*Math.PI*2,xx=Math.cos(a)*r,yy=Math.sin(a)*r;verts.push(xx,yy,zIris(r,a));uv.push(.5+xx/1.26,.5+yy/1.26);if(j<rings&&i<segments){let n=j*(segments+1)+i;indices.push(n,n+1,n+segments+1,n+1,n+segments+2,n+segments+1)}}}
@@ -130,10 +131,10 @@ function skinSurface(upper,tx){
 function makeCornea(){
  const segments=96,rows=25,verts=[],uv=[],idx=[];for(let j=0;j<=rows;j++){let r=.68*j/rows;for(let i=0;i<=segments;i++){let a=i/segments*Math.PI*2;verts.push(r*Math.cos(a),r*Math.sin(a),1.225+.105*(1-(r/.68)**2));uv.push(i/segments,j/rows);if(j<rows&&i<segments){let n=j*(segments+1)+i;idx.push(n,n+1,n+segments+1,n+1,n+segments+2,n+segments+1)}}}
  const geom=new THREE.BufferGeometry();geom.setAttribute('position',new THREE.Float32BufferAttribute(verts,3));geom.setAttribute('uv',new THREE.Float32BufferAttribute(uv,2));geom.setIndex(idx);geom.computeVertexNormals();
- const mat=new THREE.MeshPhysicalMaterial({color:0xd8f0f1,transparent:true,opacity:.035,roughness:.04,metalness:0,clearcoat:1,clearcoatRoughness:.015,depthWrite:false,side:THREE.DoubleSide});
+ const mat=new THREE.MeshPhysicalMaterial({color:0xe2faf7,transparent:true,opacity:.022,roughness:.025,metalness:0,clearcoat:1,clearcoatRoughness:.012,ior:1.376,depthWrite:false,side:THREE.DoubleSide});
  cornea=new THREE.Mesh(geom,mat);cornea.renderOrder=9;eyeGroup.add(cornea);
  // restrained studio softbox reflected in the wet corneal surface
- const glintGeo=new THREE.CircleGeometry(.081,64),glintMat=new THREE.MeshBasicMaterial({color:0xe8f6e7,transparent:true,opacity:.11,depthWrite:false});
+ const glintGeo=new THREE.CircleGeometry(.081,64),glintMat=new THREE.MeshBasicMaterial({color:0xe8f6e7,transparent:true,opacity:.075,depthWrite:false});
  let glint=new THREE.Mesh(glintGeo,glintMat);glint.scale.set(.68,1.8,1);glint.rotation.z=-.32;glint.position.set(-.24,.23,1.303);glint.renderOrder=10;eyeGroup.add(glint);
  const tiny=new THREE.Mesh(new THREE.CircleGeometry(.021,32),new THREE.MeshBasicMaterial({color:0xffffff,transparent:true,opacity:.33,depthWrite:false}));tiny.position.set(.23,-.13,1.296);tiny.renderOrder=10;eyeGroup.add(tiny);
 }
@@ -182,6 +183,23 @@ function toggleRear(){
  setNotice(current.rear?'POSTERIOR ANATOMY IS ILLUSTRATIVE · NOT A RETINAL SCAN':'ANTERIOR EYE VIEW');
 }
 
+
+function addScleralVessels(){
+ // Subtle curved episcleral vessel paths, respecting the 3D scleral sphere.
+ const mat=new THREE.MeshBasicMaterial({color:0x9b6063,transparent:true,opacity:.15,depthWrite:false});
+ const R=1.236;
+ for(let n=0;n<42;n++){
+  const a=rand()*Math.PI*2,start=.68+rand()*.10,end=.82+rand()*.27,points=[];
+  for(let k=0;k<=18;k++){
+   const t=k/18,r=lerp(start,end,t),phase=a+.035*Math.sin(t*6+n)*t;
+   const x=Math.cos(phase)*r,y=Math.sin(phase)*r,z=Math.sqrt(Math.max(.01,R*R-r*r));
+   points.push(new THREE.Vector3(x,y,z+.002));
+  }
+  const geo=new THREE.TubeGeometry(new THREE.CatmullRomCurve3(points),30,.0011+rand()*.0014,3,false);
+  const vein=new THREE.Mesh(geo,mat);vein.renderOrder=1;eyeGroup.add(vein);
+ }
+}
+
 function makeScene(){
  renderer=new THREE.WebGLRenderer({canvas,antialias:true,alpha:true,powerPreference:'high-performance'});
  renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,1.7));renderer.setSize(innerWidth,innerHeight);
@@ -194,7 +212,8 @@ function makeScene(){
  const scleraGeo=new THREE.BufferGeometry(),verts=[],indices=[],steps=160,levels=110,R=1.23,t0=Math.asin(.645/R);
  for(let j=0;j<=levels;j++){let theta=t0+(Math.PI-t0)*j/levels;for(let i=0;i<=steps;i++){let phi=i/steps*2*Math.PI,rr=R*Math.sin(theta);verts.push(rr*Math.cos(phi),rr*Math.sin(phi),R*Math.cos(theta));if(j<levels&&i<steps){let n=j*(steps+1)+i;indices.push(n,n+1,n+steps+1,n+1,n+steps+2,n+steps+1)}}}
  scleraGeo.setAttribute('position',new THREE.Float32BufferAttribute(verts,3));scleraGeo.setIndex(indices);scleraGeo.computeVertexNormals();
- eyeWhite=new THREE.Mesh(scleraGeo,new THREE.MeshPhysicalMaterial({color:0xd8cec4,roughness:.36,clearcoat:.7,clearcoatRoughness:.11,side:THREE.DoubleSide}));eyeWhite.renderOrder=0;eyeGroup.add(eyeWhite);
+ eyeWhite=new THREE.Mesh(scleraGeo,new THREE.MeshPhysicalMaterial({color:0xe2ded6,roughness:.45,clearcoat:.46,clearcoatRoughness:.16,side:THREE.DoubleSide}));eyeWhite.renderOrder=0;eyeGroup.add(eyeWhite);
+ addScleralVessels();
  // recess in which the pupil sits
  const hole=new THREE.Mesh(new THREE.CylinderGeometry(.18,.18,.13,128,1,true),new THREE.MeshStandardMaterial({color:0x090a09,roughness:1,side:THREE.DoubleSide}));hole.rotation.x=Math.PI/2;hole.position.z=1.19;hole.renderOrder=2;eyeGroup.add(hole);
  pupil=new THREE.Mesh(new THREE.CircleGeometry(.189,128),new THREE.MeshBasicMaterial({color:0x030504}));pupil.position.z=1.13;pupil.renderOrder=2;eyeGroup.add(pupil);
