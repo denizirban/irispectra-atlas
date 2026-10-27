@@ -81,6 +81,6 @@ function activate(i){
  document.querySelectorAll('[data-layer]')[i]?.scrollIntoView({behavior:'smooth',block:'nearest',inline:'center'});
 }
 function showFact(i,j){document.querySelectorAll('.atlas-fact').forEach((b,k)=>b.classList.toggle('selected',j===k));const x=facts[i][j];$('atlasDetail').innerHTML='<strong>'+x[0]+'</strong><p>'+x[1]+'</p>'}
-window.IrispectraScience={activate,advanceFromCrypt(){activeScene='iris';activate(3);$('atlasSciencePanel')?.classList.add('science-journey');},next(){activate(Math.min(7,active+1))},previous(){activate(Math.max(0,active-1))}};
+window.IrispectraScience={indicate(i){setActive(i);},activate,advanceFromCrypt(){activeScene='iris';activate(3);$('atlasSciencePanel')?.classList.add('science-journey');},next(){activate(Math.min(7,active+1))},previous(){activate(Math.max(0,active-1))}};
 document.readyState==='loading'?document.addEventListener('DOMContentLoaded',boot):boot();
 })();
