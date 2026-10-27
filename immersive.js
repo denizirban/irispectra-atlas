@@ -13,8 +13,8 @@ const smooth=(a,b,t)=>{t=clamp((t-a)/(b-a),0,1);return t*t*(3-2*t)};
 const lerp=(a,b,t)=>a+(b-a)*t;
 function seeded(seed){return()=>{seed=(seed*1664525+1013904223)>>>0;return seed/4294967296}};
 const rand=seeded(9348);
-let renderer,scene,camera,eyeGroup,iris,irisMaterial,eyeWhite,cornea,pupil,lighting,texture=null;
-const current={zoom:.10,targetZoom:.10,yaw:0,targetYaw:0,pitch:0,targetPitch:0,focus:new THREE.Vector3(),focusTarget:new THREE.Vector3(),demo:true,anatomy:false,place:false,pinKind:'crypt',pinList:[],selected:null,animate:true,irisPalette:0};
+let renderer,scene,camera,eyeGroup,iris,irisMaterial,eyeWhite,cornea,pupil,lighting,texture=null,retina,opticNerve,retinalVessels;
+const current={zoom:.10,targetZoom:.10,yaw:0,targetYaw:0,pitch:0,targetPitch:0,focus:new THREE.Vector3(),focusTarget:new THREE.Vector3(),demo:true,anatomy:false,place:false,pinKind:'crypt',pinList:[],selected:null,animate:true,irisPalette:0,rear:false};
 let uploadImage=null, uploadUrl=null, toastTimer, pointers=new Map(),moveTotal=0;
 const initPins=[
  {kind:'collarette',radius:.26,angle:.72},
@@ -93,6 +93,51 @@ function makeCornea(){
  let glint=new THREE.Mesh(glintGeo,glintMat);glint.scale.set(.68,1.8,1);glint.rotation.z=-.32;glint.position.set(-.24,.23,1.303);glint.renderOrder=10;eyeGroup.add(glint);
  const tiny=new THREE.Mesh(new THREE.CircleGeometry(.021,32),new THREE.MeshBasicMaterial({color:0xffffff,transparent:true,opacity:.33,depthWrite:false}));tiny.position.set(.23,-.13,1.296);tiny.renderOrder=10;eyeGroup.add(tiny);
 }
+
+function makePosteriorAnatomy(){
+ // Anatomical exploration (educational reconstruction, not a measured scan).
+ const material=new THREE.MeshStandardMaterial({color:0x8e493b,roughness:.84,side:THREE.DoubleSide});
+ retina=new THREE.Mesh(new THREE.SphereGeometry(1.175,96,64),material);
+ retina.scale.set(.997,.997,.99);retina.visible=false;retina.name='retina';retina.renderOrder=0;eyeGroup.add(retina);
+ const nerveMat=new THREE.MeshStandardMaterial({color:0xddc6a3,roughness:.82});
+ opticNerve=new THREE.Group();
+ const trunk=new THREE.Mesh(new THREE.CylinderGeometry(.16,.23,1.25,32,1),nerveMat);
+ trunk.rotation.x=Math.PI/2;trunk.position.set(.13,-.015,-1.67);opticNerve.add(trunk);
+ const sheath=new THREE.Mesh(new THREE.TorusGeometry(.205,.046,10,64),new THREE.MeshStandardMaterial({color:0x9b755d,roughness:.78}));sheath.position.set(.13,-.015,-1.19);opticNerve.add(sheath);
+ opticNerve.visible=false;eyeGroup.add(opticNerve);
+ retinalVessels=new THREE.Group();
+ let vesselMat=new THREE.MeshStandardMaterial({color:0x6c1d20,roughness:.72,emissive:0x280908,emissiveIntensity:.22});
+ for(let branch=0;branch<26;branch++){
+   let a=branch/26*Math.PI*2,pts=[];
+   for(let k=0;k<=25;k++){
+     let t=k/25,spread=t*1.0,ang=a+.06*Math.sin(t*7+branch),x=.13+Math.cos(ang)*spread,y=-.015+Math.sin(ang)*spread;
+     const rr=Math.hypot(x,y),z=-Math.sqrt(Math.max(.08,1.17*1.17-rr*rr))-.008;
+     pts.push(new THREE.Vector3(x,y,z));
+   }
+   const tube=new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts),45,.006+(branch%4)*.0018,5,false),vesselMat);retinalVessels.add(tube);
+ }
+ retinalVessels.visible=false;eyeGroup.add(retinalVessels);
+}
+function toggleRear(){
+ current.rear=!current.rear;
+ current.selected=null;$('infoPanel').hidden=true;clearSelection();
+ current.anatomy=!current.rear&&current.anatomy;
+ $('anatomyBtn').classList.toggle('active',current.anatomy);
+ retina.visible=current.rear;opticNerve.visible=current.rear;retinalVessels.visible=current.rear;
+ eyeWhite.material.transparent=current.rear;eyeWhite.material.opacity=current.rear?.12:1;eyeWhite.material.depthWrite=!current.rear;eyeWhite.material.needsUpdate=true;
+ iris.visible=!current.rear;cornea.visible=!current.rear;pupil.visible=!current.rear;
+ current.targetYaw=0;current.targetPitch=0;current.selected=null;
+ current.focusTarget.set(0,0,current.rear?-.78:0);
+ setZoom(current.rear?.32:.13);
+ $('rearBtn').classList.toggle('active',current.rear);
+ $('rearBtn').textContent=current.rear?'FRONT OF EYE ↩':'RETINA / NERVE ↗';
+ $('sceneNumber').textContent=current.rear?'03 / POSTERIOR EYE':'01 / THE HUMAN EYE';
+ $('sceneTitle').innerHTML=current.rear?'BEYOND<br>THE IRIS.':'THE WORLD<br>WITHIN.';
+ $('sceneNote').textContent=current.rear?'Explore modeled retina, fundus vessels, and the optic nerve.':'A closer look at what makes every iris unique.';
+ $('modeLabel').textContent=current.rear?'EDUCATIONAL MODEL / RETINA & OPTIC NERVE':current.demo?'INTERACTIVE 3D / SYNTHETIC DEMO':'YOUR PHOTO / SYNTHETIC DEPTH';
+ setNotice(current.rear?'POSTERIOR ANATOMY IS ILLUSTRATIVE · NOT A RETINAL SCAN':'ANTERIOR EYE VIEW');
+}
+
 function makeScene(){
  renderer=new THREE.WebGLRenderer({canvas,antialias:true,alpha:true,powerPreference:'high-performance'});
  renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,1.7));renderer.setSize(innerWidth,innerHeight);
@@ -109,15 +154,15 @@ function makeScene(){
  // recess in which the pupil sits
  const hole=new THREE.Mesh(new THREE.CylinderGeometry(.18,.18,.13,128,1,true),new THREE.MeshStandardMaterial({color:0x090a09,roughness:1,side:THREE.DoubleSide}));hole.rotation.x=Math.PI/2;hole.position.z=1.19;hole.renderOrder=2;eyeGroup.add(hole);
  pupil=new THREE.Mesh(new THREE.CircleGeometry(.189,128),new THREE.MeshBasicMaterial({color:0x030504}));pupil.position.z=1.13;pupil.renderOrder=2;eyeGroup.add(pupil);
- makeIris();rim(.195,1.215,0x181c14,.013);rim(.623,1.116,0x151e1c,.019);makeCornea();const sk=skinTexture();skinSurface(true,sk);skinSurface(false,sk);
+ makeIris();rim(.195,1.215,0x181c14,.013);rim(.623,1.116,0x151e1c,.019);makeCornea();makePosteriorAnatomy(); // no skin: eye floats in black, preserving real 3D geometry
  drawDots();resize();window.addEventListener('resize',resize);
  $('loading').classList.add('hidden');animate();
 }
 function resize(){const w=innerWidth,h=innerHeight;if(!renderer)return;renderer.setSize(w,h,false);camera.aspect=w/h;camera.updateProjectionMatrix();}
 function renderCamera(){
  current.zoom=lerp(current.zoom,current.targetZoom,.08);current.yaw=lerp(current.yaw,current.targetYaw,.07);current.pitch=lerp(current.pitch,current.targetPitch,.07);current.focus.lerp(current.focusTarget,.08);
- const d=Math.exp(lerp(Math.log(4.7),Math.log(.19),current.zoom));
- const nX=Math.sin(current.yaw)*Math.cos(current.pitch),nY=Math.sin(current.pitch),nZ=Math.cos(current.yaw)*Math.cos(current.pitch);
+ const d=Math.exp(lerp(Math.log(4.7),Math.log(.31),current.zoom));
+ const nX=Math.sin(current.yaw)*Math.cos(current.pitch),nY=Math.sin(current.pitch),nZ=Math.cos(current.yaw)*Math.cos(current.pitch)*(current.rear?-1:1);
  camera.position.set(current.focus.x+d*nX,current.focus.y+d*nY,current.focus.z+d*nZ);camera.lookAt(current.focus);camera.updateMatrixWorld();
  $('zoomDisplay').textContent='MAG / '+(4.7/d).toFixed(1)+'×';
  $('zoomRange').value=Math.round(current.targetZoom*100);
@@ -128,7 +173,7 @@ function renderCamera(){
 }
 function animate(){requestAnimationFrame(animate);renderCamera();if(current.demo&&current.animate&&current.targetZoom<.19&&!pointers.size){let t=performance.now()*.00018;eyeGroup.rotation.y=Math.sin(t)*.018;eyeGroup.rotation.x=Math.cos(t*.73)*.009}else{eyeGroup.rotation.x=lerp(eyeGroup.rotation.x,0,.03);eyeGroup.rotation.y=lerp(eyeGroup.rotation.y,0,.03)}
  updateDots();renderer.render(scene,camera)}
-function setZoom(value){current.targetZoom=clamp(value,0,1);if(current.targetZoom<.22&&current.selected){current.selected=null;current.focusTarget.set(0,0,0)};if(current.targetZoom>.62){$('sceneNumber').textContent='02 / THE IRIS';$('sceneTitle').innerHTML='LOOK<br>CLOSER.';$('sceneNote').textContent='Every fiber tells a story of structure.'}else{$('sceneNumber').textContent='01 / THE HUMAN EYE';$('sceneTitle').innerHTML='THE WORLD<br>WITHIN.';$('sceneNote').textContent='A closer look at what makes every iris unique.'}}
+function setZoom(value){current.targetZoom=clamp(value,0,1);if(current.targetZoom<.22&&current.selected){current.selected=null;current.focusTarget.set(0,0,0)};if(current.rear)return;if(current.targetZoom>.62){$('sceneNumber').textContent='02 / THE IRIS';$('sceneTitle').innerHTML='LOOK<br>CLOSER.';$('sceneNote').textContent='Every fiber tells a story of structure.'}else{$('sceneNumber').textContent='01 / THE HUMAN EYE';$('sceneTitle').innerHTML='THE WORLD<br>WITHIN.';$('sceneNote').textContent='A closer look at what makes every iris unique.'}}
 function reset(){current.selected=null;current.focusTarget.set(0,0,0);current.targetYaw=0;current.targetPitch=0;setZoom(.10);$('infoPanel').hidden=true;clearSelection()}
 function approach(p){current.selected=p;current.focusTarget.copy(p);setZoom(.84);$('infoPanel').hidden=true}
 let domPins=[];
@@ -158,6 +203,7 @@ function connectUi(){
  $('enterBtn').onclick=()=>{current.selected=null;current.focusTarget.set(0,0,1.13);setZoom(.78)};
  $('resetBtn').onclick=reset;$('exploreBtn').onclick=()=>{reset();setActive('exploreBtn')};
  $('anatomyBtn').onclick=()=>{current.anatomy=!current.anatomy;$('anatomyBtn').classList.toggle('active',current.anatomy);if(!current.demo){$('annotate').hidden=!current.anatomy;if(current.anatomy)setNotice('MANUAL ANNOTATIONS ONLY — SELECT PLACE')}else if(current.anatomy)setZoom(.48)};
+ $('rearBtn').onclick=()=>toggleRear();
  $('uploadBtn').onclick=()=>openDialog('uploadDialog');$('uploadClose').onclick=()=>closeDialog('uploadDialog');$('aboutBtn').onclick=()=>openDialog('aboutDialog');$('aboutClose').onclick=()=>closeDialog('aboutDialog');
  $('infoClose').onclick=()=>{$('infoPanel').hidden=true;current.selected=null;clearSelection()};$('approachBtn').onclick=()=>{if(current.selected)approach(current.selected)};
  for(const id of ['uploadDialog','aboutDialog'])$(id).addEventListener('click',e=>{if(e.target===$(id))closeDialog(id)});
