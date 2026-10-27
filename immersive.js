@@ -312,7 +312,7 @@ function setZoom(value){
  // Zoom is reversible and never silently changes anatomical scenes.
  if(current.fundus&&value<-.015){exitFundus();return;}
  if(current.fundusTransition&&value<current.targetZoom){clearTimeout(fundusTimer);current.fundusTransition=false;$('enterBtn').disabled=false;}
- current.targetZoom=clamp(value,0,1);if(current.fundus)return;if(current.targetZoom<.60){current.selected=null;current.focusTarget.set(0,0,current.targetZoom<.2?0:1.13);$('infoPanel').hidden=true;clearSelection()}if(current.rear)return;if(current.targetZoom>.62){$('sceneNumber').textContent='02 / THE IRIS';$('sceneTitle').innerHTML='LOOK<br>CLOSER.';$('sceneNote').textContent='Every fiber tells a story of structure.'}else{$('sceneNumber').textContent='01 / THE HUMAN EYE';$('sceneTitle').innerHTML='THE WORLD<br>WITHIN.';$('sceneNote').textContent='A closer look at what makes every iris unique.'}}
+ current.targetZoom=clamp(value,0,1);if(current.fundus)return;if(current.targetZoom<.16){current.selected=null;current.focusTarget.set(0,0,0);$('infoPanel').hidden=true;clearSelection()}if(current.rear)return;if(current.targetZoom>.62){$('sceneNumber').textContent='02 / THE IRIS';$('sceneTitle').innerHTML='LOOK<br>CLOSER.';$('sceneNote').textContent='Every fiber tells a story of structure.'}else{$('sceneNumber').textContent='01 / THE HUMAN EYE';$('sceneTitle').innerHTML='THE WORLD<br>WITHIN.';$('sceneNote').textContent='A closer look at what makes every iris unique.'}}
 function enterFundus(){
   scalePaths?.select('retina');
  if(current.fundus||current.fundusTransition)return;
@@ -358,20 +358,31 @@ function showPin(spec,index,el){scalePaths?.select(({fundusVessels:'vessels',fun
 function updateDots(){for(const {el,spec} of domPins){if(!current.anatomy){el.classList.add('off');continue}const v=current.fundus?fundusStage.at(spec.u,spec.v):pointAt(spec.radius,spec.angle);if(!current.fundus)v.applyMatrix4(eyeGroup.matrixWorld);v.project(camera);const x=(v.x+1)*innerWidth*.5,y=(1-v.y)*innerHeight*.5;const seen=v.z<1&&v.z>-1&&x>20&&x<innerWidth-90&&y>80&&y<innerHeight-75;el.classList.toggle('off',!seen);el.style.left=x+'px';el.style.top=y+'px'}}
 function rayPin(x,y){if(current.fundus)return false;const v=new THREE.Vector2(x/innerWidth*2-1,-(y/innerHeight*2-1)),ray=new THREE.Raycaster();ray.setFromCamera(v,camera);const hits=ray.intersectObject(iris);if(!hits.length)return false;const p=hits[0].point,r=Math.hypot(p.x,p.y),a=Math.atan2(p.y,p.x);current.pinList.push({kind:current.pinKind,radius:r,angle:a});current.place=false;$('placeAnnotation').classList.remove('armed');drawDots();setNotice('MANUAL ANNOTATION PLACED');return true}
 function selectSurfacePath(x,y){
- const v=new THREE.Vector2(x/innerWidth*2-1,-(y/innerHeight*2-1)),ray=new THREE.Raycaster();
- ray.setFromCamera(v,camera);
+ // Pick the precise on-screen surface hit as the new zoom origin.
+ const ndc=new THREE.Vector2(x/innerWidth*2-1,1-y/innerHeight*2);
+ const ray=new THREE.Raycaster();ray.setFromCamera(ndc,camera);
  if(current.fundus){
-   const candidates=fundusStage.spots.map(s=>({spec:s,point:fundusStage.at(s.u,s.v)}));
-   const target=candidates.sort((a,b)=>a.point.distanceToSquared(current.fundusLook)-b.point.distanceToSquared(current.fundusLook))[0];
-   // Fundus area selection is anchored to the visible retinal surface, not a pixel-perfect vessel segmentation.
-   scalePaths?.select(target?.spec?.kind==='fundusDisc'?'nerve':target?.spec?.kind==='fundusVessels'?'vessels':'retina');
-   return;
+  const hits=ray.intersectObject(fundusStage.group,true);
+  if(!hits.length)return;
+  const point=hits[0].point.clone();
+  current.selected=point.clone();current.fundusTarget.copy(point);
+  // The retinal canvas is illustrative; nearest annotated structure is a navigation hint.
+  const spot=fundusStage.spots.map(spec=>({spec,d:fundusStage.at(spec.u,spec.v).distanceToSquared(point)}))
+   .sort((a,b)=>a.d-b.d)[0];
+  const kind=spot?.spec?.kind;
+  scalePaths?.select(kind==='fundusDisc'?'nerve':kind==='fundusVessels'?'vessels':'retina');
+  return;
  }
  if(current.rear)return;
- const candidates=ray.intersectObjects([iris,eyeWhite].filter(Boolean),false);
- if(!candidates.length)return;
- const object=candidates[0].object;
- scalePaths?.select(object===iris?'iris':'sclera');
+ const hits=ray.intersectObjects([iris,eyeWhite].filter(Boolean),false);
+ if(!hits.length)return;
+ const hit=hits[0];
+ const hitPoint=hit.point.clone();
+ current.selected=hitPoint.clone();
+ current.focusTarget.copy(hitPoint);
+ scalePaths?.select(hit.object===iris?'iris':'sclera');
+ // Keep the selected surface in view while wheel/pinch deepens the magnification.
+ if(current.targetZoom<.32)setZoom(.32);
 }
 function pointerSetup(){let pinchDistance=0;
  canvas.addEventListener('wheel',e=>{e.preventDefault();setZoom(current.targetZoom+(e.deltaY>0?1:-1)*Math.min(.09,Math.abs(e.deltaY)*.00045))},{passive:false});
