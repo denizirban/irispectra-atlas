@@ -225,3 +225,24 @@
 .info-fields strong{font-size:11px}
 .info-fields span{font-size:8px}
 }
+
+/* Discovery journey: premium compact controls that never cover the specimen */
+.tour-control{pointer-events:auto;margin-left:auto;margin-right:14px;border:1px solid #dce9d65c;border-radius:999px;background:#d8e4d1e8;color:#0d1a14;font:10px var(--mono);letter-spacing:.07em;padding:11px 17px;display:inline-flex;align-items:center;gap:8px;cursor:pointer;white-space:nowrap;transition:background .2s ease,color .2s ease}
+.tour-control:hover{background:#fbfff0}
+.tour-control[aria-pressed=true]{background:#18231e;color:#edf5e9}
+.tour-dot{display:block;width:6px;height:6px;border-radius:50%;background:currentColor}
+.tour-caption{position:absolute;z-index:24;left:50%;bottom:148px;transform:translateX(-50%);display:flex;gap:15px;align-items:center;min-width:290px;max-width:calc(100vw - 24px);border:1px solid #dcead742;background:#0d1512ee;border-radius:16px;padding:14px 17px;box-shadow:0 20px 90px #0009;backdrop-filter:blur(18px)}
+.tour-caption[hidden]{display:none}
+.tour-caption span{font:10px var(--mono);color:#bccfbb;white-space:nowrap}
+.tour-caption strong{flex:1;font:12px/1.35 var(--ui);font-weight:500}
+.tour-caption button{background:transparent;border:0;border-left:1px solid #ffffff2c;color:#b9cbbb;font:10px var(--mono);padding:6px 0 6px 13px;cursor:pointer}
+@media(max-width:820px){
+.tour-control{position:absolute;right:48px;top:0;max-width:145px;font:9px var(--mono);padding:8px 11px;white-space:nowrap;margin:0}
+.top-guide{font-size:9px}
+.tour-caption{bottom:calc(164px + env(safe-area-inset-bottom));left:12px;right:12px;min-width:0;transform:none;max-width:none;padding:11px 13px}
+.tour-caption strong{font-size:11px}
+.morph-trigger{top:calc(105px + env(safe-area-inset-top))}
+}
+@media(prefers-reduced-motion:reduce){
+ .tour-control,.morph-chart svg path[data-zone]{transition:none!important}
+}
