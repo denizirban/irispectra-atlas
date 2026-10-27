@@ -1,6 +1,7 @@
 import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js";
 import {createFundusStage} from "./fundus.js";
 import {MORPHOLOGY,polarRegion} from "./morphology-data.js";
+import {SPECIMENS,makeAnnularSpecimen} from "./specimen-pipeline.js";
 const $=x=>document.getElementById(x),canvas=$('scene'),experience=$('experience');
 const annotations={
  pupil:['Pupil','The dark central opening that admits light. Its appearance in a still photograph cannot measure the pupil light reflex.'],
@@ -72,43 +73,43 @@ function sampleIris(size=2048){
  return c;
 }
 
-const REAL_IRIS_SRC='https://upload.wikimedia.org/wikipedia/commons/1/15/Iris_of_the_Human_Eye.jpg';
-let specimenMode='procedural';
+
+let specimenIndex=0,specimenToken=0,specimenMode='procedural';
 function setSpecimenLabel(message,credit=false){
  $('textureStatus').textContent=message;
  const a=$('specimenCredit');if(a)a.hidden=!credit;
 }
-
-function photoToIris(img,cx=.50,cy=.49,r=.345){
- const side=Math.min(img.naturalWidth||img.width,img.naturalHeight||img.height),outer=side*r;
- const src=document.createElement('canvas');src.width=img.naturalWidth||img.width;src.height=img.naturalHeight||img.height;
- const sc=src.getContext('2d',{willReadFrequently:true});sc.drawImage(img,0,0);
- const source=sc.getImageData(0,0,src.width,src.height).data,out=document.createElement('canvas');out.width=out.height=1024;
- const c=out.getContext('2d'),result=c.createImageData(1024,1024),data=result.data;
- // Preserve real iris pixels; remap pupil-to-limbus annulus, never copy dark pupil pixels.
- const inner=outer*.345,px=cx*(img.naturalWidth||img.width),py=cy*(img.naturalHeight||img.height);
- for(let y=0;y<1024;y++)for(let x=0;x<1024;x++){
-  const dx=(x-512)/512,dy=(y-512)/512,rr=Math.hypot(dx,dy),index=(y*1024+x)*4;
-  if(rr>.999){data[index+3]=0;continue;}
-  const t=clamp((rr-.30)/.70,0,1);
-  const angle=Math.atan2(dy,dx);
-  const radius=inner+(outer-inner)*t;
-  const sx=clamp(Math.round(px+Math.cos(angle)*radius),0,src.width-1),sy=clamp(Math.round(py+Math.sin(angle)*radius),0,src.height-1);
-  const k=(sy*src.width+sx)*4;
-  data[index]=source[k];data[index+1]=source[k+1];data[index+2]=source[k+2];data[index+3]=255;
- }
- c.putImageData(result,0,0);return out;
+function photoToIris(img,spec){
+ return makeAnnularSpecimen(img,spec,{size:window.matchMedia('(max-width: 720px)').matches?1536:2048});
 }
-function setPhotographicDemo(){
- const image=new Image();image.crossOrigin='anonymous';setSpecimenLabel('LOADING / REFERENCE PHOTO');
+function setPhotographicDemo(index=specimenIndex){
+ specimenIndex=((index%SPECIMENS.length)+SPECIMENS.length)%SPECIMENS.length;
+ const sample=SPECIMENS[specimenIndex],token=++specimenToken;
+ const image=new Image();image.crossOrigin='anonymous';image.decoding='async';
+ setSpecimenLabel('LOADING / '+sample.title);
  image.onload=()=>{
-  // The reference is a CC BY-SA macro photograph, not a 3D patient scan.
-  specimenMode='reference';current.demo=true;makeTexture(photoToIris(image));irisMaterial.bumpScale=.008;irisMaterial.roughness=.76;irisMaterial.clearcoat=.13;
-  setSpecimenLabel('PHOTO / MCORRENS',true);
-  $('modeLabel').textContent='REAL IRIS PHOTO / MODELED 3D SURFACE';setNotice('MACRO SPECIMEN LOADED · DEPTH ILLUSTRATIVE');
+  if(token!==specimenToken)return;
+  try{
+   const mapped=photoToIris(image,sample);
+   specimenMode='reference';current.demo=true;makeTexture(mapped);
+   irisMaterial.bumpScale=.012;irisMaterial.roughness=.72;irisMaterial.clearcoat=.10;
+   setSpecimenLabel('PHOTO / '+sample.title,true);
+   const link=$('specimenCredit');link.href=sample.credit;
+   link.textContent='PHOTO: '+sample.creator.toUpperCase()+' · '+sample.license+' ↗';
+   $('modeLabel').textContent='MACRO SPECIMEN / REAL PHOTO / 3D SURFACE';
+   $('referenceBtn').innerHTML='<span class="tiny-circle"></span> CHANGE SPECIMEN ↔';
+   setNotice(sample.title+' / HIGH-RES SPECIMEN READY');
+  }catch(error){console.warn('SPECIMEN_TEXTURE',error);fallbackSpecimen(token);}
  };
- image.onerror=()=>{specimenMode='procedural';setSpecimenLabel('SYNTHETIC / FALLBACK');setNotice('REFERENCE PHOTO UNAVAILABLE · PROCEDURAL IRIS ACTIVE')};
- image.src=REAL_IRIS_SRC;
+ image.onerror=()=>fallbackSpecimen(token);
+ image.src=sample.url;
+}
+function fallbackSpecimen(token){
+ if(token!==specimenToken)return;
+ if(specimenIndex<SPECIMENS.length-1){setPhotographicDemo(specimenIndex+1);return;}
+ specimenMode='procedural';current.demo=true;makeTexture(sampleIris());
+ setSpecimenLabel('PROCEDURAL / OFFLINE');
+ setNotice('REFERENCE PHOTO UNAVAILABLE · OFFLINE TEXTURE');
 }
 function switchToSynthetic(){
  specimenMode='procedural';current.demo=true;makeTexture(sampleIris());setSpecimenLabel('SYNTHETIC / 3D DEMO');
@@ -116,24 +117,25 @@ function switchToSynthetic(){
 }
 
 
+
+function sampledRelief(r,a){
+ if(!iris?.userData?.relief)return 0;
+ const {data,size}=iris.userData.relief;
+ const x=Math.min(size-1,Math.max(0,Math.round((.5+Math.cos(a)*r/1.26)*(size-1))));
+ const y=Math.min(size-1,Math.max(0,Math.round((.5-Math.sin(a)*r/1.26)*(size-1))));
+ const k=(y*size+x)*4;
+ const brightness=(data[k]*.2126+data[k+1]*.7152+data[k+2]*.0722)/255;
+ const depression=Math.max(0,Math.min(1,(.34-brightness)*2.2));
+ const radialWeight=Math.max(0,Math.min(1,(r-.20)/.13));
+ return .007*(brightness-.48)-.007*depression*radialWeight;
+}
 function refreshIrisRelief(source){
- // Surface reconstruction is illustrative: pigment intensity is not an OCT depth measurement.
  if(!iris||!source)return;
- const c=document.createElement('canvas');c.width=c.height=384;
- const cx=c.getContext('2d',{willReadFrequently:true});cx.drawImage(source,0,0,384,384);
- const pixels=cx.getImageData(0,0,384,384).data;
- const position=iris.geometry.attributes.position,uv=iris.geometry.attributes.uv;
- for(let i=0;i<position.count;i++){
-  const x=position.getX(i),y=position.getY(i),r=Math.hypot(x,y),ang=Math.atan2(y,x);
-  const u=clamp(Math.round((.5+x/1.26)*383),0,383),v=clamp(Math.round((1-(.5+y/1.26))*383),0,383);
-  const j=(v*384+u)*4;
-  const lum=(pixels[j]*.2126+pixels[j+1]*.7152+pixels[j+2]*.0722)/255;
-  const cryptShadow=clamp((.42-lum)*2.2,0,1);
-  // Smoothed radial striation plus shallow crypt depressions, bounded to avoid false anatomical measurements.
-  const displacement=.008*(lum-.5)-.011*cryptShadow*Math.sin(Math.min(1,(r-.19)/.12)*Math.PI*.5)**2;
-  position.setZ(i,zIris(r,ang)+displacement);
- }
- position.needsUpdate=true;iris.geometry.computeVertexNormals();
+ const size=384,c=document.createElement('canvas');c.width=c.height=size;
+ const ctx=c.getContext('2d',{willReadFrequently:true});ctx.drawImage(source,0,0,size,size);
+ iris.userData.relief={data:ctx.getImageData(0,0,size,size).data,size};
+ // Recalculate at next frame using the same pupil diameter as the current shape.
+ iris.userData.lastPupil=-1;
 }
 const DEEP_ROUTES={
  iris:['IRIS SURFACE','CRYPT / COLLARETTE','STROMAL COLLAGEN','MELANOCYTES & FIBROBLASTS','MELANIN / COLLAGEN'],
@@ -202,7 +204,7 @@ function updateLightSimulation(){
   const r=simPupil+(.63-simPupil)*j/rings;
   for(let i=0;i<=segments;i++){
    const index=j*(segments+1)+i,angle=i/segments*Math.PI*2,x=Math.cos(angle)*r,y=Math.sin(angle)*r;
-   a.setXYZ(index,x,y,zIris(r,angle));
+   a.setXYZ(index,x,y,zIris(r,angle)+sampledRelief(r,angle));
    uv.setXY(index,.5+x/1.26,.5+y/1.26);
   }
  }
@@ -210,8 +212,8 @@ function updateLightSimulation(){
  if(pupil){pupil.scale.setScalar(simPupil/.189)}
  // Pupil edge rings are tagged when built.
  eyeGroup.children.forEach(m=>{if(m.userData.pupilEdge)m.scale.setScalar(simPupil/.195)});
- if(lighting)lighting.intensity=lerp(1.1,4.0,lightIntensity);
- renderer.toneMappingExposure=lerp(1.12,1.68,lightIntensity);
+ if(lighting)lighting.intensity=lerp(1.4,2.9,lightIntensity);
+ renderer.toneMappingExposure=lerp(1.13,1.38,lightIntensity);
  $('lightValue')&&($('lightValue').textContent=Math.round(lightIntensity*100)+'%');
 }
 
@@ -496,7 +498,7 @@ function connectUi(){
  $('resetBtn').onclick=reset;$('exploreBtn').onclick=()=>{reset();setActive('exploreBtn')};
  $('anatomyBtn').onclick=()=>{current.anatomy=!current.anatomy;$('anatomyBtn').classList.toggle('active',current.anatomy);if(current.fundus){$('annotate').hidden=true;return;}if(!current.demo){$('annotate').hidden=!current.anatomy;if(current.anatomy)setNotice('MANUAL ANNOTATIONS ONLY — SELECT PLACE')}else if(current.anatomy)setZoom(.48)};
  $('rearBtn').onclick=()=>toggleRear();
- $('referenceBtn')?.addEventListener('click',()=>{if(!current.demo){setNotice('PERSONAL PHOTO ACTIVE · RESET BEFORE DEMO SWITCH');return;}if(specimenMode==='reference')switchToSynthetic();else setPhotographicDemo()});
+ $('referenceBtn')?.addEventListener('click',()=>{if(!current.demo){setNotice('PERSONAL PHOTO ACTIVE · RESET BEFORE DEMO SWITCH');return;}setPhotographicDemo(specimenIndex+1)});
   $('uploadBtn').onclick=()=>openDialog('uploadDialog');$('uploadClose').onclick=()=>closeDialog('uploadDialog');$('aboutBtn').onclick=()=>openDialog('aboutDialog');$('aboutClose').onclick=()=>closeDialog('aboutDialog');
  $('infoClose').onclick=()=>{$('infoPanel').hidden=true;current.selected=null;clearSelection()};$('approachBtn').onclick=()=>{if(current.selected)approach(current.selected)};
  for(const id of ['uploadDialog','aboutDialog'])$(id).addEventListener('click',e=>{if(e.target===$(id))closeDialog(id)});
@@ -520,6 +522,6 @@ function drawCropPreview(){
 function applyPhoto(){
  if(!uploadImage)return;const n=2048,c=document.createElement('canvas');c.width=c.height=n;const ctx=c.getContext('2d'),r=Math.min(uploadImage.width,uploadImage.height)*Number($('cropRadius').value)/100,x=uploadImage.width*Number($('cropX').value)/100,y=uploadImage.height*Number($('cropY').value)/100;
  ctx.fillStyle='#080a08';ctx.fillRect(0,0,n,n);ctx.drawImage(uploadImage,x-r,y-r,r*2,r*2,0,0,n,n);
- specimenMode='personal';$('specimenCredit')?.setAttribute('hidden','');current.demo=false;current.pinList=[];current.selected=null;current.anatomy=false;current.place=false;$('annotate').hidden=true;$('anatomyBtn').classList.remove('active');$('textureStatus').textContent='YOUR IRIS / LOCAL';$('modeLabel').textContent='YOUR PHOTO / SYNTHETIC DEPTH';makeTexture(c);drawDots();closeDialog('uploadDialog');reset();setZoom(.36);setNotice('PHOTO MAPPED · IRIS RELIEF IS ILLUSTRATIVE');
+ specimenToken++;specimenMode='personal';$('specimenCredit')?.setAttribute('hidden','');current.demo=false;current.pinList=[];current.selected=null;current.anatomy=false;current.place=false;$('annotate').hidden=true;$('anatomyBtn').classList.remove('active');$('textureStatus').textContent='YOUR IRIS / LOCAL';$('modeLabel').textContent='YOUR PHOTO / SYNTHETIC DEPTH';makeTexture(c);drawDots();closeDialog('uploadDialog');reset();setZoom(.36);setNotice('PHOTO MAPPED · IRIS RELIEF IS ILLUSTRATIVE');
 }
 try{makeScene();connectUi();pointerSetup()}catch(err){console.error('IRISPECTRA_INIT',err);const text=err?.stack||String(err);$('loadingText').textContent='SCENE ERROR / '+String(err?.message||err).slice(0,180);window.__irispectraError=text; const l=$('loading');l.innerHTML='<span class="loading-symbol"></span><span id="loadingText"></span><a href="/classic.html" style="color:#d6dfc1;font:11px ui-monospace">OPEN PHOTO ATLAS ↗</a>'; $('loadingText').textContent='SCENE ERROR / '+String(err?.message||err).slice(0,180); setNotice('SCENE INITIALIZATION ERROR')}
