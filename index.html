@@ -1,55 +1,74 @@
 <!doctype html>
-<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#100e0c"><title>IRISPECTRA — Optical Atlas</title>
-<style>
-:root{color-scheme:dark;--fg:#f5f2ee;--dim:#d5c9b9;--gold:#d9b887;--mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;--ui:-apple-system,BlinkMacSystemFont,"SF Pro Display","Helvetica Neue",Arial,sans-serif}
-*{box-sizing:border-box}html,body{margin:0;height:100%;overflow:hidden}body{background:#17100d;color:var(--fg);font:12px var(--ui);-webkit-font-smoothing:antialiased}button,select{font:inherit;color:inherit}button{cursor:pointer}button:focus-visible,select:focus-visible{outline:2px solid var(--gold);outline-offset:3px}#app,#viewport,#world{position:absolute;inset:0;overflow:hidden}#app{isolation:isolate;background:#100b08}#viewport{touch-action:none;cursor:grab}#viewport:active{cursor:grabbing}#world{transform-origin:center;will-change:transform}#eye{object-fit:cover;display:block;width:100%;height:100%;user-select:none;pointer-events:none}#pins{position:absolute;inset:0;pointer-events:none}.pin{position:absolute;transform:translate(-50%,-50%);border:0;padding:4px;background:transparent;color:#fff;text-shadow:0 1px 9px #000;font:9px var(--mono);letter-spacing:.06em;white-space:nowrap;pointer-events:auto;display:flex;align-items:center;gap:8px}.pin:before{content:"";display:block;width:17px;height:17px;flex:none;border-radius:50%;border:1px solid #ffefcfaa;background:radial-gradient(circle,#f8e6cc 0 2px,transparent 3px) #19140f66}.pin:hover:before,.pin.active:before{border-color:var(--gold);box-shadow:0 0 0 4px #d9b88722}#shade{position:absolute;inset:0;pointer-events:none;background:linear-gradient(90deg,#080707ca,transparent 27%,transparent 66%,#0806067b),linear-gradient(0deg,#090707a6,transparent 19%,transparent 81%,#0807076e)}#hud{position:absolute;inset:0;pointer-events:none}#hud button,#hud a,#hud input,#hud select{pointer-events:auto}.border{position:absolute;inset:18px;border:1px dashed #f1e2ca44;pointer-events:none}.x{position:absolute;color:#f3e8dbaa;font:19px var(--mono)}.x.tl{top:7px;left:10px}.x.tr{top:7px;right:9px}.x.bl{bottom:6px;left:10px}.x.br{bottom:6px;right:9px}.brand{position:absolute;left:53px;top:44px;display:flex;gap:13px;align-items:flex-start}.logo{width:17px;height:17px;border:1px solid var(--gold);display:block;position:relative}.logo:after{content:"";position:absolute;inset:5px;border:1px solid var(--gold)}.word{font-size:17px;letter-spacing:.19em;font-weight:550;line-height:1}.word small{display:block;color:#d6cabfaa;font:9px var(--mono);letter-spacing:.13em;margin-top:11px}.status{position:absolute;top:43px;right:55px;text-align:right;font:9px/1.8 var(--mono);letter-spacing:.09em;color:#eee8d2bd}.status strong{color:var(--gold);font-weight:400}.sidebar{position:absolute;top:34%;left:54px;width:177px;display:flex;flex-direction:column;gap:0}.eyebrow{color:var(--gold);font:10px var(--mono);letter-spacing:.13em;margin-bottom:15px}.sidebar button{border:0;border-bottom:1px solid #ffffff26;background:transparent;text-align:left;padding:12px 0;font:10px var(--mono);letter-spacing:.1em;color:#e9ded4c4;display:flex;gap:9px;align-items:center}.sidebar button:before{content:"";width:6px;height:6px;border:1px solid #e9ded4c4}.sidebar button.active{color:var(--gold)}.sidebar button.active:before{background:var(--gold);border-color:var(--gold)}.sidebar button:hover{color:white}.micro{font:9px/1.9 var(--mono);letter-spacing:.08em;color:#c9bdb2a8;margin-top:19px}.reticle{position:absolute;width:min(68vw,75vh);aspect-ratio:1;left:50%;top:50%;border:1px dashed #fcf6e94d;border-radius:50%;transform:translate(-50%,-50%);opacity:.53}.reticle:after{content:"";position:absolute;inset:-18%;border-radius:50%;border:1px dotted #fcf6e934}.crosshair{position:absolute;left:50%;top:50%;width:24px;height:24px;transform:translate(-50%,-50%);opacity:.6}.crosshair:after,.crosshair:before{content:"";position:absolute;background:#fff9}.crosshair:after{left:50%;top:0;width:1px;height:100%}.crosshair:before{left:0;top:50%;width:100%;height:1px}.zoom{position:absolute;right:48px;top:32%;display:flex;align-items:center;flex-direction:column;gap:15px;font:10px var(--mono)}.zoom button{border:0;background:transparent;font-size:20px}.zoom input{appearance:none;-webkit-appearance:none;writing-mode:vertical-lr;direction:rtl;width:4px;height:170px;background:#eeeeee77;accent-color:var(--gold)}.zoom input::-webkit-slider-thumb{appearance:none;width:15px;height:4px;background:var(--gold)}.zoom span{color:var(--gold)}.footer{position:absolute;bottom:43px;left:54px;right:54px;display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;align-items:end}.credit{font:9px/1.9 var(--mono);letter-spacing:.06em;color:#e6d8c8c9}.credit a{color:#d0ba9a;text-decoration:none}.help{text-align:center;font:9px/1.8 var(--mono);color:#ded6c4b6}.help em{color:var(--gold);font-style:normal}.actions{display:flex;justify-content:flex-end;gap:8px}.actions button{background:#16110dbc;border:1px solid #fff4;padding:13px 17px;font-size:10px;letter-spacing:.08em;backdrop-filter:blur(8px)}.actions button.primary{background:#e6d5bd;color:#221710;border-color:#e6d5bd;font-weight:600}.panel{position:absolute;right:105px;top:37%;width:270px;background:#0e0b0be6;border:1px solid #e9d3b747;padding:20px 22px;backdrop-filter:blur(16px);box-shadow:0 20px 50px #0008}.panel[hidden],#marktools[hidden]{display:none}.panel .cap{font:9px var(--mono);color:var(--gold);letter-spacing:.12em;display:flex;justify-content:space-between}.panel button{background:transparent;border:0;font-size:18px}.panel h2{font-weight:520;font-size:23px;letter-spacing:-.02em;margin:20px 0 9px}.panel p{font-size:12px;line-height:1.65;color:#e5dbccbb}.panel small{font:9px var(--mono);color:#c5ad85}.marktools{position:absolute;bottom:145px;left:50%;transform:translateX(-50%);padding:10px;display:flex;gap:7px;align-items:center;background:#100e0ded;border:1px solid #eee7da4d}.marktools span{color:var(--gold);font:9px var(--mono)}.marktools select{background:#171412;font:10px var(--mono);padding:9px;border:1px solid #fff5}.marktools button{background:#e6d5bd;color:#201810;padding:10px;border:0;font:10px var(--mono)}.marktools button.armed{background:#e2bb60}#file{display:none}.toast{position:absolute;left:50%;bottom:200px;transform:translateX(-50%);padding:10px 16px;background:#130e0ee6;border:1px solid #fff4;font:10px var(--mono);opacity:0;transition:opacity .2s;pointer-events:none;z-index:30}.toast.show{opacity:1}.no-guides .border,.no-guides .x,.no-guides .reticle,.no-guides .crosshair{display:none}
-@media(max-width:700px){.brand{left:34px;top:37px}.word{font-size:13px}.word small{font-size:8px}.status{right:33px;top:37px;max-width:105px;font-size:8px}.border{inset:10px}.sidebar{left:31px;top:auto;bottom:146px;width:126px}.eyebrow{font-size:8px;margin-bottom:7px}.sidebar button{font-size:9px;padding:8px 0}.micro{display:none}.zoom{right:29px;top:30%}.zoom input{height:125px}.reticle{width:90vw}.footer{left:32px;right:32px;bottom:27px;grid-template-columns:1fr auto}.help{display:none}.credit{font-size:8px;max-width:162px}.actions button:not(.primary){display:none}.actions button{padding:12px;font-size:9px}.panel{left:28px;right:28px;width:auto;top:25%}.marktools{left:25px;right:25px;bottom:135px;transform:none;flex-wrap:wrap}.marktools span{width:100%}.marktools select{flex:1;min-width:120px}.pin{font-size:8px;max-width:95px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}}
-@media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
-</style></head><body>
-<main id="app"><div id="viewport" role="region" aria-label="Iris photo zoom viewer" tabindex="0"><div id="world"><img id="eye" crossorigin="anonymous" alt="Real macro photograph of a human iris" src="https://upload.wikimedia.org/wikipedia/commons/1/15/Iris_of_the_Human_Eye.jpg"><div id="pins"></div></div><div id="shade"></div></div>
-<div id="hud"><div class="border"></div><span class="x tl">+</span><span class="x tr">+</span><span class="x bl">+</span><span class="x br">+</span>
-<div class="brand"><span class="logo"></span><div class="word">IRISPECTRA<small>OPTICAL ATLAS / 04</small></div></div>
-<div class="status"><span id="status">REAL PHOTOGRAPH</span><br><span id="pixels">2048 × 2048 PX</span><br><strong>● LIVE VIEW</strong></div>
-<nav class="sidebar"><span class="eyebrow">01 / OBSERVATION</span><button id="anatomy" class="active" aria-pressed="true">ANATOMY</button><button id="imageData">IMAGE DATA</button><button id="threeD" onclick="location.assign('/scan-studio.html')">REAL 3D SCAN ↗</button><button id="yourEye">YOUR EYE ↗</button><button id="guides" class="active" aria-pressed="true">GUIDES</button><button id="reset">RESET ↺</button><span class="micro" id="context">SPECIMEN 001 / MACRO<br>MANUAL REFERENCE LABELS</span></nav>
-<div class="reticle"></div><div class="crosshair"></div>
-<div class="zoom"><button id="plus" aria-label="Zoom in">+</button><input id="range" type="range" value="1" min="1" max="8" step=".01" aria-label="Zoom"><button id="minus" aria-label="Zoom out">−</button><span id="mag">1.0×</span></div>
-<div id="panel" class="panel" hidden><div class="cap"><span id="panelTag">ANATOMY / REFERENCE</span><button id="closePanel" aria-label="Close panel">×</button></div><h2 id="panelTitle"></h2><p id="panelText"></p><small id="panelFoot">EDUCATIONAL / NON-DIAGNOSTIC</small></div>
-<div class="marktools" id="marktools" hidden><span>MANUAL ANNOTATION</span><select id="markerType" aria-label="Annotation type"><option value="crypt">CRYPT-LIKE REGION</option><option value="radial">RADIAL TEXTURE</option><option value="collarette">COLLARETTE</option><option value="furrow">CONTRACTION FURROWS</option><option value="limbal">LIMBAL BOUNDARY</option></select><button id="place">+ PLACE PIN</button><button id="clear">CLEAR</button></div>
-<footer class="footer"><div class="credit"><span id="sourceName">SPECIMEN 001 / REAL MACRO</span><br><a id="source" target="_blank" rel="noopener noreferrer" href="https://commons.wikimedia.org/wiki/File:Iris_of_the_Human_Eye.jpg">PHOTO: MCORRENS · CC BY-SA 3.0 ↗</a></div><div class="help">SCROLL / PINCH TO ZOOM <em>·</em> DRAG TO MOVE<br>NO INVENTED DETAIL · 2.5D VIEW</div><div class="actions"><button id="resetFoot">RESET VIEW</button><button id="upload" class="primary">UPLOAD EYE ↗</button></div></footer>
-</div><input type="file" id="file" accept="image/jpeg,image/png,image/webp"><div class="toast" id="toast" role="status"></div></main>
-<script>
-(()=>{'use strict';
-const $=id=>document.getElementById(id), v=$('viewport'),world=$('world'),eye=$('eye'),pins=$('pins'),app=$('app'),ref=$('range'),mag=$('mag'),panel=$('panel'),toast=$('toast');
-const note={
-pupil:['Pupil','The aperture allowing light into the eye. Pupil light reflex cannot be determined from one still photograph.'],
-collarette:['Collarette','The irregular iris ridge separating the pupillary and ciliary zones.'],
-crypt:['Crypt-like opening','Depressions in the anterior iris stroma. The sample marker is approximate, not an automated finding.'],
-radial:['Radial stromal texture','Radial markings of the anterior iris. Their apparent resolution depends on optics, focus and lighting.'],
-furrow:['Contraction furrows','Usually concentric folds in the outer iris, distinct from the radial texture. This sample region is a manual reference.'],
-limbal:['Peripheral iris margin','Visible peripheral border of the iris at the limbal region.']};
-const demo=[['pupil',.495,.48],['collarette',.64,.39],['crypt',.705,.57],['radial',.38,.65],['furrow',.74,.30],['limbal',.81,.48]];
-let state={z:1,target:1,tx:0,ty:0,x:0,y:0,anatomy:true,guides:true,own:false,armed:false,markers:[],blob:null};
-let fingers=new Map(),pinch=0,toastTime=0;
-function message(t){toast.textContent=t;toast.classList.add('show');clearTimeout(toastTime);toastTime=setTimeout(()=>toast.classList.remove('show'),2400)}
-function constrain(){const bx=Math.max(0,(state.target-1)*innerWidth/2),by=Math.max(0,(state.target-1)*innerHeight/2);state.tx=Math.max(-bx,Math.min(bx,state.tx));state.ty=Math.max(-by,Math.min(by,state.ty))}
-function zoom(z,px=innerWidth/2,py=innerHeight/2){const old=state.target;state.target=Math.max(1,Math.min(8,z));const k=state.target/old;state.tx=(px-innerWidth/2)-(px-innerWidth/2-state.tx)*k;state.ty=(py-innerHeight/2)-(py-innerHeight/2-state.ty)*k;constrain();ref.value=state.target;mag.textContent=state.target.toFixed(1)+'×'}
-function render(){state.z+=(state.target-state.z)*.17;state.x+=(state.tx-state.x)*.17;state.y+=(state.ty-state.y)*.17;world.style.transform='translate3d('+state.x+'px,'+state.y+'px,0) scale('+state.z+')';for(const p of pins.children){p.style.scale=String(1/state.z)}requestAnimationFrame(render)}
-function imagePos(x,y){const iw=eye.naturalWidth||2048,ih=eye.naturalHeight||2048,w=v.clientWidth,h=v.clientHeight,scale=Math.max(w/iw,h/ih);return{x:(w-iw*scale)/2+x*iw*scale,y:(h-ih*scale)/2+y*ih*scale}}
-function reversePos(px,py){const iw=eye.naturalWidth||2048,ih=eye.naturalHeight||2048,w=v.clientWidth,h=v.clientHeight,scale=Math.max(w/iw,h/ih);const u=(px-w/2-state.x)/state.z+w/2,yy=(py-h/2-state.y)/state.z+h/2;return{x:Math.max(0,Math.min(1,(u-(w-iw*scale)/2)/(iw*scale))),y:Math.max(0,Math.min(1,(yy-(h-ih*scale)/2)/(ih*scale)))}}
-function showNote(t,i){const n=note[t];if(!n)return;panel.hidden=false;$('panelTag').textContent=(state.own?'USER PLACED':'REFERENCE LOCATION')+' / '+String(i+1).padStart(2,'0');$('panelTitle').textContent=n[0];$('panelText').textContent=n[1]+' The marker is educational, not diagnostic.';}
-function drawPins(){pins.replaceChildren();if(!state.anatomy)return;const all=state.own?state.markers:demo;all.forEach((r,i)=>{const [t,x,y]=r,pos=imagePos(x,y),b=document.createElement('button');b.className='pin';b.style.left=pos.x+'px';b.style.top=pos.y+'px';b.style.scale=String(1/state.z);b.textContent=note[t][0].toUpperCase();b.title='Explore '+note[t][0];b.addEventListener('pointerdown',e=>e.stopPropagation());b.onclick=e=>{e.stopPropagation();showNote(t,i)};pins.append(b)})}
-function reset(){state.tx=state.ty=0;zoom(1);panel.hidden=true}
-function toggleAnatomy(){state.anatomy=!state.anatomy;$('anatomy').classList.toggle('active',state.anatomy);$('anatomy').setAttribute('aria-pressed',state.anatomy);if(!state.anatomy)panel.hidden=true;drawPins()}
-function imageInfo(){panel.hidden=false;$('panelTag').textContent='IMAGE INFORMATION';$('panelTitle').textContent=state.own?'Personal photograph':'Photographic specimen';$('panelText').textContent=state.own?'Your original image stays on this device. Pins are manually positioned; no disease or morphology has been detected automatically.':'Mcorrens, Iris of the Human Eye, 2009, Wikimedia Commons, CC BY-SA 3.0. Original macro photograph. Markers are approximate manual references. This 2.5D zoom magnifies actual pixels without synthesizing unseen features.'}
-eye.addEventListener('load',()=>{$('pixels').textContent=eye.naturalWidth+' × '+eye.naturalHeight+' PX';drawPins()});
-eye.addEventListener('error',()=>{if(!state.own){$('status').textContent='PHOTO NOT LOADED';message('PHOTO UNAVAILABLE · USE YOUR OWN EYE');}});
-v.addEventListener('wheel',e=>{e.preventDefault();zoom(state.target*Math.exp(-e.deltaY*.0015),e.clientX,e.clientY)},{passive:false});
-v.addEventListener('pointerdown',e=>{if(e.button!==0&&e.pointerType==='mouse')return;fingers.set(e.pointerId,{x:e.clientX,y:e.clientY,startX:e.clientX,startY:e.clientY});v.setPointerCapture(e.pointerId);if(fingers.size===2){const f=[...fingers.values()];pinch=Math.hypot(f[0].x-f[1].x,f[0].y-f[1].y)}});
-v.addEventListener('pointermove',e=>{if(!fingers.has(e.pointerId))return;const p=fingers.get(e.pointerId);fingers.set(e.pointerId,{...p,x:e.clientX,y:e.clientY});if(fingers.size===2){const f=[...fingers.values()],d=Math.hypot(f[0].x-f[1].x,f[0].y-f[1].y);if(pinch)zoom(state.target*d/pinch,(f[0].x+f[1].x)/2,(f[0].y+f[1].y)/2);pinch=d;return}state.tx+=e.clientX-p.x;state.ty+=e.clientY-p.y;constrain()});
-function release(e){const p=fingers.get(e.pointerId);if(!p)return;fingers.delete(e.pointerId);if(fingers.size<2)pinch=0;if(state.own&&state.armed&&Math.hypot(p.startX-e.clientX,p.startY-e.clientY)<8){const a=reversePos(e.clientX,e.clientY);state.markers.push([$('markerType').value,a.x,a.y]);state.armed=false;$('place').classList.remove('armed');drawPins();message('MANUAL MARKER ADDED')}}
-['pointerup','pointercancel','lostpointercapture'].forEach(n=>v.addEventListener(n,release));
-$('plus').onclick=()=>zoom(state.target+.45);$('minus').onclick=()=>zoom(state.target-.45);ref.oninput=e=>zoom(+e.target.value);$('reset').onclick=$('resetFoot').onclick=reset;$('anatomy').onclick=toggleAnatomy;$('imageData').onclick=imageInfo;$('closePanel').onclick=()=>panel.hidden=true;$('guides').onclick=()=>{state.guides=!state.guides;app.classList.toggle('no-guides',!state.guides);$('guides').classList.toggle('active',state.guides);$('guides').setAttribute('aria-pressed',state.guides)};
-$('yourEye').onclick=$('upload').onclick=()=>$('file').click();$('file').onchange=e=>{const f=e.target.files[0];if(!f)return;if(!['image/jpeg','image/png','image/webp'].includes(f.type)||f.size>16e6){message('CHOOSE JPG/PNG/WEBP UNDER 16 MB');return}if(state.blob)URL.revokeObjectURL(state.blob);state.blob=URL.createObjectURL(f);state.own=true;state.markers=[];state.armed=false;eye.removeAttribute('crossorigin');eye.src=state.blob;$('status').textContent='PERSONAL / LOCAL PHOTO';$('sourceName').textContent='PERSONAL SPECIMEN · NO AUTO DETECTION';$('source').hidden=true;$('context').textContent='TAP PLACE PIN THEN TAP THE PHOTO';$('marktools').hidden=false;reset();drawPins();message('YOUR PHOTO STAYS IN YOUR BROWSER');e.target.value=''};
-$('place').onclick=()=>{state.armed=!state.armed;$('place').classList.toggle('armed',state.armed);message(state.armed?'TAP THE FEATURE ON YOUR PHOTO':'PIN MODE OFF')};$('clear').onclick=()=>{state.markers=[];drawPins();panel.hidden=true};v.addEventListener('keydown',e=>{if(e.key==='+'||e.key==='='){zoom(state.target+.35);e.preventDefault()}if(e.key==='-'){zoom(state.target-.35);e.preventDefault()}if(e.key==='Escape')panel.hidden=true});window.addEventListener('resize',drawPins);render();drawPins();
-})();
-</script></body></html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#050607"><meta name="description" content="IRISPECTRA — an interactive 3D exploration of the human iris."><title>IRISPECTRA — INTO THE IRIS</title><link rel="stylesheet" href="/immersive.css"></head>
+<body>
+<main class="experience" id="experience" aria-label="Interactive three-dimensional iris atlas">
+  <canvas id="scene" aria-label="Rotatable 3D eye and iris with zoom"></canvas>
+  <div class="falloff" aria-hidden="true"></div>
+  <header class="header">
+    <a class="brand" href="/" aria-label="Irispectra home"><span class="brand-symbol"><i></i></span><span>IRISPECTRA</span></a>
+    <span class="header-sub">OPTICAL ATLAS <span class="mute">—</span> VOL. 001</span>
+    <button class="text-button top-guide" id="aboutBtn" type="button">ABOUT <span class="arrow">↗</span></button>
+  </header>
+  <div class="side left">
+    <div class="side-caption"><span class="shortline"></span> <span id="sceneNumber">01 / THE HUMAN EYE</span></div>
+    <h1 id="sceneTitle">THE WORLD<br>WITHIN.</h1>
+    <p id="sceneNote">A closer look at what makes every iris unique.</p>
+    <div class="links">
+      <button class="control active" id="exploreBtn" type="button"><span class="tiny-circle"></span> EXPLORE</button>
+      <button class="control" id="anatomyBtn" type="button"><span class="tiny-circle"></span> ANATOMY</button>
+      <button class="control" id="uploadBtn" type="button"><span class="tiny-circle"></span> YOUR IRIS <span class="arrow">↗</span></button>
+    </div>
+  </div>
+  <div class="side right">
+    <span id="textureStatus">SPECIMEN / 001</span>
+    <span>RENDER / WEBGL</span>
+    <span id="zoomDisplay">MAG / 1.0×</span>
+    <div class="zoom-rail">
+      <button id="zoomIn" type="button" aria-label="Zoom in">+</button>
+      <input id="zoomRange" type="range" min="0" max="100" value="10" aria-label="Camera magnification">
+      <button id="zoomOut" type="button" aria-label="Zoom out">−</button>
+    </div>
+  </div>
+  <div id="hotspots" class="hotspots" aria-label="Anatomy hotspots"></div>
+  <aside class="info-panel" id="infoPanel" hidden aria-live="polite">
+    <div class="info-top"><span id="infoIndex">STRUCTURE / 01</span><button type="button" id="infoClose" aria-label="Close information">×</button></div>
+    <h2 id="infoHeading"></h2><p id="infoBody"></p><div class="info-disclaimer" id="infoDisclosure">ILLUSTRATIVE MODEL / NOT DIAGNOSTIC</div>
+    <button type="button" id="approachBtn" class="deep-link">APPROACH DETAIL <span>↗</span></button>
+  </aside>
+  <div class="bottom">
+    <div class="bottom-left"><span class="fine-dot"></span><span id="modeLabel">INTERACTIVE 3D / SYNTHETIC DEMO</span></div>
+    <div class="bottom-center">DRAG TO ORBIT <span>·</span> SCROLL TO ENTER</div>
+    <div class="bottom-actions"><button type="button" id="resetBtn" class="subtle-button">RESET <span>↺</span></button><button type="button" id="enterBtn" class="accent-button">ENTER IRIS <span>↗</span></button></div>
+  </div>
+  <div class="loading" id="loading"><span class="loading-symbol"></span><span id="loadingText">BUILDING OPTICAL SCENE</span></div>
+  <div id="toast" class="toast" role="status"></div>
+  <div class="dialog-backdrop" id="uploadDialog" hidden>
+    <section class="dialog" role="dialog" aria-modal="true" aria-labelledby="uploadTitle">
+      <div class="dialog-kicker">IRISPECTRA / PERSONAL MODE <button type="button" class="close-dialog" id="uploadClose" aria-label="Close upload">×</button></div>
+      <h2 id="uploadTitle">Bring your iris<br>into focus.</h2>
+      <p>Upload a clear eye photograph. Align the iris inside the circle; the image will be mapped onto the 3D model. Your original photo stays in your browser.</p>
+      <label class="file-label" for="eyeFile">SELECT AN EYE PHOTO <span>↗</span></label>
+      <input id="eyeFile" accept="image/jpeg,image/png,image/webp" type="file" hidden>
+      <div id="cropArea" hidden>
+        <div class="crop-preview"><canvas id="cropCanvas" width="400" height="270"></canvas><div class="crop-circle"></div></div>
+        <div class="crop-options">
+          <label>HORIZONTAL <input type="range" id="cropX" min="0" max="100" value="50"></label>
+          <label>VERTICAL <input type="range" id="cropY" min="0" max="100" value="50"></label>
+          <label>IRIS SIZE <input type="range" id="cropRadius" min="6" max="45" value="30"></label>
+        </div>
+        <button class="apply-button" type="button" id="applyUpload">APPLY TO 3D EYE <span>↗</span></button>
+      </div>
+      <small>PHOTO-BASED COLOR AND PATTERN. DEPTH IS AN ARTISTIC SIMULATION, NOT A MEASUREMENT OF YOUR IRIS.</small>
+    </section>
+  </div>
+  <div class="dialog-backdrop" id="aboutDialog" hidden>
+    <section class="dialog about-dialog" role="dialog" aria-modal="true" aria-labelledby="aboutTitle">
+      <div class="dialog-kicker">IRISPECTRA / NOTES <button type="button" class="close-dialog" id="aboutClose" aria-label="Close">×</button></div>
+      <h2 id="aboutTitle">An optical exploration.</h2>
+      <p>This scene is an original procedural 3D illustration, not a medical scan or a TurboSquid model. The demo iris is synthetic. Personal photos become image textures on a 3D surface; the 3D relief is illustrative.</p>
+      <p>Anatomical labels explain common iris structures. They do not identify conditions or determine clinical findings from your photo.</p>
+    </section>
+  </div>
+  <div class="annotate" id="annotate" hidden><label for="annotationType">MANUAL ANNOTATION</label><select id="annotationType"><option value="crypt">CRYPT-LIKE REGION</option><option value="collarette">COLLARETTE</option><option value="furrow">CONTRACTION FURROW</option><option value="radial">RADIAL TEXTURE</option><option value="limbal">LIMBAL BOUNDARY</option></select><button id="placeAnnotation" type="button">+ PLACE</button><button id="clearAnnotations" type="button">CLEAR</button></div>
+</main>
+<script type="module" src="/immersive.js"></script></body></html>
