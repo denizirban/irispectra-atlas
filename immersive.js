@@ -1,5 +1,6 @@
 import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js";
 import {createFundusStage} from "./fundus.js";
+import {MORPHOLOGY,polarRegion} from "./morphology-data.js";
 const $=x=>document.getElementById(x),canvas=$('scene'),experience=$('experience');
 const annotations={
  pupil:['Pupil','The dark central opening that admits light. Its appearance in a still photograph cannot measure the pupil light reflex.'],
@@ -161,13 +162,13 @@ function updateDeepWorld(){
  if(!deepGroup)return;
  const z=current.zoom,stage=z<.42?0:z<.67?1:z<.80?2:z<.93?3:4;
  if(stage!==deepStage){deepStage=stage;for(const child of [...deepGroup.children]){deepGroup.remove(child);child.geometry?.dispose();}buildDeepWorldGeometry();}
- deepGroup.visible=stage>=2&&!!current.selected&&!current.fundus&&!current.rear;
+ deepGroup.visible=stage>=2&&!!current.selected&&!current.rear;
  if(deepGroup.visible){
-  deepGroup.position.copy(current.focus);
+  deepGroup.position.copy(current.fundus?current.fundusLook:current.focus);
   deepGroup.rotation.y+=.002;
   deepGroup.scale.setScalar(stage===2?.24:stage===3?.18:.12);
-  eyeGroup.visible=false;
- }else if(!current.fundus){eyeGroup.visible=true;}
+  eyeGroup.visible=false;if(current.fundus)fundusStage.group.visible=false;
+ }else if(!current.fundus){eyeGroup.visible=true;}else{fundusStage.group.visible=true;}
  const d=$('depthExplainer');if(d)d.textContent=(DEEP_ROUTES[deepRoute]||DEEP_ROUTES.iris)[stage]+(stage>=2?' / EDUCATIONAL 3D MODEL — NOT MEASURED':' / VISIBLE MORPHOLOGY');
 }
 function buildDeepWorldGeometry(){
@@ -376,9 +377,11 @@ function animate(){requestAnimationFrame(animate);renderCamera();updateLightSimu
  updateDots();renderer.render(scene,camera)}
 function setZoom(value){
  // Zoom is reversible and never silently changes anatomical scenes.
- if(current.fundus&&value<-.015){exitFundus();return;}
+ if(current.fundus&&value<=0){exitFundus();return;}
  if(current.fundusTransition&&value<current.targetZoom){clearTimeout(fundusTimer);current.fundusTransition=false;$('enterBtn').disabled=false;}
- current.targetZoom=clamp(value,0,1);if(current.fundus)return;if(current.targetZoom<.24){current.selected=null;current.focusTarget.set(0,0,current.targetZoom<.2?0:1.13);$('infoPanel').hidden=true;clearSelection()}if(current.rear)return;if(current.targetZoom>.62){$('sceneNumber').textContent='02 / THE IRIS';$('sceneTitle').innerHTML='LOOK<br>CLOSER.';$('sceneNote').textContent='Every fiber tells a story of structure.'}else{$('sceneNumber').textContent='01 / THE HUMAN EYE';$('sceneTitle').innerHTML='THE WORLD<br>WITHIN.';$('sceneNote').textContent='A closer look at what makes every iris unique.'}}
+ current.targetZoom=clamp(value,0,1);if(current.fundus)return;
+ // Continuous central zoom switches to an anatomically separate posterior scene only at the threshold.
+ if(value>=.995&&!current.selected&&!current.rear&&!current.fundusTransition){enterFundus();return;}if(current.targetZoom<.24){current.selected=null;current.focusTarget.set(0,0,current.targetZoom<.2?0:1.13);$('infoPanel').hidden=true;clearSelection()}if(current.rear)return;if(current.targetZoom>.62){$('sceneNumber').textContent='02 / THE IRIS';$('sceneTitle').innerHTML='LOOK<br>CLOSER.';$('sceneNote').textContent='Every fiber tells a story of structure.'}else{$('sceneNumber').textContent='01 / THE HUMAN EYE';$('sceneTitle').innerHTML='THE WORLD<br>WITHIN.';$('sceneNote').textContent='A closer look at what makes every iris unique.'}}
 function enterFundus(){
  if(current.fundus||current.fundusTransition)return;
  if(current.rear)toggleRear();
@@ -410,15 +413,25 @@ function exitFundus(){
 function reset(){
  clearTimeout(fundusTimer);current.fundusTransition=false;$('enterBtn').disabled=false;
  if(current.fundus)exitFundus();if(current.rear)toggleRear();current.selected=null;current.focusTarget.set(0,0,0);current.focus.set(0,0,0);current.zoom=.10;current.targetZoom=.10;current.targetYaw=0;current.targetPitch=0;setZoom(.10);$('infoPanel').hidden=true;clearSelection()}
-function approach(p){current.selected=p;deepRoute=current.fundus?'retina':'iris';if(current.fundus)current.fundusTarget.copy(p);else current.focusTarget.copy(p);setZoom(.84);$('infoPanel').hidden=true;if(!current.fundus&&p.length()>0.1){setTimeout(()=>window.IrispectraScience?.advanceFromCrypt(),900)}}
+function approach(p){current.selected=p;if(current.fundus&&deepRoute==='iris')deepRoute='retina';if(current.fundus)current.fundusTarget.copy(p);else current.focusTarget.copy(p);setZoom(.84);$('infoPanel').hidden=true;}
 let domPins=[];
+function appendMorphology(spec,index){
+ if(current.fundus)return;
+ const d=MORPHOLOGY[spec.kind];if(!d)return;
+ const p=polarRegion(spec.radius,spec.angle);
+ $('infoIndex').textContent=p.polarId+' / FEATURE '+String(index+1).padStart(2,'0');
+ $('infoHeading').textContent=d.name;
+ $('infoBody').textContent=d.note+'\n\nRegion: '+p.zone+' · '+p.clock+" o'clock"+' · relative radial position '+p.rPercent+'% of modeled iris radius. Pattern vocabulary: '+d.patterns.join(' / ')+'. Observable features: '+d.measures.join(', ')+'.\n\nSource: '+d.source+'.';
+ $('infoBody').style.whiteSpace='pre-line';
+ $('infoDisclosure').textContent='SOURCE-ATTRIBUTED MORPHOLOGY · RELATIVE COORDINATES · NOT A DIAGNOSIS';
+}
 function drawDots(){
  $('hotspots').replaceChildren();domPins=[];
  const list=current.fundus?fundusStage.spots:(current.demo?initPins:current.pinList);
- list.forEach((spec,index)=>{const b=document.createElement('button');b.type='button';b.className='hotspot off';b.innerHTML='<span class="dot"></span><span class="tag"></span>';const type=spec.kind;b.querySelector('.tag').textContent=annotations[type][0].toUpperCase();b.setAttribute('aria-label','Explore '+annotations[type][0]);b.addEventListener('pointerdown',e=>e.stopPropagation());b.onclick=e=>{e.stopPropagation();showPin(spec,index,b);if(spec.kind==='crypt'&&!current.fundus){const target=pointAt(spec.radius,spec.angle);approach(target)}};$('hotspots').appendChild(b);domPins.push({el:b,spec})});
+ list.forEach((spec,index)=>{const b=document.createElement('button');b.type='button';b.className='hotspot off';b.innerHTML='<span class="dot"></span><span class="tag"></span>';const type=spec.kind;b.querySelector('.tag').textContent=annotations[type][0].toUpperCase();b.setAttribute('aria-label','Explore '+annotations[type][0]);b.addEventListener('pointerdown',e=>e.stopPropagation());b.onclick=e=>{e.stopPropagation();showPin(spec,index,b);if(current.fundus){deepRoute=String(spec.kind).includes('vessel')?'vessel':String(spec.kind).includes('disc')?'nerve':'retina';setZoom(Math.max(.50,current.targetZoom));}else{deepRoute=spec.kind==='limbal'?'sclera':'iris';current.focusTarget.copy(current.selected);setZoom(Math.max(.5,current.targetZoom));}};$('hotspots').appendChild(b);domPins.push({el:b,spec})});
 }
 function clearSelection(){domPins.forEach(({el})=>el.classList.remove('current'))}
-function showPin(spec,index,el){current.selected=current.fundus?fundusStage.at(spec.u,spec.v):pointAt(spec.radius,spec.angle);if(current.fundus)current.fundusTarget.copy(current.selected);clearSelection();el.classList.add('current');const a=annotations[spec.kind];$('infoIndex').textContent='STRUCTURE / '+String(index+1).padStart(2,'0');$('infoHeading').textContent=a[0];$('infoBody').textContent=a[1];$('infoDisclosure').textContent=current.fundus?'EDUCATIONAL FUNDUS / NOT A RETINAL SCAN':(current.demo?'SYNTHETIC DEMO · ILLUSTRATIVE MARKER':'USER-PLACED MARKER · NOT AUTOMATED DETECTION');$('infoPanel').hidden=false}
+function showPin(spec,index,el){current.selected=current.fundus?fundusStage.at(spec.u,spec.v):pointAt(spec.radius,spec.angle);if(current.fundus)current.fundusTarget.copy(current.selected);else current.focusTarget.copy(current.selected);clearSelection();el.classList.add('current');const a=annotations[spec.kind];$('infoIndex').textContent='STRUCTURE / '+String(index+1).padStart(2,'0');$('infoHeading').textContent=a[0];$('infoBody').textContent=a[1];$('infoDisclosure').textContent=current.fundus?'EDUCATIONAL FUNDUS / NOT A RETINAL SCAN':(current.demo?'SYNTHETIC DEMO · ILLUSTRATIVE MARKER':'USER-PLACED MARKER · NOT AUTOMATED DETECTION');appendMorphology(spec,index);$('infoPanel').hidden=false}
 function updateDots(){for(const {el,spec} of domPins){if(!current.anatomy){el.classList.add('off');continue}const v=current.fundus?fundusStage.at(spec.u,spec.v):pointAt(spec.radius,spec.angle);if(!current.fundus)v.applyMatrix4(eyeGroup.matrixWorld);v.project(camera);const x=(v.x+1)*innerWidth*.5,y=(1-v.y)*innerHeight*.5;const seen=v.z<1&&v.z>-1&&x>20&&x<innerWidth-90&&y>80&&y<innerHeight-75;el.classList.toggle('off',!seen);el.style.left=x+'px';el.style.top=y+'px'}}
 function rayPin(x,y){if(current.fundus)return false;const v=new THREE.Vector2(x/innerWidth*2-1,-(y/innerHeight*2-1)),ray=new THREE.Raycaster();ray.setFromCamera(v,camera);const hits=ray.intersectObject(iris);if(!hits.length)return false;const p=hits[0].point,r=Math.hypot(p.x,p.y),a=Math.atan2(p.y,p.x);current.pinList.push({kind:current.pinKind,radius:r,angle:a});current.place=false;$('placeAnnotation').classList.remove('armed');drawDots();setNotice('MANUAL ANNOTATION PLACED');return true}
 function pointerSetup(){let pinchDistance=0;
@@ -445,7 +458,7 @@ function closeDialog(id){$(id).hidden=true;current.animate=true}
 function connectUi(){
  $('lightRange')?.addEventListener('input',e=>{targetLight=Number(e.target.value)/100});
   $('zoomIn').onclick=()=>setZoom(current.targetZoom+.12);$('zoomOut').onclick=()=>setZoom(current.targetZoom-.12);$('zoomRange').oninput=e=>setZoom(Number(e.target.value)/100);
- $('enterBtn').onclick=()=>{if(current.fundus){exitFundus();return;}if(current.targetZoom>.65){enterFundus();return;}current.selected=null;current.focusTarget.set(0,0,1.13);setZoom(.78)};
+ $('enterBtn').onclick=()=>{if(current.fundus){exitFundus();return;}if(current.selected){setZoom(Math.min(1,current.targetZoom+.2));return;}current.focusTarget.set(0,0,1.13);setZoom(Math.min(1,current.targetZoom+.24))};
   $('fundusBtn').onclick=()=>current.fundus?exitFundus():enterFundus();
  $('resetBtn').onclick=reset;$('exploreBtn').onclick=()=>{reset();setActive('exploreBtn')};
  $('anatomyBtn').onclick=()=>{current.anatomy=!current.anatomy;$('anatomyBtn').classList.toggle('active',current.anatomy);if(current.fundus){$('annotate').hidden=true;return;}if(!current.demo){$('annotate').hidden=!current.anatomy;if(current.anatomy)setNotice('MANUAL ANNOTATIONS ONLY — SELECT PLACE')}else if(current.anatomy)setZoom(.48)};
