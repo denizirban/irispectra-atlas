@@ -564,8 +564,8 @@ function selectByTap(x,y){
  return true;
 }
 function pointerSetup(){let pinchDistance=0;
- canvas.addEventListener('wheel',e=>{e.preventDefault();setZoom(current.targetZoom+(e.deltaY>0?1:-1)*Math.min(.09,Math.abs(e.deltaY)*.00045))},{passive:false});
- canvas.addEventListener('pointerdown',e=>{canvas.setPointerCapture(e.pointerId);pointers.set(e.pointerId,{x:e.clientX,y:e.clientY,startX:e.clientX,startY:e.clientY});moveTotal=0;if(pointers.size===2){const arr=[...pointers.values()];pinchDistance=Math.hypot(arr[0].x-arr[1].x,arr[0].y-arr[1].y)}});
+ canvas.addEventListener('wheel',e=>{if(tourActive)stopDiscoveryTour();e.preventDefault();setZoom(current.targetZoom+(e.deltaY>0?1:-1)*Math.min(.09,Math.abs(e.deltaY)*.00045))},{passive:false});
+ canvas.addEventListener('pointerdown',e=>{if(tourActive)stopDiscoveryTour();canvas.setPointerCapture(e.pointerId);pointers.set(e.pointerId,{x:e.clientX,y:e.clientY,startX:e.clientX,startY:e.clientY});moveTotal=0;if(pointers.size===2){const arr=[...pointers.values()];pinchDistance=Math.hypot(arr[0].x-arr[1].x,arr[0].y-arr[1].y)}});
  canvas.addEventListener('pointermove',e=>{if(!pointers.has(e.pointerId)){if(e.pointerType==='mouse'&&!current.selected){const rect=canvas.getBoundingClientRect();eyeGazeX=clamp((e.clientX-(rect.left+rect.width/2))/(rect.width/2)*.10,-.10,.10);eyeGazeY=clamp((e.clientY-(rect.top+rect.height/2))/(rect.height/2)*-.065,-.065,.065);}return;}const old=pointers.get(e.pointerId);pointers.set(e.pointerId,{...old,x:e.clientX,y:e.clientY});moveTotal+=Math.abs(e.clientX-old.x)+Math.abs(e.clientY-old.y);if(pointers.size===2){const arr=[...pointers.values()],d=Math.hypot(arr[0].x-arr[1].x,arr[0].y-arr[1].y);if(pinchDistance)setZoom(current.targetZoom+Math.log(d/pinchDistance)*.17);pinchDistance=d;return}
  current.targetYaw=clamp(current.targetYaw+(e.clientX-old.x)*.004,-.48,.48);current.targetPitch=clamp(current.targetPitch-(e.clientY-old.y)*.003,-.29,.29)});
  const release=e=>{let p=pointers.get(e.pointerId);if(!p)return;pointers.delete(e.pointerId);if(pointers.size<2)pinchDistance=0;if(Math.hypot(e.clientX-p.startX,e.clientY-p.startY)<9){if(current.place)rayPin(e.clientX,e.clientY);else selectByTap(e.clientX,e.clientY)}};
@@ -585,12 +585,45 @@ function pointerSetup(){let pinchDistance=0;
 }
 function openDialog(id){$(id).hidden=false;current.animate=false}
 function closeDialog(id){$(id).hidden=true;current.animate=true}
+let tourActive=false,tourTimers=[];
+function stopDiscoveryTour(){
+ tourTimers.forEach(clearTimeout);tourTimers=[];tourActive=false;
+ const btn=$('tourBtn');if(btn){btn.setAttribute('aria-pressed','false');btn.innerHTML='<span class="tour-dot"></span> START DISCOVERY';}
+ const caption=$('tourCaption');if(caption)caption.hidden=true;
+}
+function discoveryStep(ms,n,label,fn){
+ const id=setTimeout(()=>{
+  if(!tourActive)return;
+  $('tourCount').textContent=String(n).padStart(2,'0')+' / 05';
+  $('tourText').textContent=label;fn();
+ },ms);tourTimers.push(id);
+}
+function startDiscoveryTour(){
+ stopDiscoveryTour();reset();tourActive=true;
+ const btn=$('tourBtn');btn.setAttribute('aria-pressed','true');
+ btn.innerHTML='<span class="tour-dot"></span> STOP TOUR';
+ $('tourCaption').hidden=false;
+ discoveryStep(50,1,'A living three-dimensional eye',()=>setZoom(.20));
+ discoveryStep(1700,2,'Find an iris crypt-like opening',()=>{
+  const spec={kind:'crypt',radius:.43,angle:2.38};
+  current.selected=pointAt(spec.radius,spec.angle);
+  current.focusTarget.copy(current.selected);deepRoute='iris';
+  setIrisSelection(spec,1);setZoom(.54);
+ });
+ discoveryStep(4250,3,'Travel into the iris stroma',()=>setZoom(.76));
+ discoveryStep(6850,4,'Meet the cells within',()=>setZoom(.87));
+ discoveryStep(9250,5,'See the collagen molecular motif',()=>setZoom(.97));
+ discoveryStep(12600,5,'Continue exploring any iris structure',()=>{setZoom(.55);stopDiscoveryTour();});
+}
+
 function connectUi(){
+ $('tourBtn')?.addEventListener('click',()=>tourActive?stopDiscoveryTour():startDiscoveryTour());
+ $('tourSkip')?.addEventListener('click',stopDiscoveryTour);
  $('lightRange')?.addEventListener('input',e=>{targetLight=Number(e.target.value)/100});
-  $('zoomIn').onclick=()=>setZoom(current.targetZoom+.12);$('zoomOut').onclick=()=>setZoom(current.targetZoom-.12);$('zoomRange').oninput=e=>setZoom(Number(e.target.value)/100);
+  $('zoomIn').onclick=()=>{stopDiscoveryTour();setZoom(current.targetZoom+.12)};$('zoomOut').onclick=()=>{stopDiscoveryTour();setZoom(current.targetZoom-.12)};$('zoomRange').oninput=e=>{stopDiscoveryTour();setZoom(Number(e.target.value)/100)};
  $('enterBtn').onclick=()=>{if(current.fundus){setZoom(0);return;}if(current.selected){setZoom(Math.min(1,current.targetZoom+.2));return;}current.focusTarget.set(0,0,1.13);setZoom(Math.min(1,current.targetZoom+.24))};
   $('fundusBtn').onclick=()=>current.fundus?exitFundus():enterFundus();
- $('resetBtn').onclick=reset;$('exploreBtn').onclick=()=>{reset();setActive('exploreBtn')};
+ $('resetBtn').onclick=()=>{stopDiscoveryTour();reset()};$('exploreBtn').onclick=()=>{reset();setActive('exploreBtn')};
  $('anatomyBtn').onclick=()=>{current.anatomy=!current.anatomy;$('anatomyBtn').classList.toggle('active',current.anatomy);if(current.fundus){$('annotate').hidden=true;return;}if(!current.demo){$('annotate').hidden=!current.anatomy;if(current.anatomy)setNotice('MANUAL ANNOTATIONS ONLY — SELECT PLACE')}else if(current.anatomy)setZoom(.48)};
  $('rearBtn').onclick=()=>toggleRear();
  $('referenceBtn')?.addEventListener('click',()=>{if(!current.demo){setNotice('PERSONAL PHOTO ACTIVE · RESET BEFORE DEMO SWITCH');return;}setPhotographicDemo(specimenIndex+1)});
