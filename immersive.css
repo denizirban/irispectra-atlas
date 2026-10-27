@@ -129,3 +129,12 @@
  .hotspot.current .tag{display:block;font-size:8px}
  .loading{z-index:70}
 }
+
+/* Unified exploration: anatomical routing follows zoom and selection, not scene-menu links. */
+#rearBtn,#fundusBtn{display:none!important}
+#infoBody{white-space:pre-line}
+@media(max-width:820px){
+ .links{width:100%;max-width:none}
+ .info-panel{max-height:39dvh;overflow-y:auto}
+ .depth-hint{max-width:calc(100vw - 28px)}
+}
