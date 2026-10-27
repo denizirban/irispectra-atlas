@@ -125,7 +125,8 @@ function updateLightSimulation(){
  const desired=lerp(.255,.13,lightIntensity);
  simPupil=lerp(simPupil,desired,.045);
  // Mesh geometry resampling alters iris inner opening while retaining outer limbus.
- if(!iris)return;
+ if(!iris||Math.abs(simPupil-(iris.userData.lastPupil??0))<.0007)return;
+ iris.userData.lastPupil=simPupil;
  const a=iris.geometry.attributes.position,uv=iris.geometry.attributes.uv,segments=300,rings=103;
  for(let j=0;j<=rings;j++){
   const r=simPupil+(.63-simPupil)*j/rings;
@@ -281,7 +282,28 @@ function renderCamera(){
  current.focusTarget.set(0,0,lerp(0,1.13,dFocus));
  }
 }
-function animate(){requestAnimationFrame(animate);renderCamera();updateLightSimulation();if(current.demo&&current.animate&&current.targetZoom<.19&&!pointers.size){let t=performance.now()*.00018;eyeGroup.rotation.y=Math.sin(t)*.018;eyeGroup.rotation.x=Math.cos(t*.73)*.009}else{eyeGroup.rotation.x=lerp(eyeGroup.rotation.x,0,.03);eyeGroup.rotation.y=lerp(eyeGroup.rotation.y,0,.03)}
+
+const ZOOM_DEPTH=[
+ ['WHOLE EYE','MACRO / CORNEA · IRIS · SCLERA'],
+ ['IRIS SURFACE','PIGMENT · RADIAL STROMAL TEXTURE'],
+ ['CRYPT MORPHOLOGY','CRYPTS OF FUCHS · COLLARETTE · FURROWS'],
+ ['STROMA','EDUCATIONAL TISSUE RECONSTRUCTION'],
+ ['CELLULAR SCALE','MELANOCYTES · FIBROBLASTS · COLLAGEN'],
+ ['MOLECULAR CONTEXT','MELANIN · COLLAGEN · NEUROTRANSMISSION']
+];
+let lastDepth=-1;
+function updatePassiveDepth(){
+ if(current.rear||current.fundus)return;
+ const z=current.zoom,stage=z<.2?0:z<.49?1:z<.71?2:z<.84?3:z<.94?4:5;
+ if(stage===lastDepth)return;lastDepth=stage;
+ $('depthTitle').textContent=ZOOM_DEPTH[stage][0];
+ $('depthExplainer').textContent=ZOOM_DEPTH[stage][1]+(stage>=3?' / CONCEPTUAL NOT MEASURED':'');
+ $('depthHint').classList.toggle('micro',stage>=3);
+ // The depth map follows zoom passively; never invokes a scene-changing menu.
+ window.IrispectraScience?.indicate?.(stage===0?0:stage===1||stage===2?1:stage);
+}
+
+function animate(){requestAnimationFrame(animate);renderCamera();updateLightSimulation();updatePassiveDepth();if(current.demo&&current.animate&&current.targetZoom<.19&&!pointers.size){let t=performance.now()*.00018;eyeGroup.rotation.y=Math.sin(t)*.018;eyeGroup.rotation.x=Math.cos(t*.73)*.009}else{eyeGroup.rotation.x=lerp(eyeGroup.rotation.x,0,.03);eyeGroup.rotation.y=lerp(eyeGroup.rotation.y,0,.03)}
  updateDots();renderer.render(scene,camera)}
 function setZoom(value){
  // Zoom is reversible and never silently changes anatomical scenes.
