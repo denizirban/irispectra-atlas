@@ -38,7 +38,7 @@ function sampleIris(size=2048){
  grad.addColorStop(0,'#121d19');grad.addColorStop(.31,'#675f36');grad.addColorStop(.48,'#ad8b4b');grad.addColorStop(.7,'#64705c');grad.addColorStop(.86,'#3d5750');grad.addColorStop(.98,'#152326');grad.addColorStop(1,'#070d12');ctx.fillStyle=grad;ctx.fillRect(0,0,size,size);
  const colors=['rgba(226,200,139,.41)','rgba(60,84,76,.56)','rgba(195,157,96,.44)','rgba(26,49,48,.54)','rgba(240,206,141,.21)','rgba(109,143,123,.40)','rgba(29,29,21,.32)'];
  for(let i=0;i<17000;i++){
-   const a=rand()*Math.PI*2,rad=(.28+rand()*.61)*R,length=(.09+rand()*.45)*R,curr=rad;ctx.strokeStyle=colors[(rand()*colors.length)|0];ctx.lineWidth=.45+rand()*2.7;ctx.globalAlpha=.35+rand()*.55;ctx.beginPath();
+   const a=rand()*Math.PI*2,rad=(.28+rand()*.61)*R,length=(.09+rand()*.45)*R;let curr=rad;ctx.strokeStyle=colors[(rand()*colors.length)|0];ctx.lineWidth=.45+rand()*2.7;ctx.globalAlpha=.35+rand()*.55;ctx.beginPath();
    const phases=2+((rand()*3)|0);for(let j=0;j<=phases;j++){
     let f=j/phases;curr=rad+length*f;
     let swirl=.009*Math.sin((a*39)+(curr/R)*19)+.008*Math.sin(a*137+f*7);
