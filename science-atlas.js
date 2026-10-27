@@ -53,5 +53,6 @@ function activate(i){
  if(i===6)document.getElementById('rearBtn')?.click();
 }
 function showFact(i,j){document.querySelectorAll('.atlas-fact').forEach((b,k)=>b.classList.toggle('selected',j===k));const x=facts[i][j];$('atlasDetail').innerHTML='<strong>'+x[0]+'</strong><p>'+x[1]+'</p>'}
+window.IrispectraScience={activate,advanceFromCrypt(){activate(3);document.getElementById('atlasSciencePanel')?.classList.add('science-journey');},next(){activate(Math.min(7,active+1))},previous(){activate(Math.max(0,active-1))}};
 document.readyState==='loading'?document.addEventListener('DOMContentLoaded',boot):boot();
 })();
