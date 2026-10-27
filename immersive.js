@@ -160,8 +160,8 @@ function buildDeepWorld(){
 function updateDeepWorld(){
  if(!deepGroup)return;
  const z=current.zoom,stage=z<.42?0:z<.67?1:z<.80?2:z<.93?3:4;
- if(stage!==deepStage){deepStage=stage;deepGroup.clear();buildDeepWorldGeometry();}
- deepGroup.visible=stage>=2&&!current.fundus&&!current.rear;
+ if(stage!==deepStage){deepStage=stage;for(const child of [...deepGroup.children]){deepGroup.remove(child);child.geometry?.dispose();}buildDeepWorldGeometry();}
+ deepGroup.visible=stage>=2&&!!current.selected&&!current.fundus&&!current.rear;
  if(deepGroup.visible){
   deepGroup.position.copy(current.focus);
   deepGroup.rotation.y+=.002;
@@ -378,7 +378,7 @@ function setZoom(value){
  // Zoom is reversible and never silently changes anatomical scenes.
  if(current.fundus&&value<-.015){exitFundus();return;}
  if(current.fundusTransition&&value<current.targetZoom){clearTimeout(fundusTimer);current.fundusTransition=false;$('enterBtn').disabled=false;}
- current.targetZoom=clamp(value,0,1);if(current.fundus)return;if(current.targetZoom<.60){current.selected=null;current.focusTarget.set(0,0,current.targetZoom<.2?0:1.13);$('infoPanel').hidden=true;clearSelection()}if(current.rear)return;if(current.targetZoom>.62){$('sceneNumber').textContent='02 / THE IRIS';$('sceneTitle').innerHTML='LOOK<br>CLOSER.';$('sceneNote').textContent='Every fiber tells a story of structure.'}else{$('sceneNumber').textContent='01 / THE HUMAN EYE';$('sceneTitle').innerHTML='THE WORLD<br>WITHIN.';$('sceneNote').textContent='A closer look at what makes every iris unique.'}}
+ current.targetZoom=clamp(value,0,1);if(current.fundus)return;if(current.targetZoom<.24){current.selected=null;current.focusTarget.set(0,0,current.targetZoom<.2?0:1.13);$('infoPanel').hidden=true;clearSelection()}if(current.rear)return;if(current.targetZoom>.62){$('sceneNumber').textContent='02 / THE IRIS';$('sceneTitle').innerHTML='LOOK<br>CLOSER.';$('sceneNote').textContent='Every fiber tells a story of structure.'}else{$('sceneNumber').textContent='01 / THE HUMAN EYE';$('sceneTitle').innerHTML='THE WORLD<br>WITHIN.';$('sceneNote').textContent='A closer look at what makes every iris unique.'}}
 function enterFundus(){
  if(current.fundus||current.fundusTransition)return;
  if(current.rear)toggleRear();
