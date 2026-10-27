@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0e0907"><title>IRISPECTRA — Eye Scan Studio</title>
+<style>
+:root{--paper:#f1e9df;--muted:#e1cfc1aa;--accent:#eebc59;--ui:-apple-system,BlinkMacSystemFont,'SF Pro Display','Helvetica Neue',Arial,sans-serif;--mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+*{box-sizing:border-box}html,body{height:100%;margin:0;overflow:hidden;background:#0e0907;color:var(--paper);font-family:var(--ui);-webkit-font-smoothing:antialiased}
+#studio{position:fixed;inset:0;background:radial-gradient(ellipse at center,#35251e 0,#090807 74%);isolation:isolate}iframe{width:100%;height:100%;border:0;display:block;filter:brightness(1) contrast(1.02);background:#19100c}
+#view{position:absolute;inset:0}#grain{position:absolute;inset:0;pointer-events:none;opacity:.18;background-image:radial-gradient(#ffffff33 .35px,transparent .5px);background-size:5px 5px;mix-blend-mode:screen}
+.vignette{position:absolute;inset:0;pointer-events:none;background:linear-gradient(90deg,#050404c9,transparent 31%,transparent 73%,#040303a0),linear-gradient(180deg,#05040495,transparent 21%,transparent 79%,#040303ac)}
+#hud{position:fixed;inset:0;pointer-events:none}#hud button,#hud a,#hud input{pointer-events:auto}button{font:inherit;cursor:pointer}button:focus-visible,a:focus-visible{outline:1px solid var(--accent);outline-offset:4px}
+.grid{position:absolute;inset:18px;border:1px dashed #f7e8d350;opacity:.6}.grid:before,.grid:after{content:"+";position:absolute;font:23px var(--mono);color:#ffe4d7aa;top:-18px}.grid:before{left:-13px}.grid:after{right:-13px}
+.header{position:absolute;top:35px;left:34px;right:34px;display:flex;justify-content:space-between;align-items:flex-start;gap:20px}
+.header .id{font:500 15px var(--ui);letter-spacing:.18em}.id span{display:block;font:9px/1.7 var(--mono);color:#e9ddd4a0;letter-spacing:.1em;margin-top:7px}.header .data{text-align:right;font:10px/1.65 var(--mono);color:#ffffffae}.data .on{color:var(--accent)}.data b{font-weight:500}
+.intro{position:absolute;top:93px;left:34px;max-width:275px;font:10px/1.5 var(--mono);color:#e6d6cc9c;letter-spacing:.035em}
+.intro strong{color:var(--accent);font-weight:500}
+.menu{position:absolute;top:32%;left:34px;width:213px;padding:0}.menu .cap{color:var(--accent);font:10px var(--mono);letter-spacing:.1em;margin-bottom:10px}.menu button{display:block;position:relative;border:0;border-bottom:1px solid #ded5c42d;background:transparent;color:#e8dbd1bd;width:100%;padding:12px 5px 12px 17px;text-align:left;font:10px var(--mono);letter-spacing:.085em}
+.menu button:before{content:"";position:absolute;left:2px;top:17px;width:5px;height:5px;border:1px solid #f5e1c18b}.menu button.selected{color:var(--accent)}.menu button.selected:before{background:var(--accent);border-color:var(--accent)}.menu button:hover{color:white}
+.zoom{position:absolute;right:35px;top:34%;display:flex;flex-direction:column;align-items:center;gap:12px;color:var(--accent);font:10px var(--mono)}.zoom button{border:0;background:none;color:#eaded4;font-size:24px;padding:0 5px}.zoom .track{height:152px;width:1px;background:linear-gradient(#ded6c4c0,#ded6c43f);position:relative}.zoom .track:before{content:"";position:absolute;top:50%;left:-4px;width:9px;height:3px;background:var(--accent)}.zoom button:disabled{opacity:.35;cursor:not-allowed}
+.foot{position:absolute;bottom:34px;left:34px;right:34px;display:flex;align-items:end;justify-content:space-between;gap:20px}
+.foot .copy{font:9px/1.6 var(--mono);color:#f2e0cd9c;max-width:330px}.copy a{color:#f5d9a8;text-decoration:none}.copy strong{color:#fff9;font-weight:400}
+.foot .hint{text-align:center;font:10px/1.6 var(--mono);color:#eee1d4a4}.hint em{font-style:normal;color:var(--accent)}.actions{display:flex;gap:6px}.actions button,.actions a{border:1px solid #d5c1a55d;border-radius:1px;background:#120d0bc7;padding:12px 14px;text-decoration:none;color:#f4e9de;font:9px var(--mono);letter-spacing:.06em;white-space:nowrap}.actions button:hover,.actions a:hover{border-color:var(--accent)}
+.panel{position:absolute;z-index:10;top:31%;right:94px;width:min(310px,calc(100vw - 140px));padding:23px;background:#0e0b0beb;border:1px solid #e6c9a15a;backdrop-filter:blur(18px);box-shadow:0 20px 50px #0007;pointer-events:auto}.panel[hidden]{display:none}.panel .small{font:10px var(--mono);letter-spacing:.1em;color:var(--accent);display:flex;align-items:center;justify-content:space-between}.panel .small button{background:transparent;color:inherit;border:0;font-size:21px}.panel h2{font-weight:500;font-size:22px;letter-spacing:-.03em;margin:20px 0 11px}.panel p{font-size:12px;line-height:1.65;color:#d5c9bccc}.panel a{color:var(--accent)}.panel small{font:9px/1.6 var(--mono);color:#aa9d90}
+.loading{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:1;text-align:center;font:10px/2 var(--mono);letter-spacing:.09em;color:var(--accent);pointer-events:none;text-shadow:0 0 20px #000}.loading[hidden]{display:none}.loading a{color:var(--accent)}
+#hud.photo .menu,#hud.photo .header,#hud.photo .intro,#hud.photo .zoom,#hud.photo .copy,#hud.photo .hint,#hud.photo .grid{display:none}#hud.photo .foot{right:20px;bottom:20px;justify-content:flex-end}#hud.photo .actions .return{display:none}
+@media(max-width:750px){.grid{inset:10px}.header{top:23px;left:27px;right:27px}.header .id{font-size:12px}.header .data{font-size:8px}.intro{top:79px;left:27px;font-size:9px;max-width:210px}.menu{left:27px;top:auto;bottom:143px;width:155px}.menu button{font-size:9px;padding:8px 4px 8px 15px}.menu button:before{top:12px}.zoom{right:28px;top:38%}.zoom .track{height:103px}.foot{left:27px;right:27px;bottom:25px}.foot .copy{font-size:8px;max-width:165px}.foot .hint{display:none}.actions .return{display:none}.actions button{padding:10px;font-size:8px}.panel{left:26px;right:26px;top:25%;width:auto}.loading{font-size:9px}}
+</style></head>
+<body>
+<main id="studio"><div id="view"><iframe id="scan" title="Artec 3D — real human eye photogrammetry" allow="autoplay; fullscreen; xr-spatial-tracking" allowfullscreen referrerpolicy="strict-origin-when-cross-origin"></iframe></div><div id="grain"></div><div class="vignette"></div><div id="loading" class="loading">LOADING HUMAN EYE — 3D SCAN<br>ACTUAL SKIN / LASH / LID GEOMETRY</div>
+<section id="hud"><div class="grid"></div><header class="header"><div class="id">IRISPECTRA<span>OPTICAL STUDIO / REAL-WORLD SCAN</span></div><div class="data">3D CAPTURE <span class="on">●</span><br>PHOTOGRAMMETRIC MODEL<br><b id="status">INITIALIZING</b></div></header>
+<div class="intro"><strong>IRISPECTRA / 001</strong> &nbsp; A HUMAN EYE IN THREE DIMENSIONS.<br>NOT A FLAT IRIS TEXTURE. REAL SKIN, EYELIDS, AND LASHES.</div>
+<nav class="menu" aria-label="Studio controls"><div class="cap">EYE EXAM <span style="color:#ffffff91;margin-left:15px">/ 3D</span></div><button class="selected" id="mode">ORBIT THE EYE</button><button id="zoomInMenu">EXAMINE UP CLOSE</button><button id="framing">RESET FRAMING</button><button id="focus">ADJUST FOCUS</button><button id="details">SCAN DETAILS</button><button id="photoMode">PHOTO MODE</button></nav>
+<div class="zoom"><button id="plus" aria-label="Zoom in">+</button><div class="track"></div><button id="minus" aria-label="Zoom out">−</button><span id="zoomText">ZOOM</span></div>
+<section id="panel" class="panel" hidden><div class="small"><span id="panelCap">SCENE / 01</span><button id="panelClose" aria-label="Close">×</button></div><h2 id="panelTitle">3D eye</h2><p id="panelText"></p><small>ANATOMICAL EDUCATION / NOT A DIAGNOSTIC INSTRUMENT</small></section>
+<footer class="foot"><div class="copy"><strong>REAL 3D EYE SCAN</strong><br>MODEL BY <a href="https://www.artec3d.com/3d-models/eye" target="_blank" rel="noopener">ARTEC 3D ↗</a> · CC BY 4.0<br>DRAG TO ROTATE · SCROLL TO ZOOM</div><div class="hint">FULL EYE GEOMETRY <em>·</em> LIDS <em>·</em> SKIN <em>·</em> IRIS<br>UNALTERED SCANNED SOURCE</div><div class="actions"><a class="return" href="/">2D ATLAS ↗</a><button id="hudButton">HIDE HUD ↗</button></div></footer>
+</section></main>
+<script src="https://static.sketchfab.com/api/sketchfab-viewer-1.12.1.js"></script>
+<script>
+(()=>{'use strict';const $=id=>document.getElementById(id),frame=$('scan'),hud=$('hud');let api=null,firstCamera=null,focused=false,ready=false;
+const raw='https://sketchfab.com/models/98a07a1fb37841b5b348cbad357ac71e/embed?autostart=1&scrollwheel=1&ui_theme=dark';
+function panel(cap,title,description){$('panelCap').textContent=cap;$('panelTitle').textContent=title;$('panelText').textContent=description;$('panel').hidden=false}
+function frameStatus(t){$('status').textContent=t}
+function start(){if(typeof Sketchfab==='undefined'){frame.src=raw;frameStatus('EXTERNAL VIEWER');$('loading').innerHTML='3D VIEWER LOADED EXTERNALLY<br><a href="https://www.artec3d.com/3d-models/eye">OPEN SOURCE MODEL ↗</a>';return;}
+const client=new Sketchfab(frame);client.init('98a07a1fb37841b5b348cbad357ac71e',{autostart:1,camera:0,scrollwheel:1,ui_theme:'dark',success:instance=>{api=instance;api.start();api.addEventListener('viewerready',()=>{ready=true;$('loading').hidden=true;frameStatus('SCANNER READY');api.getCameraLookAt((err,position,target)=>{if(!err){firstCamera={position,target}}})})},error:()=>{frameStatus('EXTERNAL 3D ERROR');$('loading').textContent='3D EMBED FAILED — OPEN ORIGINAL SCAN'}})}
+function zoom(factor){if(!api){panel('CONTROLS','Camera','Zoom with the scroll wheel directly over the scanned eye.');return;}api.getCameraLookAt((err,position,target)=>{if(err||!position||!target)return;const p=position.map((x,i)=>target[i]+(x-target[i])*factor);api.setCameraLookAt(p,target,.6)})}
+function reset(){if(!api||!firstCamera){panel('CAMERA','Framing','Drag over the eye to orbit and use your wheel to zoom.');return}api.setCameraLookAt(firstCamera.position,firstCamera.target,1)}
+$('plus').onclick=()=>zoom(.73);$('minus').onclick=()=>zoom(1.37);$('zoomInMenu').onclick=()=>zoom(.53);$('framing').onclick=reset;
+$('mode').onclick=()=>panel('NAVIGATION / 3D','Orbit the model','Drag the eye to rotate the real three-dimensional scan. Use the wheel or zoom controls to move closer. This is scanned skin, eyelid, lashes, and iris geometry.');
+$('details').onclick=()=>panel('CAPTURE / REAL','Photogrammetric scan','A human eye captured with the Artec Space Spider 3D scanner, not a generated image or a textured disk. The geometry is scanned from a real subject. The model is an educational specimen, not your eye. Source: Artec 3D, CC BY 4.0.');
+$('focus').onclick=()=>{focused=!focused;frame.style.filter=focused?'contrast(1.19) saturate(1.13)':'brightness(1) contrast(1.02)';panel('VIEW / IMAGE','Optical contrast',focused?'Contrast view enabled. This changes the screen image only, not measured anatomy.':'Neutral image view. It does not modify the scanned geometry.')};
+$('panelClose').onclick=()=>$('panel').hidden=true;
+function photo(){hud.classList.toggle('photo');$('hudButton').textContent=hud.classList.contains('photo')?'SHOW HUD ↗':'HIDE HUD ↗';$('panel').hidden=true}
+$('photoMode').onclick=photo;$('hudButton').onclick=photo;
+document.addEventListener('keydown',e=>{if(e.key.toLowerCase()==='h')photo();if(e.key==='Escape'){$('panel').hidden=true;if(hud.classList.contains('photo'))photo()}});
+start();
+})();
+</script>
+</body></html>
