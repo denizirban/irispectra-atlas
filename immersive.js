@@ -114,9 +114,78 @@ function switchToSynthetic(){
  $('modeLabel').textContent='PROCEDURAL IRIS / ILLUSTRATIVE DEPTH';
 }
 
+
+function refreshIrisRelief(source){
+ // Surface reconstruction is illustrative: pigment intensity is not an OCT depth measurement.
+ if(!iris||!source)return;
+ const c=document.createElement('canvas');c.width=c.height=384;
+ const cx=c.getContext('2d',{willReadFrequently:true});cx.drawImage(source,0,0,384,384);
+ const pixels=cx.getImageData(0,0,384,384).data;
+ const position=iris.geometry.attributes.position,uv=iris.geometry.attributes.uv;
+ for(let i=0;i<position.count;i++){
+  const x=position.getX(i),y=position.getY(i),r=Math.hypot(x,y),ang=Math.atan2(y,x);
+  const u=clamp(Math.round((.5+x/1.26)*383),0,383),v=clamp(Math.round((1-(.5+y/1.26))*383),0,383);
+  const j=(v*384+u)*4;
+  const lum=(pixels[j]*.2126+pixels[j+1]*.7152+pixels[j+2]*.0722)/255;
+  const cryptShadow=clamp((.42-lum)*2.2,0,1);
+  // Smoothed radial striation plus shallow crypt depressions, bounded to avoid false anatomical measurements.
+  const displacement=.008*(lum-.5)-.011*cryptShadow*Math.sin(Math.min(1,(r-.19)/.12)*Math.PI*.5)**2;
+  position.setZ(i,zIris(r,ang)+displacement);
+ }
+ position.needsUpdate=true;iris.geometry.computeVertexNormals();
+}
+const DEEP_ROUTES={
+ iris:['IRIS SURFACE','CRYPT / COLLARETTE','STROMAL COLLAGEN','MELANOCYTES & FIBROBLASTS','MELANIN / COLLAGEN'],
+ sclera:['SCLERA / EPISCLERA','SUPERFICIAL VESSELS','COLLAGEN TISSUE','FIBROBLASTS','TYPE I COLLAGEN'],
+ retina:['RETINAL FUNDUS','NERVE FIBER LAYER','RETINAL LAMINAE','GANGLION / PHOTORECEPTORS','OPSIN / SIGNALING'],
+ vessel:['RETINAL VESSELS','VASCULAR WALL','BASEMENT MEMBRANE','ENDOTHELIUM / PERICYTES','JUNCTION PROTEINS'],
+ nerve:['OPTIC DISC','RETINAL AXON BUNDLES','LAMINA CRIBROSA','GANGLION AXONS / GLIA','AXONAL TRANSPORT']
+};
+let deepRoute='iris',deepStage=-1,deepGroup=null;
+function buildDeepWorld(){
+ deepGroup=new THREE.Group();scene.add(deepGroup);deepGroup.visible=false;
+ const m=(col)=>new THREE.MeshStandardMaterial({color:col,roughness:.7,side:THREE.DoubleSide});
+ const balls=[[0x9e7956,0xc4a078,0x5a5149],[0xcbbba5,0x938c8f,0xe1ceb5],[0x865b61,0xb5837f,0xd9b19b]];
+ const pal=deepRoute==='iris'?balls[0]:deepRoute==='sclera'?balls[1]:balls[2];
+ const sphere=new THREE.SphereGeometry(1,18,12);
+ const ball=(x,y,z,r,col)=>{let ob=new THREE.Mesh(sphere,m(col));ob.position.set(x,y,z);ob.scale.setScalar(r);deepGroup.add(ob)};
+ const fibre=(a,b,r,col)=>{const points=[new THREE.Vector3(...a),new THREE.Vector3(...b)],geo=new THREE.TubeGeometry(new THREE.CatmullRomCurve3(points),10,r,5);deepGroup.add(new THREE.Mesh(geo,m(col)))};
+ for(let i=0;i<32;i++){
+  let x=(i%8-3.5)*.44,y=(Math.floor(i/8)-1.5)*.64,z=.1*Math.sin(i*2.4);
+  if(deepStage===2){fibre([x-1,y,z],[x+1,y+.13*Math.cos(i),z+.3],.027,pal[i%3]);if(i%5===0)ball(x,y,.25,.19,0x625364)}
+  else if(deepStage===3){if(i<16){ball(x,y,z,.15+(i%3)*.04,pal[i%3]);ball(x+.03,y,z+.12,.055,0x454353);}}
+  else if(deepStage===4){let t=i*.7;ball(Math.sin(t)*.6,t*.075-1.1,Math.cos(t)*.6,.09,pal[i%3]);if(i>0)fibre([Math.sin((i-1)*.7)*.6,(i-1)*.075-1.1,Math.cos((i-1)*.7)*.6],[Math.sin(t)*.6,t*.075-1.1,Math.cos(t)*.6],.028,0xddd2bc)}
+ }
+}
+function updateDeepWorld(){
+ if(!deepGroup)return;
+ const z=current.zoom,stage=z<.42?0:z<.67?1:z<.80?2:z<.93?3:4;
+ if(stage!==deepStage){deepStage=stage;deepGroup.clear();buildDeepWorldGeometry();}
+ deepGroup.visible=stage>=2;
+ if(deepGroup.visible){
+  deepGroup.position.set(0,0,0);
+  deepGroup.rotation.y+=.002;
+  deepGroup.scale.setScalar(stage===2?1.7:stage===3?2.1:2.4);
+  eyeGroup.visible=false;
+ }else if(!current.fundus){eyeGroup.visible=true;}
+ const d=$('depthExplainer');if(d)d.textContent=(DEEP_ROUTES[deepRoute]||DEEP_ROUTES.iris)[stage]+(stage>=2?' / EDUCATIONAL 3D MODEL — NOT MEASURED':' / VISIBLE MORPHOLOGY');
+}
+function buildDeepWorldGeometry(){
+ if(!deepGroup)return;
+ const palette=deepRoute==='iris'?[0xbfa078,0x9c7754,0x685a51]:deepRoute==='sclera'?[0xd2c5ae,0x9eaba8,0x776b69]:[0xb07975,0x997e92,0xd7b2a2];
+ const geo=new THREE.SphereGeometry(1,14,10),cellMat=palette.map(color=>new THREE.MeshStandardMaterial({color,roughness:.7}));
+ for(let i=0;i<90;i++){
+  let a=i*2.399,r=Math.sqrt(i/90)*2.7,x=Math.cos(a)*r,y=Math.sin(a)*r,z=(i%7-3)*.12;
+  const b=new THREE.Mesh(geo,cellMat[i%3]);b.position.set(x,y,z);
+  b.scale.set(stageToRadius(),stageToRadius()*(deepStage===2?.21:1),stageToRadius());deepGroup.add(b);
+  if(deepStage===2&&i>0){const from=new THREE.Vector3(x-1.2,y,z),to=new THREE.Vector3(x+1.2,y+.09,z);let tube=new THREE.Mesh(new THREE.CylinderGeometry(.024,.024,2.4,6),cellMat[i%3]);tube.position.set(x,y,z);tube.rotation.z=Math.PI/2-.04;tube.scale.x=1;deepGroup.add(tube)}
+ }
+}
+function stageToRadius(){return deepStage===2?.085:deepStage===3?.22:.12}
+
 function makeTexture(source){
  if(texture)texture.dispose();texture=new THREE.CanvasTexture(source);texture.colorSpace=THREE.SRGBColorSpace;texture.anisotropy=Math.min(12,renderer.capabilities.getMaxAnisotropy());texture.needsUpdate=true;
- if(irisMaterial){irisMaterial.map=texture;irisMaterial.bumpMap=current.demo?texture:null;irisMaterial.bumpScale=current.demo ? 0.015 : 0;irisMaterial.roughness=current.demo?.88:.93;irisMaterial.clearcoat=.025;irisMaterial.needsUpdate=true;}
+ if(irisMaterial){irisMaterial.map=texture;irisMaterial.bumpMap=current.demo?texture:null;irisMaterial.bumpScale=current.demo ? 0.015 : 0;irisMaterial.roughness=current.demo?.88:.93;irisMaterial.clearcoat=.025;irisMaterial.needsUpdate=true;refreshIrisRelief(source);}
 }
 
 let lightIntensity=.38,targetLight=.38,simPupil=.195;
@@ -258,7 +327,7 @@ function makeScene(){
  const hole=new THREE.Mesh(new THREE.CylinderGeometry(.18,.18,.13,128,1,true),new THREE.MeshStandardMaterial({color:0x090a09,roughness:1,side:THREE.DoubleSide}));hole.rotation.x=Math.PI/2;hole.position.z=1.19;hole.renderOrder=2;eyeGroup.add(hole);
  pupil=new THREE.Mesh(new THREE.CircleGeometry(.189,128),new THREE.MeshBasicMaterial({color:0x030504}));pupil.position.z=1.13;pupil.renderOrder=2;eyeGroup.add(pupil);
  makeIris();const pupilRim=rim(.195,1.215,0x181c14,.013);pupilRim.userData.pupilEdge=true;rim(.623,1.116,0x151e1c,.019);makeCornea();makePosteriorAnatomy();fundusStage=createFundusStage();scene.add(fundusStage.group); // clean eye-only frame
- drawDots();resize();window.addEventListener('resize',resize);setPhotographicDemo();
+ drawDots();resize();window.addEventListener('resize',resize);setPhotographicDemo();deepGroup=new THREE.Group();scene.add(deepGroup);
  $('loading').classList.add('hidden');animate();
 }
 function resize(){const w=innerWidth,h=innerHeight;if(!renderer)return;renderer.setSize(w,h,false);camera.aspect=w/h;camera.updateProjectionMatrix();}
@@ -303,7 +372,7 @@ function updatePassiveDepth(){
  window.IrispectraScience?.indicate?.(stage===0?0:stage===1||stage===2?1:stage);
 }
 
-function animate(){requestAnimationFrame(animate);renderCamera();updateLightSimulation();updatePassiveDepth();if(current.demo&&current.animate&&current.targetZoom<.19&&!pointers.size){let t=performance.now()*.00018;eyeGroup.rotation.y=Math.sin(t)*.018;eyeGroup.rotation.x=Math.cos(t*.73)*.009}else{eyeGroup.rotation.x=lerp(eyeGroup.rotation.x,0,.03);eyeGroup.rotation.y=lerp(eyeGroup.rotation.y,0,.03)}
+function animate(){requestAnimationFrame(animate);renderCamera();updateLightSimulation();updatePassiveDepth();updateDeepWorld();if(current.demo&&current.animate&&current.targetZoom<.19&&!pointers.size){let t=performance.now()*.00018;eyeGroup.rotation.y=Math.sin(t)*.018;eyeGroup.rotation.x=Math.cos(t*.73)*.009}else{eyeGroup.rotation.x=lerp(eyeGroup.rotation.x,0,.03);eyeGroup.rotation.y=lerp(eyeGroup.rotation.y,0,.03)}
  updateDots();renderer.render(scene,camera)}
 function setZoom(value){
  // Zoom is reversible and never silently changes anatomical scenes.
@@ -341,7 +410,7 @@ function exitFundus(){
 function reset(){
  clearTimeout(fundusTimer);current.fundusTransition=false;$('enterBtn').disabled=false;
  if(current.fundus)exitFundus();if(current.rear)toggleRear();current.selected=null;current.focusTarget.set(0,0,0);current.focus.set(0,0,0);current.zoom=.10;current.targetZoom=.10;current.targetYaw=0;current.targetPitch=0;setZoom(.10);$('infoPanel').hidden=true;clearSelection()}
-function approach(p){current.selected=p;if(current.fundus)current.fundusTarget.copy(p);else current.focusTarget.copy(p);setZoom(.84);$('infoPanel').hidden=true;if(!current.fundus&&p.length()>0.1){setTimeout(()=>window.IrispectraScience?.advanceFromCrypt(),900)}}
+function approach(p){current.selected=p;deepRoute=current.fundus?'retina':'iris';if(current.fundus)current.fundusTarget.copy(p);else current.focusTarget.copy(p);setZoom(.84);$('infoPanel').hidden=true;if(!current.fundus&&p.length()>0.1){setTimeout(()=>window.IrispectraScience?.advanceFromCrypt(),900)}}
 let domPins=[];
 function drawDots(){
  $('hotspots').replaceChildren();domPins=[];
