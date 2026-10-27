@@ -24,7 +24,7 @@ const rand=seeded(9348);
 let renderer,scene,camera,eyeGroup,iris,irisMaterial,eyeWhite,cornea,pupil,lighting,texture=null,retina,opticNerve,retinalVessels,fundusStage,fundusTimer;
 const current={zoom:.10,targetZoom:.10,yaw:0,targetYaw:0,pitch:0,targetPitch:0,focus:new THREE.Vector3(),focusTarget:new THREE.Vector3(),demo:true,anatomy:false,place:false,pinKind:'crypt',pinList:[],selected:null,selection:null,animate:true,irisPalette:0,rear:false};
 current.fundus=false;current.fundusTransition=false;current.fundusLook=new THREE.Vector3(0,0,-1.115);current.fundusTarget=new THREE.Vector3(0,0,-1.115);
-let uploadImage=null, uploadUrl=null, toastTimer, pointers=new Map(),moveTotal=0;
+let uploadImage=null, uploadUrl=null, toastTimer, pointers=new Map(),moveTotal=0,eyeGazeX=0,eyeGazeY=0;
 const initPins=[
  {kind:'collarette',radius:.26,angle:.72},
  {kind:'crypt',radius:.43,angle:2.38},
@@ -381,10 +381,17 @@ function updatePassiveDepth(){
  window.IrispectraScience?.indicate?.(stage===0?0:stage===1||stage===2?1:stage);
 }
 
-function animate(){requestAnimationFrame(animate);renderCamera();updateLightSimulation();updatePassiveDepth();updateDeepWorld();
- if(!current.selected&&!current.fundus&&!current.rear&&current.zoom<.35&&!pointers.size){const t=performance.now()*.001;current.targetYaw+=Math.sin(t*.44)*.000017;current.targetPitch+=Math.cos(t*.37)*.000013;}
-if(current.demo&&current.animate&&current.targetZoom<.19&&!pointers.size){let t=performance.now()*.00018;eyeGroup.rotation.y=Math.sin(t)*.018;eyeGroup.rotation.x=Math.cos(t*.73)*.009}else{eyeGroup.rotation.x=lerp(eyeGroup.rotation.x,0,.03);eyeGroup.rotation.y=lerp(eyeGroup.rotation.y,0,.03)}
- updateDots();renderer.render(scene,camera)}
+function animate(){
+ requestAnimationFrame(animate);
+ renderCamera();updateLightSimulation();updatePassiveDepth();updateDeepWorld();
+ const idle=!current.selected&&!current.fundus&&!current.rear&&current.zoom<.32&&!pointers.size;
+ const t=performance.now()*.001;
+ const targetX=idle?eyeGazeY+Math.sin(t*.47)*.008:0;
+ const targetY=idle?eyeGazeX+Math.cos(t*.39)*.010:0;
+ eyeGroup.rotation.x=lerp(eyeGroup.rotation.x,targetX,.06);
+ eyeGroup.rotation.y=lerp(eyeGroup.rotation.y,targetY,.06);
+ updateDots();renderer.render(scene,camera);
+}
 function setZoom(value){
  // Zoom is reversible and never silently changes anatomical scenes.
  if(current.fundus&&value<=0){exitFundus();return;}
@@ -544,7 +551,7 @@ function selectByTap(x,y){
 function pointerSetup(){let pinchDistance=0;
  canvas.addEventListener('wheel',e=>{e.preventDefault();setZoom(current.targetZoom+(e.deltaY>0?1:-1)*Math.min(.09,Math.abs(e.deltaY)*.00045))},{passive:false});
  canvas.addEventListener('pointerdown',e=>{canvas.setPointerCapture(e.pointerId);pointers.set(e.pointerId,{x:e.clientX,y:e.clientY,startX:e.clientX,startY:e.clientY});moveTotal=0;if(pointers.size===2){const arr=[...pointers.values()];pinchDistance=Math.hypot(arr[0].x-arr[1].x,arr[0].y-arr[1].y)}});
- canvas.addEventListener('pointermove',e=>{if(!pointers.has(e.pointerId))return;const old=pointers.get(e.pointerId);pointers.set(e.pointerId,{...old,x:e.clientX,y:e.clientY});moveTotal+=Math.abs(e.clientX-old.x)+Math.abs(e.clientY-old.y);if(pointers.size===2){const arr=[...pointers.values()],d=Math.hypot(arr[0].x-arr[1].x,arr[0].y-arr[1].y);if(pinchDistance)setZoom(current.targetZoom+Math.log(d/pinchDistance)*.17);pinchDistance=d;return}
+ canvas.addEventListener('pointermove',e=>{if(!pointers.has(e.pointerId)){if(e.pointerType==='mouse'&&!current.selected){const rect=canvas.getBoundingClientRect();eyeGazeX=clamp((e.clientX-(rect.left+rect.width/2))/(rect.width/2)*.10,-.10,.10);eyeGazeY=clamp((e.clientY-(rect.top+rect.height/2))/(rect.height/2)*-.065,-.065,.065);}return;}const old=pointers.get(e.pointerId);pointers.set(e.pointerId,{...old,x:e.clientX,y:e.clientY});moveTotal+=Math.abs(e.clientX-old.x)+Math.abs(e.clientY-old.y);if(pointers.size===2){const arr=[...pointers.values()],d=Math.hypot(arr[0].x-arr[1].x,arr[0].y-arr[1].y);if(pinchDistance)setZoom(current.targetZoom+Math.log(d/pinchDistance)*.17);pinchDistance=d;return}
  current.targetYaw=clamp(current.targetYaw+(e.clientX-old.x)*.004,-.48,.48);current.targetPitch=clamp(current.targetPitch-(e.clientY-old.y)*.003,-.29,.29)});
  const release=e=>{let p=pointers.get(e.pointerId);if(!p)return;pointers.delete(e.pointerId);if(pointers.size<2)pinchDistance=0;if(Math.hypot(e.clientX-p.startX,e.clientY-p.startY)<9){if(current.place)rayPin(e.clientX,e.clientY);else selectByTap(e.clientX,e.clientY)}};
  ['pointerup','pointercancel','lostpointercapture'].forEach(t=>canvas.addEventListener(t,release));
@@ -558,6 +565,7 @@ function pointerSetup(){let pinchDistance=0;
   else if(e.key==='0'||e.key==='Home'){e.preventDefault();reset()}
  },{passive:false});
   canvas.addEventListener('keydown',e=>{if(e.key==='+'||e.key==='='){setZoom(current.targetZoom+.08);e.preventDefault()}if(e.key==='-'){setZoom(current.targetZoom-.08);e.preventDefault()}if(e.key==='Escape'){reset()}});
+ canvas.addEventListener('pointerleave',()=>{eyeGazeX=0;eyeGazeY=0});
  canvas.tabIndex=0;
 }
 function openDialog(id){$(id).hidden=false;current.animate=false}
