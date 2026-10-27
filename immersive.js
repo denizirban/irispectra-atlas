@@ -180,7 +180,7 @@ function renderCamera(){
  camera.position.set(current.focus.x+d*nX,current.focus.y+d*nY,current.focus.z+d*nZ);camera.lookAt(current.focus);camera.updateMatrixWorld();
  $('zoomDisplay').textContent='MAG / '+(4.7/d).toFixed(1)+'×';
  $('zoomRange').value=Math.round(current.targetZoom*100);
- if(!current.selected&&current.targetZoom<.64){
+ if(!current.selected&&current.targetZoom<.64&&!current.rear){
  let dFocus=smooth(.16,.63,current.targetZoom);
  current.focusTarget.set(0,0,lerp(0,1.13,dFocus));
  }
