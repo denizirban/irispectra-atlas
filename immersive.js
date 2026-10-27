@@ -31,7 +31,7 @@ const initPins=[
  {kind:'pupil',radius:.10,angle:1.18}
 ];
 const P=()=>new THREE.Vector3();
-function zIris(r,a){return 1.108+.096*(1-r*r/.39)+.012*Math.sin(a*67+r*115)*Math.sin(r*82-a*11)+.006*Math.cos(a*128+r*170)}
+function zIris(r,a){const band=Math.exp(-Math.pow((r-.285)/.055,2));return 1.108+.088*(1-r*r/.39)+.016*band+.007*Math.sin(a*42+r*98)*Math.sin(r*81-a*17)+.0035*Math.cos(a*127+r*166)+.004*Math.sin(a*9+r*32)}
 function pointAt(r,a,offset=.017){return new THREE.Vector3(Math.cos(a)*r,Math.sin(a)*r,zIris(r,a)+offset)}
 function setNotice(text){const t=$('toast');t.textContent=text;t.classList.add('show');clearTimeout(toastTimer);toastTimer=setTimeout(()=>t.classList.remove('show'),3000)}
 function skinTexture(){
@@ -53,6 +53,14 @@ function sampleIris(size=2048){
    }ctx.stroke()
  }
  ctx.globalAlpha=1;
+ // asymmetric stromal openings and natural irregular pigment breaks
+ for(let k=0;k<110;k++){
+  const a=rand()*Math.PI*2,r=R*(.31+rand()*.6),w=(.006+rand()*.022)*R,h=(.004+rand()*.018)*R;
+  ctx.save();ctx.translate(m+Math.cos(a)*r,m+Math.sin(a)*r);ctx.rotate(a);
+  const shade=ctx.createRadialGradient(0,0,1,0,0,w*1.45);shade.addColorStop(0,'rgba(6,17,13,.43)');shade.addColorStop(.55,'rgba(24,32,24,.26)');shade.addColorStop(1,'rgba(0,0,0,0)');
+  ctx.fillStyle=shade;ctx.beginPath();ctx.ellipse(0,0,w*1.5,h*1.4,0,0,Math.PI*2);ctx.fill();
+  ctx.strokeStyle='rgba(218,192,139,.18)';ctx.lineWidth=1.1+rand()*1.6;ctx.beginPath();ctx.ellipse(0,h*.26,w*1.1,h*.74,0,0,Math.PI);ctx.stroke();ctx.restore();
+ }
  for(let k=0;k<44;k++){
    const a=rand()*Math.PI*2,r=R*(.40+rand()*.42),w=(.013+rand()*.03)*R,h=(.008+rand()*.023)*R;
    ctx.save();ctx.translate(m+Math.cos(a)*r,m+Math.sin(a)*r);ctx.rotate(a);ctx.fillStyle='rgba(13,27,24,.29)';ctx.beginPath();ctx.ellipse(0,0,w,h,0,0,7);ctx.fill();ctx.strokeStyle='rgba(235,204,145,.23)';ctx.lineWidth=2;ctx.beginPath();ctx.ellipse(-w*.18,-h*.23,w*1.08,h*.75,0,2.6,5.5);ctx.stroke();ctx.restore();
@@ -64,7 +72,7 @@ function sampleIris(size=2048){
 }
 function makeTexture(source){
  if(texture)texture.dispose();texture=new THREE.CanvasTexture(source);texture.colorSpace=THREE.SRGBColorSpace;texture.anisotropy=Math.min(12,renderer.capabilities.getMaxAnisotropy());texture.needsUpdate=true;
- if(irisMaterial){irisMaterial.map=texture;irisMaterial.bumpMap=current.demo?texture:null;irisMaterial.bumpScale=current.demo ? 0.009 : 0;irisMaterial.needsUpdate=true;}
+ if(irisMaterial){irisMaterial.map=texture;irisMaterial.bumpMap=current.demo?texture:null;irisMaterial.bumpScale=current.demo ? 0.015 : 0;irisMaterial.roughness=.8;irisMaterial.needsUpdate=true;}
 }
 function makeIris(){
  const segments=300, rings=103,verts=[],uv=[],indices=[];for(let j=0;j<=rings;j++){const r=.195+(.63-.195)*j/rings;for(let i=0;i<=segments;i++){let a=i/segments*Math.PI*2,xx=Math.cos(a)*r,yy=Math.sin(a)*r;verts.push(xx,yy,zIris(r,a));uv.push(.5+xx/1.26,.5+yy/1.26);if(j<rings&&i<segments){let n=j*(segments+1)+i;indices.push(n,n+1,n+segments+1,n+1,n+segments+2,n+segments+1)}}}
@@ -95,7 +103,7 @@ function makeCornea(){
  const mat=new THREE.MeshPhysicalMaterial({color:0xd8f0f1,transparent:true,opacity:.035,roughness:.04,metalness:0,clearcoat:1,clearcoatRoughness:.015,depthWrite:false,side:THREE.DoubleSide});
  cornea=new THREE.Mesh(geom,mat);cornea.renderOrder=9;eyeGroup.add(cornea);
  // restrained studio softbox reflected in the wet corneal surface
- const glintGeo=new THREE.CircleGeometry(.081,64),glintMat=new THREE.MeshBasicMaterial({color:0xe8f6e7,transparent:true,opacity:.23,depthWrite:false});
+ const glintGeo=new THREE.CircleGeometry(.081,64),glintMat=new THREE.MeshBasicMaterial({color:0xe8f6e7,transparent:true,opacity:.11,depthWrite:false});
  let glint=new THREE.Mesh(glintGeo,glintMat);glint.scale.set(.68,1.8,1);glint.rotation.z=-.32;glint.position.set(-.24,.23,1.303);glint.renderOrder=10;eyeGroup.add(glint);
  const tiny=new THREE.Mesh(new THREE.CircleGeometry(.021,32),new THREE.MeshBasicMaterial({color:0xffffff,transparent:true,opacity:.33,depthWrite:false}));tiny.position.set(.23,-.13,1.296);tiny.renderOrder=10;eyeGroup.add(tiny);
 }
@@ -175,7 +183,7 @@ function renderCamera(){
   $('zoomRange').value=Math.round(current.targetZoom*100);return;
  }
  current.zoom=lerp(current.zoom,current.targetZoom,.08);current.yaw=lerp(current.yaw,current.targetYaw,.07);current.pitch=lerp(current.pitch,current.targetPitch,.07);current.focus.lerp(current.focusTarget,.08);
- const d=Math.exp(lerp(Math.log(4.7),Math.log(.31),current.zoom));
+ const d=Math.exp(lerp(Math.log(5.9),Math.log(.36),current.zoom));
  const nX=Math.sin(current.yaw)*Math.cos(current.pitch),nY=Math.sin(current.pitch),nZ=Math.cos(current.yaw)*Math.cos(current.pitch)*(current.rear?-1:1);
  camera.position.set(current.focus.x+d*nX,current.focus.y+d*nY,current.focus.z+d*nZ);camera.lookAt(current.focus);camera.updateMatrixWorld();
  $('zoomDisplay').textContent='MAG / '+(4.7/d).toFixed(1)+'×';
@@ -188,8 +196,10 @@ function renderCamera(){
 function animate(){requestAnimationFrame(animate);renderCamera();if(current.demo&&current.animate&&current.targetZoom<.19&&!pointers.size){let t=performance.now()*.00018;eyeGroup.rotation.y=Math.sin(t)*.018;eyeGroup.rotation.x=Math.cos(t*.73)*.009}else{eyeGroup.rotation.x=lerp(eyeGroup.rotation.x,0,.03);eyeGroup.rotation.y=lerp(eyeGroup.rotation.y,0,.03)}
  updateDots();renderer.render(scene,camera)}
 function setZoom(value){
- if(!current.rear&&!current.fundus&&!current.fundusTransition&&value>=.995){enterFundus();return;}
- current.targetZoom=clamp(value,0,1);if(current.fundus)return;if(current.targetZoom<.22&&current.selected){current.selected=null;current.focusTarget.set(0,0,0)};if(current.rear)return;if(current.targetZoom>.62){$('sceneNumber').textContent='02 / THE IRIS';$('sceneTitle').innerHTML='LOOK<br>CLOSER.';$('sceneNote').textContent='Every fiber tells a story of structure.'}else{$('sceneNumber').textContent='01 / THE HUMAN EYE';$('sceneTitle').innerHTML='THE WORLD<br>WITHIN.';$('sceneNote').textContent='A closer look at what makes every iris unique.'}}
+ // Zoom is reversible and never silently changes anatomical scenes.
+ if(current.fundus&&value<-.015){exitFundus();return;}
+ if(current.fundusTransition&&value<current.targetZoom){clearTimeout(fundusTimer);current.fundusTransition=false;$('enterBtn').disabled=false;}
+ current.targetZoom=clamp(value,0,1);if(current.fundus)return;if(current.targetZoom<.60){current.selected=null;current.focusTarget.set(0,0,current.targetZoom<.2?0:1.13);$('infoPanel').hidden=true;clearSelection()}if(current.rear)return;if(current.targetZoom>.62){$('sceneNumber').textContent='02 / THE IRIS';$('sceneTitle').innerHTML='LOOK<br>CLOSER.';$('sceneNote').textContent='Every fiber tells a story of structure.'}else{$('sceneNumber').textContent='01 / THE HUMAN EYE';$('sceneTitle').innerHTML='THE WORLD<br>WITHIN.';$('sceneNote').textContent='A closer look at what makes every iris unique.'}}
 function enterFundus(){
  if(current.fundus||current.fundusTransition)return;
  if(current.rear)toggleRear();
@@ -220,7 +230,7 @@ function exitFundus(){
 }
 function reset(){
  clearTimeout(fundusTimer);current.fundusTransition=false;$('enterBtn').disabled=false;
- if(current.fundus)exitFundus();if(current.rear)toggleRear();current.selected=null;current.focusTarget.set(0,0,0);current.targetYaw=0;current.targetPitch=0;setZoom(.10);$('infoPanel').hidden=true;clearSelection()}
+ if(current.fundus)exitFundus();if(current.rear)toggleRear();current.selected=null;current.focusTarget.set(0,0,0);current.focus.set(0,0,0);current.zoom=.10;current.targetZoom=.10;current.targetYaw=0;current.targetPitch=0;setZoom(.10);$('infoPanel').hidden=true;clearSelection()}
 function approach(p){current.selected=p;if(current.fundus)current.fundusTarget.copy(p);else current.focusTarget.copy(p);setZoom(.84);$('infoPanel').hidden=true;if(!current.fundus&&p.length()>0.1){setTimeout(()=>window.IrispectraScience?.advanceFromCrypt(),900)}}
 let domPins=[];
 function drawDots(){
