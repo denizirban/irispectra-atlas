@@ -5,14 +5,14 @@
   <canvas id="scene" aria-label="Rotatable 3D eye and iris with zoom"></canvas>
   <div class="falloff" aria-hidden="true"></div>
   <header class="header">
-    <a class="brand" href="/" aria-label="Irispectra home"><span class="brand-symbol"><i></i></span><span>IRISPECTRA</span></a>
-    <span class="header-sub">OPTICAL ATLAS <span class="mute">—</span> VOL. 001</span>
+    <a class="brand" href="/" aria-label="Irispectra home"><img class="brand-mark" src="/irispectra-mark.svg" alt=""><span>IRISPECTRA</span></a>
+    
     <button class="text-button top-guide" id="aboutBtn" type="button">ABOUT <span class="arrow">↗</span></button>
   </header>
   <div class="side left">
-    <div class="side-caption"><span class="shortline"></span> <span id="sceneNumber">01 / THE HUMAN EYE</span></div>
+    <div class="side-caption"><span id="sceneNumber">01 / THE HUMAN EYE</span></div>
     <h1 id="sceneTitle">THE LIVING<br>IRIS.</h1>
-    <p id="sceneNote">Explore the surface of a real iris, inside a dimensional eye.</p>
+    <p id="sceneNote">Tap a detail. Go deeper.</p>
     <div class="links">
       <button class="control active" id="exploreBtn" type="button"><span class="tiny-circle"></span> EXPLORE</button>
       <button class="control" id="anatomyBtn" type="button"><span class="tiny-circle"></span> ANATOMY</button>
@@ -24,9 +24,9 @@
   </div>
   <div class="side right">
     <span id="textureStatus">SPECIMEN / 001</span>
-    <span>RENDER / WEBGL</span>
-    <span id="zoomDisplay">MAG / 1.0×</span>
-    <div class="light-control"><label for="lightRange">LIGHT / PUPIL RESPONSE <span id="lightValue">38%</span></label><input id="lightRange" type="range" min="0" max="100" value="38" aria-label="Simulated light intensity"><small>SIMULATED REFLEX · NOT A PLR MEASUREMENT</small></div>
+    
+    <span id="zoomDisplay">1.0×</span>
+    <div class="light-control"><label for="lightRange">LIGHT <span id="lightValue">38%</span></label><input id="lightRange" type="range" min="0" max="100" value="38" aria-label="Simulated light intensity"></div>
     <div class="zoom-rail">
       <button id="zoomIn" type="button" aria-label="Zoom in">+</button>
       <input id="zoomRange" type="range" min="0" max="100" value="10" aria-label="Camera magnification">
@@ -34,29 +34,36 @@
     </div>
   </div>
   <div id="depthHint" class="depth-hint" aria-live="polite"><span id="depthTitle">WHOLE EYE</span><small id="depthExplainer">SCROLL OR PINCH TO EXPLORE</small></div>
-  <div id="hotspots" class="hotspots" aria-label="Anatomy hotspots"></div><button type="button" id="morphToggle" class="morph-trigger" aria-expanded="false" aria-controls="morphChart">MORPHOLOGY MAP <span>◎</span></button>
+  <div id="hotspots" class="hotspots" aria-label="Anatomy hotspots"></div><button type="button" id="morphToggle" class="morph-trigger" aria-expanded="false" aria-controls="morphChart">IRIS MAP <span>◎</span></button>
 <section id="morphChart" class="morph-chart" hidden aria-label="Interactive iris positional morphology map">
  <div class="morph-head"><span>IRISPECTRA / MORPHOLOGY EXPLORER</span><button type="button" data-close aria-label="Close morphology map">×</button></div>
- <div class="morph-row"><strong>IRIS POSITIONAL MAP</strong><span data-laterality>Rx</span></div>
+ <div class="morph-row"><strong>IRIS ZONE MAP</strong><span data-laterality>Rx</span></div>
  <div class="morph-side"><button type="button" data-eye="Rx" aria-pressed="true">RIGHT EYE / Rx</button><button type="button" data-eye="Lx" aria-pressed="false">LEFT EYE / Lx</button></div>
  <svg viewBox="0 0 360 360" role="img" aria-label="Four selectable iris rings with twelve clock sectors"></svg>
  <div class="morph-readout" data-readout></div><p class="morph-description" data-description></p>
- <div class="morph-label">PATTERNS / MORPHOLOGY VOCABULARY</div>
+ <div class="morph-label">PATTERN LIBRARY</div>
  <div class="morph-patterns" data-pattern></div>
  <p class="morph-description" data-pattern-detail></p>
- <div class="morph-foot">Sources: John Andrews, Iris & Pupillary Signs (2008); Modern Iridology Chart (2011). Historical topography is a separate reference layer. Not for clinical interpretation.</div>
+ 
 </section>
   <aside class="info-panel" id="infoPanel" hidden aria-live="polite">
-    <div class="info-top"><span id="infoIndex">STRUCTURE / 01</span><button type="button" id="infoClose" aria-label="Close information">×</button></div>
-    <h2 id="infoHeading"></h2><p id="infoBody"></p><div class="info-disclaimer" id="infoDisclosure">ILLUSTRATIVE MODEL / NOT DIAGNOSTIC</div>
-    <button type="button" id="approachBtn" class="deep-link">APPROACH DETAIL <span>↗</span></button>
+    <div class="info-top"><span id="infoIndex">SELECTED STRUCTURE</span><button type="button" id="infoClose" aria-label="Close information">×</button></div>
+    <h2 id="infoHeading"></h2>
+    <div class="info-fields">
+     <div><span>ZONE</span><strong id="infoZone">—</strong></div>
+     <div><span>PATTERN</span><strong id="infoPattern">—</strong></div>
+     <div><span>DEPTH</span><strong id="infoStage">SURFACE</strong></div>
+    </div>
+    <p id="infoBody"></p><small id="infoSource"></small>
+    <div class="info-disclaimer" id="infoDisclosure" hidden></div>
+    <button type="button" id="approachBtn" class="deep-link">ZOOM INTO STRUCTURE <span>↗</span></button>
   </aside>
   <div class="bottom">
     <div class="bottom-left"><span class="fine-dot"></span><span id="modeLabel">INTERACTIVE 3D / SYNTHETIC DEMO</span></div>
-    <div class="bottom-center">DRAG TO ORBIT <span>·</span> SCROLL TO ENTER <a id="specimenCredit" hidden href="https://commons.wikimedia.org/wiki/File:Iris_of_the_Human_Eye.jpg" target="_blank" rel="noopener noreferrer">PHOTO: MCORRENS · CC BY-SA 3.0 ↗</a></div>
+    <div class="bottom-center"><a id="specimenCredit" hidden href="https://commons.wikimedia.org/wiki/File:Iris_of_the_Human_Eye.jpg" target="_blank" rel="noopener noreferrer">PHOTO CREDIT ↗</a></div>
     <div class="bottom-actions"><button type="button" id="resetBtn" class="subtle-button">RESET <span>↺</span></button><button type="button" id="enterBtn" class="accent-button">ENTER IRIS <span>↗</span></button></div>
   </div>
-  <p class="release-disclaimer">ATLAS REFERENCE · Photographs and simulated 3D anatomy are separate sources. Surface relief and microscopic layers are educational models.</p><div class="loading" id="loading"><span class="loading-symbol"></span><span id="loadingText">BUILDING OPTICAL SCENE</span></div>
+  <p class="release-disclaimer">3D educational atlas · Andrews topography is a historical reference, not a clinical map. <span>Photography and modeled depth are distinct.</span></p><div class="loading" id="loading"><span class="loading-symbol"></span><span id="loadingText">BUILDING OPTICAL SCENE</span></div>
   <div id="toast" class="toast" role="status"></div>
   <div class="dialog-backdrop" id="uploadDialog" hidden>
     <section class="dialog" role="dialog" aria-modal="true" aria-labelledby="uploadTitle">
