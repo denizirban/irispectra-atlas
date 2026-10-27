@@ -48,3 +48,18 @@
 #atlasDetail p{font:11px/1.7 var(--ui);color:#b6c0b6;margin-bottom:0}
 @media(max-width:900px){.atlas-nav{left:auto;right:20px;top:105px;width:148px}.atlas-step{font-size:8px;padding:6px 1px;gap:6px}.atlas-step b{font-size:8px}.atlas-science-panel{left:12px;right:12px;width:auto;top:15%;bottom:84px;max-height:calc(100dvh - 160px)}.atlas-kicker{font-size:8px}.atlas-trust{font-size:7px}}
 @media(max-height:750px) and (min-width:901px){.atlas-nav{top:48%;width:177px}.atlas-step{padding:5px 2px;font-size:8px}}
+
+/* v6 — horizontal depth dock, no collision with the left eye controls */
+.atlas-nav{position:absolute;top:auto!important;bottom:93px!important;left:50%!important;right:auto!important;transform:translateX(-50%);width:min(980px,calc(100vw - 370px))!important;display:flex;align-items:center;gap:12px;padding:10px 14px;background:#0b0e0dd9;border:1px solid #ffffff22;backdrop-filter:blur(12px);border-radius:3px}
+.atlas-kicker{font-size:8px;white-space:nowrap;min-width:84px;border:0;padding:0;gap:4px}
+#atlasSteps{display:flex;min-width:0;flex:1;overflow-x:auto;scrollbar-width:thin;scrollbar-color:#808f8090 transparent;gap:5px}
+.atlas-step{flex:0 0 auto;width:auto;display:flex;gap:6px;align-items:center;padding:9px 10px;border:1px solid transparent;white-space:nowrap;font:8px var(--mono);letter-spacing:0;border-radius:2px}
+.atlas-step.selected{border-color:#b6c8ad77;background:#c7d6b212;color:#e3ebd8}
+.atlas-step b{font-size:8px}
+.atlas-nav>.atlas-trust{display:none}
+.atlas-science-panel{right:14%;top:14%;bottom:156px;max-height:calc(100dvh - 220px)}
+.atlas-journey-nav{display:flex;gap:8px;margin-top:16px}
+.atlas-journey-nav button{flex:1;padding:11px 6px;background:#d6dfc1;color:#172119;border:0;font:9px var(--mono);cursor:pointer}
+.atlas-journey-nav button:first-child{background:transparent;color:#d6dfc1;border:1px solid #d6dfc17a}
+@media(max-width:900px){.atlas-nav{bottom:79px!important;width:calc(100vw - 22px)!important;left:11px!important;right:11px!important;transform:none;padding:7px 8px;gap:7px}.atlas-kicker{min-width:67px;font-size:7px}.atlas-step{padding:8px 7px;font-size:8px}.atlas-science-panel{left:16px;right:16px;top:14%;bottom:142px;max-height:calc(100dvh - 190px)}}
+@media(max-height:680px) and (min-width:901px){.atlas-nav{bottom:75px!important}.atlas-science-panel{top:8%;bottom:142px}}
