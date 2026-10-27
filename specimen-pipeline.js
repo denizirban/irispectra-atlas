@@ -6,7 +6,7 @@ export const SPECIMENS=[
   key:"osmo",title:"ICE / HAZEL",creator:"Osmo Lundell",license:"CC BY-SA 4.0",year:2025,
   url:"https://upload.wikimedia.org/wikipedia/commons/c/c5/Iris_of_human_male.jpg",
   credit:"https://commons.wikimedia.org/wiki/File:Iris_of_human_male.jpg",
-  cx:.518,cy:.512,outer:.365,innerRatio:.44
+  cx:.512,cy:.510,outer:.425,innerRatio:.32
  },
  {
   key:"green",title:"GOLD / SAGE",creator:"Lizapopova143",license:"CC BY 4.0",year:2019,
