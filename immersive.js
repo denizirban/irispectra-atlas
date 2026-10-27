@@ -221,12 +221,12 @@ function exitFundus(){
 function reset(){
  clearTimeout(fundusTimer);current.fundusTransition=false;$('enterBtn').disabled=false;
  if(current.fundus)exitFundus();if(current.rear)toggleRear();current.selected=null;current.focusTarget.set(0,0,0);current.targetYaw=0;current.targetPitch=0;setZoom(.10);$('infoPanel').hidden=true;clearSelection()}
-function approach(p){current.selected=p;if(current.fundus)current.fundusTarget.copy(p);else current.focusTarget.copy(p);setZoom(.84);$('infoPanel').hidden=true}
+function approach(p){current.selected=p;if(current.fundus)current.fundusTarget.copy(p);else current.focusTarget.copy(p);setZoom(.84);$('infoPanel').hidden=true;if(!current.fundus&&p.length()>0.1){setTimeout(()=>window.IrispectraScience?.advanceFromCrypt(),900)}}
 let domPins=[];
 function drawDots(){
  $('hotspots').replaceChildren();domPins=[];
  const list=current.fundus?fundusStage.spots:(current.demo?initPins:current.pinList);
- list.forEach((spec,index)=>{const b=document.createElement('button');b.type='button';b.className='hotspot off';b.innerHTML='<span class="dot"></span><span class="tag"></span>';const type=spec.kind;b.querySelector('.tag').textContent=annotations[type][0].toUpperCase();b.setAttribute('aria-label','Explore '+annotations[type][0]);b.addEventListener('pointerdown',e=>e.stopPropagation());b.onclick=e=>{e.stopPropagation();showPin(spec,index,b)};$('hotspots').appendChild(b);domPins.push({el:b,spec})});
+ list.forEach((spec,index)=>{const b=document.createElement('button');b.type='button';b.className='hotspot off';b.innerHTML='<span class="dot"></span><span class="tag"></span>';const type=spec.kind;b.querySelector('.tag').textContent=annotations[type][0].toUpperCase();b.setAttribute('aria-label','Explore '+annotations[type][0]);b.addEventListener('pointerdown',e=>e.stopPropagation());b.onclick=e=>{e.stopPropagation();showPin(spec,index,b);if(spec.kind==='crypt'&&!current.fundus){const target=pointAt(spec.radius,spec.angle);approach(target)}};$('hotspots').appendChild(b);domPins.push({el:b,spec})});
 }
 function clearSelection(){domPins.forEach(({el})=>el.classList.remove('current'))}
 function showPin(spec,index,el){current.selected=current.fundus?fundusStage.at(spec.u,spec.v):pointAt(spec.radius,spec.angle);if(current.fundus)current.fundusTarget.copy(current.selected);clearSelection();el.classList.add('current');const a=annotations[spec.kind];$('infoIndex').textContent='STRUCTURE / '+String(index+1).padStart(2,'0');$('infoHeading').textContent=a[0];$('infoBody').textContent=a[1];$('infoDisclosure').textContent=current.fundus?'EDUCATIONAL FUNDUS / NOT A RETINAL SCAN':(current.demo?'SYNTHETIC DEMO · ILLUSTRATIVE MARKER':'USER-PLACED MARKER · NOT AUTOMATED DETECTION');$('infoPanel').hidden=false}
@@ -239,7 +239,16 @@ function pointerSetup(){let pinchDistance=0;
  current.targetYaw=clamp(current.targetYaw+(e.clientX-old.x)*.004,-.48,.48);current.targetPitch=clamp(current.targetPitch-(e.clientY-old.y)*.003,-.29,.29)});
  const release=e=>{let p=pointers.get(e.pointerId);if(!p)return;pointers.delete(e.pointerId);if(pointers.size<2)pinchDistance=0;if(current.place&&Math.hypot(e.clientX-p.startX,e.clientY-p.startY)<9){rayPin(e.clientX,e.clientY)}};
  ['pointerup','pointercancel','lostpointercapture'].forEach(t=>canvas.addEventListener(t,release));
- canvas.addEventListener('keydown',e=>{if(e.key==='+'||e.key==='='){setZoom(current.targetZoom+.08);e.preventDefault()}if(e.key==='-'){setZoom(current.targetZoom-.08);e.preventDefault()}if(e.key==='Escape'){reset()}});
+ document.addEventListener('keydown',e=>{
+  const tag=document.activeElement?.tagName;
+  if(['INPUT','TEXTAREA','SELECT'].includes(tag)||document.activeElement?.isContentEditable)return;
+  if(e.key==='+'||e.key==='='||e.key==='ArrowUp'||e.key==='PageUp'){e.preventDefault();setZoom(current.targetZoom+.075)}
+  else if(e.key==='-'||e.key==='_'||e.key==='ArrowDown'||e.key==='PageDown'){e.preventDefault();setZoom(current.targetZoom-.075)}
+  else if(e.key==='ArrowRight'&&e.altKey){e.preventDefault();window.IrispectraScience?.next()}
+  else if(e.key==='ArrowLeft'&&e.altKey){e.preventDefault();window.IrispectraScience?.previous()}
+  else if(e.key==='0'||e.key==='Home'){e.preventDefault();reset()}
+ },{passive:false});
+  canvas.addEventListener('keydown',e=>{if(e.key==='+'||e.key==='='){setZoom(current.targetZoom+.08);e.preventDefault()}if(e.key==='-'){setZoom(current.targetZoom-.08);e.preventDefault()}if(e.key==='Escape'){reset()}});
  canvas.tabIndex=0;
 }
 function openDialog(id){$(id).hidden=false;current.animate=false}
