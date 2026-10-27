@@ -7,7 +7,7 @@
   <header class="header">
     <a class="brand" href="/" aria-label="Irispectra home"><img class="brand-mark" src="/irispectra-mark.svg" alt=""><span>IRISPECTRA</span></a>
     
-    <button class="text-button top-guide" id="aboutBtn" type="button">ABOUT <span class="arrow">↗</span></button>
+    <button class="tour-control" id="tourBtn" type="button" aria-pressed="false"><span class="tour-dot"></span> START DISCOVERY</button><button class="text-button top-guide" id="aboutBtn" type="button">ABOUT <span class="arrow">↗</span></button>
   </header>
   <div class="side left">
     <div class="side-caption"><span id="sceneNumber">01 / THE HUMAN EYE</span></div>
@@ -33,7 +33,7 @@
       <button id="zoomOut" type="button" aria-label="Zoom out">−</button>
     </div>
   </div>
-  <div id="depthHint" class="depth-hint" aria-live="polite"><span id="depthTitle">WHOLE EYE</span><small id="depthExplainer">SCROLL OR PINCH TO EXPLORE</small></div>
+  <div id="tourCaption" class="tour-caption" hidden aria-live="polite"><span id="tourCount">01 / 05</span><strong id="tourText">Explore the visible eye</strong><button type="button" id="tourSkip">EXIT</button></div><div id="depthHint" class="depth-hint" aria-live="polite"><span id="depthTitle">WHOLE EYE</span><small id="depthExplainer">SCROLL OR PINCH TO EXPLORE</small></div>
   <div id="hotspots" class="hotspots" aria-label="Anatomy hotspots"></div><button type="button" id="morphToggle" class="morph-trigger" aria-expanded="false" aria-controls="morphChart">IRIS MAP <span>◎</span></button>
 <section id="morphChart" class="morph-chart" hidden aria-label="Interactive iris positional morphology map">
  <div class="morph-head"><span>IRISPECTRA / MORPHOLOGY EXPLORER</span><button type="button" data-close aria-label="Close morphology map">×</button></div>
