@@ -47,6 +47,14 @@ function activate(i){
  $('atlasArt').innerHTML=['anterior','tissue','cell','molecule','neural'].includes(x[5])?diagram(x[5]):'<div class="atlas-live">◉<small>INTERACTIVE 3D ANATOMY<br>SCENE BEHIND PANEL</small></div>';
  $('atlasFacts').innerHTML=facts[i].map((f,j)=>'<button type="button" data-fact="'+j+'" class="atlas-fact"><b>'+String(j+1).padStart(2,'0')+'</b>'+f[0]+' <span>↗</span></button>').join('');
  document.querySelectorAll('[data-fact]').forEach(b=>b.onclick=()=>showFact(i,+b.dataset.fact));
+ if(i>=3&&i<=5){
+  const nav=document.createElement('div');nav.className='atlas-journey-nav';
+  nav.innerHTML='<button type="button" id="scienceBack">← PREVIOUS SCALE</button><button type="button" id="scienceNext">'+(i===5?'RETURN TO IRIS ↗':'ENTER '+layers[i+1][0]+' →')+'</button>';
+  document.getElementById('atlasDetail').after(nav);
+  nav.querySelector('#scienceBack').onclick=()=>activate(i===3?1:i-1);
+  nav.querySelector('#scienceNext').onclick=()=>activate(i===5?1:i+1);
+ }else{document.querySelector('.atlas-journey-nav')?.remove()}
+
  showFact(i,0);
  if(i===0)document.getElementById('resetBtn')?.click();
  if(i===1){document.getElementById('enterBtn')?.click(); if(!document.getElementById('anatomyBtn')?.classList.contains('active'))document.getElementById('anatomyBtn')?.click()}
