@@ -58,7 +58,7 @@ function sampleIris(size=2048){
 }
 function makeTexture(source){
  if(texture)texture.dispose();texture=new THREE.CanvasTexture(source);texture.colorSpace=THREE.SRGBColorSpace;texture.anisotropy=Math.min(12,renderer.capabilities.getMaxAnisotropy());texture.needsUpdate=true;
- if(irisMaterial){irisMaterial.map=texture;irisMaterial.bumpMap=current.demo?texture:null;irisMaterial.bumpScale=current.demo?.013:0;irisMaterial.needsUpdate=true;}
+ if(irisMaterial){irisMaterial.map=texture;irisMaterial.bumpMap=current.demo?texture:null;irisMaterial.bumpScale=current.demo ? 0.013 : 0;irisMaterial.needsUpdate=true;}
 }
 function makeIris(){
  const segments=300, rings=103,verts=[],uv=[],indices=[];for(let j=0;j<=rings;j++){const r=.195+(.63-.195)*j/rings;for(let i=0;i<=segments;i++){let a=i/segments*Math.PI*2,xx=Math.cos(a)*r,yy=Math.sin(a)*r;verts.push(xx,yy,zIris(r,a));uv.push(.5+xx/1.26,.5+yy/1.26);if(j<rings&&i<segments){let n=j*(segments+1)+i;indices.push(n,n+1,n+segments+1,n+1,n+segments+2,n+segments+1)}}}
@@ -73,7 +73,6 @@ function skinSurface(upper,tx){
  for(let i=0;i<=N;i++){const x=-1.34+2.68*i/N,fx=clamp(x/1.26,-1,1),envelope=Math.sqrt(Math.max(0,1-fx*fx)),edge=upper?.48*envelope+.018:-.47*envelope-.015;
  for(let j=0;j<=M;j++){let t=j/M,eased=t*t*(3-2*t),y=lerp(edge,upper?1.53:-1.54,t),rr=x*x+edge*edge,zEdge=Math.sqrt(Math.max(.12,1.23**2-rr))+.055,z=lerp(zEdge,.29-.045*(x/1.34)**2,eased);
  z+=Math.cos(t*Math.PI)*.01;verts.push(x,y,z);uv.push(i/N*2,j/M*1.4);if(i<N&&j<M){let n=i*(M+1)+j;faces.push(n,n+M+1,n+1,n+1,n+M+1,n+M+2)}}}
- }
  const geo=new THREE.BufferGeometry();geo.setAttribute('position',new THREE.Float32BufferAttribute(verts,3));geo.setAttribute('uv',new THREE.Float32BufferAttribute(uv,2));geo.setIndex(faces);geo.computeVertexNormals();
  const mat=new THREE.MeshStandardMaterial({map:tx,roughness:.96,side:THREE.DoubleSide,metalness:0,color:0xffffff});
  const mesh=new THREE.Mesh(geo,mat);mesh.renderOrder=5;eyeGroup.add(mesh);
@@ -103,7 +102,10 @@ function makeScene(){
  const lightA=new THREE.DirectionalLight(0xffdfbf,2.45);lightA.position.set(-3,4,6);scene.add(lightA);
  const lightB=new THREE.DirectionalLight(0xbadcd8,.85);lightB.position.set(4,-1,5);scene.add(lightB);
  const lightC=new THREE.PointLight(0xffffff,.7);lightC.position.set(-1,0,4);scene.add(lightC);
- eyeWhite=new THREE.Mesh(new THREE.SphereGeometry(1.23,128,96),new THREE.MeshPhysicalMaterial({color:0xd8cec4,roughness:.36,clearcoat:.7,clearcoatRoughness:.11}));eyeWhite.renderOrder=0;eyeGroup.add(eyeWhite);
+ const scleraGeo=new THREE.BufferGeometry(),verts=[],indices=[],steps=160,levels=110,R=1.23,t0=Math.asin(.645/R);
+ for(let j=0;j<=levels;j++){let theta=t0+(Math.PI-t0)*j/levels;for(let i=0;i<=steps;i++){let phi=i/steps*2*Math.PI,rr=R*Math.sin(theta);verts.push(rr*Math.cos(phi),rr*Math.sin(phi),R*Math.cos(theta));if(j<levels&&i<steps){let n=j*(steps+1)+i;indices.push(n,n+1,n+steps+1,n+1,n+steps+2,n+steps+1)}}}
+ scleraGeo.setAttribute('position',new THREE.Float32BufferAttribute(verts,3));scleraGeo.setIndex(indices);scleraGeo.computeVertexNormals();
+ eyeWhite=new THREE.Mesh(scleraGeo,new THREE.MeshPhysicalMaterial({color:0xd8cec4,roughness:.36,clearcoat:.7,clearcoatRoughness:.11,side:THREE.DoubleSide}));eyeWhite.renderOrder=0;eyeGroup.add(eyeWhite);
  // recess in which the pupil sits
  const hole=new THREE.Mesh(new THREE.CylinderGeometry(.18,.18,.13,128,1,true),new THREE.MeshStandardMaterial({color:0x090a09,roughness:1,side:THREE.DoubleSide}));hole.rotation.x=Math.PI/2;hole.position.z=1.19;hole.renderOrder=2;eyeGroup.add(hole);
  pupil=new THREE.Mesh(new THREE.CircleGeometry(.189,128),new THREE.MeshBasicMaterial({color:0x030504}));pupil.position.z=1.13;pupil.renderOrder=2;eyeGroup.add(pupil);
