@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#050607"><meta name="description" content="IRISPECTRA — an interactive 3D exploration of the human iris."><title>IRISPECTRA — INTO THE IRIS</title><link rel="stylesheet" href="/immersive.css"></head>
+<body>
+<main class="experience" id="experience" aria-label="Interactive three-dimensional iris atlas">
+  <canvas id="scene" aria-label="Rotatable 3D eye and iris with zoom"></canvas>
+  <div class="falloff" aria-hidden="true"></div>
+  <header class="header">
+    <a class="brand" href="/" aria-label="Irispectra home"><span class="brand-symbol"><i></i></span><span>IRISPECTRA</span></a>
+    <span class="header-sub">OPTICAL ATLAS <span class="mute">—</span> VOL. 001</span>
+    <button class="text-button top-guide" id="aboutBtn" type="button">ABOUT <span class="arrow">↗</span></button>
+  </header>
+  <div class="side left">
+    <div class="side-caption"><span class="shortline"></span> <span id="sceneNumber">01 / THE HUMAN EYE</span></div>
+    <h1 id="sceneTitle">THE WORLD<br>WITHIN.</h1>
+    <p id="sceneNote">A closer look at what makes every iris unique.</p>
+    <div class="links">
+      <button class="control active" id="exploreBtn" type="button"><span class="tiny-circle"></span> EXPLORE</button>
+      <button class="control" id="anatomyBtn" type="button"><span class="tiny-circle"></span> ANATOMY</button>
+      <button class="control" id="uploadBtn" type="button"><span class="tiny-circle"></span> YOUR IRIS <span class="arrow">↗</span></button>
+    </div>
+  </div>
+  <div class="side right">
+    <span id="textureStatus">SPECIMEN / 001</span>
+    <span>RENDER / WEBGL</span>
+    <span id="zoomDisplay">MAG / 1.0×</span>
+    <div class="zoom-rail">
+      <button id="zoomIn" type="button" aria-label="Zoom in">+</button>
+      <input id="zoomRange" type="range" min="0" max="100" value="10" aria-label="Camera magnification">
+      <button id="zoomOut" type="button" aria-label="Zoom out">−</button>
+    </div>
+  </div>
+  <div id="hotspots" class="hotspots" aria-label="Anatomy hotspots"></div>
+  <aside class="info-panel" id="infoPanel" hidden aria-live="polite">
+    <div class="info-top"><span id="infoIndex">STRUCTURE / 01</span><button type="button" id="infoClose" aria-label="Close information">×</button></div>
+    <h2 id="infoHeading"></h2><p id="infoBody"></p><div class="info-disclaimer" id="infoDisclosure">ILLUSTRATIVE MODEL / NOT DIAGNOSTIC</div>
+    <button type="button" id="approachBtn" class="deep-link">APPROACH DETAIL <span>↗</span></button>
+  </aside>
+  <div class="bottom">
+    <div class="bottom-left"><span class="fine-dot"></span><span id="modeLabel">INTERACTIVE 3D / SYNTHETIC DEMO</span></div>
+    <div class="bottom-center">DRAG TO ORBIT <span>·</span> SCROLL TO ENTER</div>
+    <div class="bottom-actions"><button type="button" id="resetBtn" class="subtle-button">RESET <span>↺</span></button><button type="button" id="enterBtn" class="accent-button">ENTER IRIS <span>↗</span></button></div>
+  </div>
+  <div class="loading" id="loading"><span class="loading-symbol"></span><span id="loadingText">BUILDING OPTICAL SCENE</span></div>
+  <div id="toast" class="toast" role="status"></div>
+  <div class="dialog-backdrop" id="uploadDialog" hidden>
+    <section class="dialog" role="dialog" aria-modal="true" aria-labelledby="uploadTitle">
+      <div class="dialog-kicker">IRISPECTRA / PERSONAL MODE <button type="button" class="close-dialog" id="uploadClose" aria-label="Close upload">×</button></div>
+      <h2 id="uploadTitle">Bring your iris<br>into focus.</h2>
+      <p>Upload a clear eye photograph. Align the iris inside the circle; the image will be mapped onto the 3D model. Your original photo stays in your browser.</p>
+      <label class="file-label" for="eyeFile">SELECT AN EYE PHOTO <span>↗</span></label>
+      <input id="eyeFile" accept="image/jpeg,image/png,image/webp" type="file" hidden>
+      <div id="cropArea" hidden>
+        <div class="crop-preview"><canvas id="cropCanvas" width="400" height="270"></canvas><div class="crop-circle"></div></div>
+        <div class="crop-options">
+          <label>HORIZONTAL <input type="range" id="cropX" min="0" max="100" value="50"></label>
+          <label>VERTICAL <input type="range" id="cropY" min="0" max="100" value="50"></label>
+          <label>IRIS SIZE <input type="range" id="cropRadius" min="6" max="45" value="30"></label>
+        </div>
+        <button class="apply-button" type="button" id="applyUpload">APPLY TO 3D EYE <span>↗</span></button>
+      </div>
+      <small>PHOTO-BASED COLOR AND PATTERN. DEPTH IS AN ARTISTIC SIMULATION, NOT A MEASUREMENT OF YOUR IRIS.</small>
+    </section>
+  </div>
+  <div class="dialog-backdrop" id="aboutDialog" hidden>
+    <section class="dialog about-dialog" role="dialog" aria-modal="true" aria-labelledby="aboutTitle">
+      <div class="dialog-kicker">IRISPECTRA / NOTES <button type="button" class="close-dialog" id="aboutClose" aria-label="Close">×</button></div>
+      <h2 id="aboutTitle">An optical exploration.</h2>
+      <p>This scene is an original procedural 3D illustration, not a medical scan or a TurboSquid model. The demo iris is synthetic. Personal photos become image textures on a 3D surface; the 3D relief is illustrative.</p>
+      <p>Anatomical labels explain common iris structures. They do not identify conditions or determine clinical findings from your photo.</p>
+    </section>
+  </div>
+  <div class="annotate" id="annotate" hidden><label for="annotationType">MANUAL ANNOTATION</label><select id="annotationType"><option value="crypt">CRYPT-LIKE REGION</option><option value="collarette">COLLARETTE</option><option value="furrow">CONTRACTION FURROW</option><option value="radial">RADIAL TEXTURE</option><option value="limbal">LIMBAL BOUNDARY</option></select><button id="placeAnnotation" type="button">+ PLACE</button><button id="clearAnnotations" type="button">CLEAR</button></div>
+</main>
+<script type="module" src="/immersive.js"></script></body></html>
