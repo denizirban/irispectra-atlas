@@ -79,3 +79,14 @@
 .atlas-step{transition:background .18s ease,border-color .18s ease,color .18s ease}
 @media(max-width:900px){.atlas-nav{width:calc(100vw - 20px)!important}.atlas-science-panel{top:15%;left:16px;right:16px;width:auto;bottom:153px;max-height:calc(100dvh - 230px);padding:17px 18px}.atlas-science-panel #atlasArt svg{max-height:145px}}
 @media(max-height:640px){.atlas-science-panel{top:8%;bottom:122px;max-height:calc(100dvh - 155px)}.atlas-nav{bottom:73px!important}}
+
+.light-control{margin-top:23px;text-align:right;width:170px;margin-left:auto;pointer-events:auto}
+.light-control label{display:block;font:8px/1.6 var(--mono);letter-spacing:.04em;color:#d0d8c8}
+.light-control label span{display:inline-block;margin-left:7px;color:var(--lime)}
+.light-control input{width:100%;accent-color:#d6dfc1;margin-top:9px;cursor:pointer}
+.light-control small{display:block;font:7px/1.5 var(--mono);color:#89948d;margin-top:5px}
+.depth-hint{position:absolute;left:50%;transform:translateX(-50%);top:75px;z-index:3;display:flex;align-items:center;flex-direction:column;gap:5px;pointer-events:none;text-align:center;text-shadow:0 2px 18px #000}
+.depth-hint span{font:10px var(--mono);letter-spacing:.18em;color:#e3eadd}
+.depth-hint small{font:8px var(--mono);color:#9daaa1;letter-spacing:.07em}
+.depth-hint.micro span{color:#d6dfc1}
+@media(max-width:900px){.light-control{width:112px;margin-top:11px}.light-control label{font-size:7px}.light-control small{font-size:6px}.depth-hint{top:64px;width:65%}.depth-hint span{font-size:8px}.depth-hint small{font-size:7px}}
