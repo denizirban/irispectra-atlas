@@ -1,43 +1,73 @@
-// Interactive Andrews-inspired positional chart. Original geometry; no book graphics reproduced.
-// Anatomical overlays and historic topographical labels are deliberately separate datasets.
-import {MORPHOLOGY,polarRegion} from './morphology-data.js';
-const N=12,NS='http://www.w3.org/2000/svg';
-const chart=document.querySelector('#morphChart');
+import {MORPHOLOGY} from './morphology-data.js';
+import {CHART_ZONES,zoneAt,zoneForEyePoint} from './chart-zones.js';
+const chart=document.querySelector('#morphChart'),NS='http://www.w3.org/2000/svg';
 if(chart){
- const view=chart.querySelector('svg'),caption=chart.querySelector('[data-readout]'),description=chart.querySelector('[data-description]');
- const laterality=chart.querySelector('[data-laterality]'),historical=chart.querySelector('[data-historical]'),features=chart.querySelector('[data-pattern]'),patternNotes=chart.querySelector('[data-pattern-detail]');
- const rings=[{name:'Pupillary zone',lo:34,hi:65},{name:'Inner ciliary',lo:65,hi:96},{name:'Middle ciliary',lo:96,hi:126},{name:'Peripheral ciliary',lo:126,hi:158}];
- const featureList=['crypt','collarette','furrow','radial','lacuna','pigment','mammillation','brushfield','pupil'];
- let side='Rx',region={ring:1,sector:12},activeFeature='crypt';
- function element(t,attrs,parent){const e=document.createElementNS(NS,t);for(const [k,v] of Object.entries(attrs))e.setAttribute(k,String(v));parent.appendChild(e);return e;}
- function polar(r,a){return [180+r*Math.sin(a),180-r*Math.cos(a)];}
- function arc(lo,hi,a0,a1){const [x0,y0]=polar(hi,a0),[x1,y1]=polar(hi,a1),[x2,y2]=polar(lo,a1),[x3,y3]=polar(lo,a0);return 'M'+x0+' '+y0+' A'+hi+' '+hi+' 0 0 1 '+x1+' '+y1+' L'+x2+' '+y2+' A'+lo+' '+lo+' 0 0 0 '+x3+' '+y3+' Z';}
- const group=element('g',{},view),labelGroup=element('g',{'pointer-events':'none'},view);
- function zoneCode(r,s){return 'R'+(r+1)+' · '+String(s).padStart(2,'0')+':00';}
- // Historic labels from the user-supplied 2011 Andrews diagram are reference vocabulary,
- // not coordinate-registered diagnostic regions; exact boundaries deliberately not asserted.
- const historicalLabels={Rx:{12:'cerebrum / frontal mapping',3:'sinuses / ear sectors',6:'pelvic / lower sectors',9:'lung / cervical sectors'},Lx:{12:'cerebrum / frontal mapping',3:'lung / cervical sectors',6:'pelvic / lower sectors',9:'sinuses / ear sectors'}};
- function render(){
-  group.replaceChildren();labelGroup.replaceChildren();
-  for(let i=0;i<4;i++)for(let j=0;j<12;j++){
-   const hr=j||12,a0=(j-.5)*Math.PI/6,a1=(j+.5)*Math.PI/6;
-   const selected=region.ring===i&&region.sector===hr;
-   const e=element('path',{d:arc(rings[i].lo,rings[i].hi,a0,a1),fill:selected?'#dce7c6':i===0?'#d4b88c':i===1?'#99a990':i===2?'#7f9a9d':'#687b8c','fill-opacity':selected?'.52':'.16',stroke:selected?'#e4efce':'#9fb0a4','stroke-opacity':selected?'1':'.34','stroke-width':selected?2:.8,role:'button',tabindex:0,'aria-label':rings[i].name+', '+hr+' o’clock','data-zone':i+'-'+hr},group);
-   const select=()=>{region={ring:i,sector:hr};render();};
-   e.addEventListener('click',select);e.addEventListener('keydown',ev=>{if(ev.key==='Enter'||ev.key===' '){ev.preventDefault();select();}});
-  }
-  element('circle',{cx:180,cy:180,r:33,fill:'#040706',stroke:'#c8ab78','stroke-width':4},labelGroup);
-  for(let i=0;i<12;i++){const h=i||12,p=polar(175,i*Math.PI/6);const text=element('text',{x:p[0],y:p[1]+3,'text-anchor':'middle',fill:'#d4ddd0','font-size':10,'font-family':'ui-monospace, monospace'},labelGroup);text.textContent=String(h);}
-  caption.textContent=side+' / '+rings[region.ring].name.toUpperCase()+' / '+zoneCode(region.ring,region.sector);
-  const h=historicalLabels[side][region.sector];
-  description.textContent='Reference clock: '+region.sector+':00. Ring '+(region.ring+1)+' of 4. '+(h&&region.ring>0?'Historic Andrews map nearby: '+h+'. ':'')+'This is a positional atlas reference; labels are not pixel-registered or diagnostic.';
-  const f=MORPHOLOGY[activeFeature];
-  patternNotes.textContent=f.name+' · '+f.patterns.join(' · ')+'. Measures: '+f.measures.join(', ')+'. '+f.source+'.';
+ const svg=chart.querySelector('svg'),readout=chart.querySelector('[data-readout]'),
+ description=chart.querySelector('[data-description]'),featureList=chart.querySelector('[data-pattern]'),
+ patternDetail=chart.querySelector('[data-pattern-detail]'),laterality=chart.querySelector('[data-laterality]');
+ const rings=[{name:'Pupillary',inner:33,outer:65},{name:'Inner ciliary',inner:65,outer:96},
+ {name:'Mid ciliary',inner:96,outer:126},{name:'Peripheral',inner:126,outer:158}];
+ let side='Rx',feature='crypt',minute=20.7,rho=.59;
+ const add=(t,attributes,parent=svg)=>{const el=document.createElementNS(NS,t);for(const [k,v] of Object.entries(attributes))el.setAttribute(k,String(v));parent.appendChild(el);return el};
+ const pos=(r,m)=>{const a=m/60*Math.PI*2;return [180+r*Math.sin(a),180-r*Math.cos(a)]};
+ const arc=(ri,ro,m0,m1)=>{const a=pos(ro,m0),b=pos(ro,m1),c=pos(ri,m1),d=pos(ri,m0);return 'M'+a+' L'+b+' A'+ro+' '+ro+' 0 0 1 '+c+' L'+d+' A'+ri+' '+ri+' 0 0 0 '+a+' Z'};
+ const group=add('g',{}),markers=add('g',{}),caption=add('g',{'pointer-events':'none'});
+ function read(){
+  const hist=zoneAt(side,minute,rho),label=hist?.name||rings[Math.min(3,Math.max(0,Math.floor((rho-.19)*4)))].name+' iris';
+  const d=MORPHOLOGY[feature];
+  const examples=d?.patterns||[];
+  readout.textContent=label;
+  description.textContent=rings[Math.min(3,Math.max(0,Math.floor((rho-.19)*4)))].name+' · '+Math.round(minute)+' / 60 · '+(side==='Rx'?'Right':'Left')+' iris';
+  patternDetail.textContent=(d?.name||'Iris surface')+' — '+(examples.length?examples.join(' · '):'Visible structure')+'. '+(d?.note||'');
+  chart.dataset.zone=label;chart.dataset.zoneMinute=String(minute);
+  window.IrispectraMorphology.current={name:label,feature,minute,rho,side};
+  return {name:label,feature,minute,rho,side};
  }
- for(const sideButton of chart.querySelectorAll('[data-eye]'))sideButton.addEventListener('click',()=>{side=sideButton.dataset.eye;laterality.textContent=side;chart.querySelectorAll('[data-eye]').forEach(b=>b.setAttribute('aria-pressed',String(b===sideButton)));render();});
- featureList.forEach(key=>{const e=document.createElement('button');e.type='button';e.textContent=MORPHOLOGY[key].name;e.className='morph-pattern'+(key===activeFeature?' active':'');e.onclick=()=>{activeFeature=key;features.querySelectorAll('button').forEach(b=>b.classList.remove('active'));e.classList.add('active');render();};features.appendChild(e);});
- document.querySelector('#morphToggle')?.addEventListener('click',()=>{const open=chart.hidden;chart.hidden=!open;document.querySelector('#morphToggle').setAttribute('aria-expanded',String(open));});
- chart.querySelector('[data-close]').addEventListener('click',()=>{chart.hidden=true;document.querySelector('#morphToggle').setAttribute('aria-expanded','false');});
- window.IrispectraMorphology={focus:({radius,angle,kind})=>{const loc=polarRegion(radius,angle);region={ring:Math.max(0,Math.min(3,Math.floor(loc.rPercent/25))),sector:loc.clock};if(kind&&MORPHOLOGY[kind])activeFeature=kind;render();}};
+ function render(){
+  group.replaceChildren();markers.replaceChildren();caption.replaceChildren();
+  for(let i=0;i<4;i++)for(let j=0;j<60;j++){
+   const m=j+.5,ri=rings[i].inner,ro=rings[i].outer,selected=Math.abs((m-minute+30)%60-30)<1&&rho*158>=ri&&rho*158<ro;
+   const el=add('path',{d:arc(ri,ro,j,j+1),fill:selected?'#d7e9c5':i===0?'#a7a16e':i===1?'#8d9d86':i===2?'#658885':'#546c75',opacity:selected?.74:.24,stroke:'#b4c5ad','stroke-width':selected?1:.22,role:'button',tabindex:0,'aria-label':'Map position '+j+' of 60'},group);
+   function choose(){minute=m;rho=(ri+ro)/316;render();notify();}
+   el.addEventListener('click',choose);
+   el.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();choose();}});
+  }
+  CHART_ZONES[side].forEach(([label,m,r])=>{
+   const [x,y]=pos(r*158,m),active=Math.abs((m-minute+30)%60-30)<.75&&Math.abs(r-rho)<.07;
+   const mark=add('circle',{cx:x,cy:y,r:active?5:3.1,fill:active?'#f4fce9':'#d6e4c8',stroke:'#0c1613','stroke-width':1,opacity:.92,role:'button',tabindex:0,'aria-label':label},markers);
+   const choose=e=>{if(e)e.stopPropagation();minute=m;rho=r;render();notify()};
+   mark.addEventListener('click',choose);mark.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();choose(e);}});
+   if(active){const t=add('text',{x:x+8,y:y-8,fill:'#fff','font-size':10,'font-family':'ui-monospace, monospace'},caption);t.textContent=label;}
+  });
+  add('circle',{cx:180,cy:180,r:33,fill:'#050707',stroke:'#d6bd88','stroke-width':2.2},caption);
+  for(let m=0;m<60;m+=5){const [x,y]=pos(172,m),el=add('text',{x,y:y+3,fill:'#b9c6bb','font-size':9,'text-anchor':'middle','font-family':'monospace'},caption);el.textContent=String(m).padStart(2,'0');}
+  read();
+ }
+ function notify(){window.dispatchEvent(new CustomEvent('irispectra-map-select',{detail:read()}));}
+ for(const b of chart.querySelectorAll('[data-eye]'))b.addEventListener('click',()=>{
+  side=b.dataset.eye;laterality.textContent=side;
+  chart.querySelectorAll('[data-eye]').forEach(x=>x.setAttribute('aria-pressed',String(x===b)));
+  render();notify();
+ });
+ for(const [key,d] of Object.entries(MORPHOLOGY)){
+  const b=document.createElement('button');b.type='button';b.className='morph-pattern';b.textContent=d.name;b.dataset.feature=key;
+  b.addEventListener('click',()=>{feature=key;featureList.querySelectorAll('button').forEach(v=>v.classList.toggle('active',v===b));render();notify()});
+  featureList.appendChild(b);
+ }
+ featureList.querySelector('[data-feature="crypt"]').classList.add('active');
+ document.querySelector('#morphToggle')?.addEventListener('click',()=>{
+  const visible=chart.hidden;chart.hidden=!visible;document.querySelector('#morphToggle').setAttribute('aria-expanded',String(visible));
+ });
+ chart.querySelector('[data-close]').addEventListener('click',()=>{chart.hidden=true;document.querySelector('#morphToggle').setAttribute('aria-expanded','false')});
+ window.IrispectraMorphology={
+  current:null,
+  get side(){return side},
+  focus:({radius,angle,kind})=>{
+   const loc=zoneForEyePoint(side,radius,angle);minute=loc.minute;rho=loc.rho;
+   if(kind&&MORPHOLOGY[kind])feature=kind;
+   featureList.querySelectorAll('button').forEach(b=>b.classList.toggle('active',b.dataset.feature===feature));
+   render();return read();
+  }
+ };
  render();
 }
