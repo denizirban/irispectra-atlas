@@ -1,5 +1,6 @@
 import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js";
 import {createFundusStage} from "./fundus.js";
+import {createScalePaths} from "./scale-paths.js";
 const $=x=>document.getElementById(x),canvas=$('scene'),experience=$('experience');
 const annotations={
  pupil:['Pupil','The dark central opening that admits light. Its appearance in a still photograph cannot measure the pupil light reflex.'],
@@ -18,6 +19,7 @@ const smooth=(a,b,t)=>{t=clamp((t-a)/(b-a),0,1);return t*t*(3-2*t)};
 const lerp=(a,b,t)=>a+(b-a)*t;
 function seeded(seed){return()=>{seed=(seed*1664525+1013904223)>>>0;return seed/4294967296}};
 const rand=seeded(9348);
+let scalePaths;
 let renderer,scene,camera,eyeGroup,iris,irisMaterial,eyeWhite,cornea,pupil,lighting,texture=null,retina,opticNerve,retinalVessels,fundusStage,fundusTimer;
 const current={zoom:.10,targetZoom:.10,yaw:0,targetYaw:0,pitch:0,targetPitch:0,focus:new THREE.Vector3(),focusTarget:new THREE.Vector3(),demo:true,anatomy:false,place:false,pinKind:'crypt',pinList:[],selected:null,animate:true,irisPalette:0,rear:false};
 current.fundus=false;current.fundusTransition=false;current.fundusLook=new THREE.Vector3(0,0,-1.115);current.fundusTarget=new THREE.Vector3(0,0,-1.115);
@@ -293,6 +295,7 @@ const ZOOM_DEPTH=[
 ];
 let lastDepth=-1;
 function updatePassiveDepth(){
+  scalePaths?.update(current.zoom);
  if(current.rear||current.fundus)return;
  const z=current.zoom,stage=z<.2?0:z<.49?1:z<.71?2:z<.84?3:z<.94?4:5;
  if(stage===lastDepth)return;lastDepth=stage;
@@ -311,6 +314,7 @@ function setZoom(value){
  if(current.fundusTransition&&value<current.targetZoom){clearTimeout(fundusTimer);current.fundusTransition=false;$('enterBtn').disabled=false;}
  current.targetZoom=clamp(value,0,1);if(current.fundus)return;if(current.targetZoom<.60){current.selected=null;current.focusTarget.set(0,0,current.targetZoom<.2?0:1.13);$('infoPanel').hidden=true;clearSelection()}if(current.rear)return;if(current.targetZoom>.62){$('sceneNumber').textContent='02 / THE IRIS';$('sceneTitle').innerHTML='LOOK<br>CLOSER.';$('sceneNote').textContent='Every fiber tells a story of structure.'}else{$('sceneNumber').textContent='01 / THE HUMAN EYE';$('sceneTitle').innerHTML='THE WORLD<br>WITHIN.';$('sceneNote').textContent='A closer look at what makes every iris unique.'}}
 function enterFundus(){
+  scalePaths?.select('retina');
  if(current.fundus||current.fundusTransition)return;
  if(current.rear)toggleRear();
  current.fundusTransition=true;current.selected=null;current.targetYaw=0;current.targetPitch=0;
@@ -329,6 +333,7 @@ function enterFundus(){
  },window.matchMedia('(prefers-reduced-motion: reduce)').matches?80:650);
 }
 function exitFundus(){
+  scalePaths?.select('iris');
  clearTimeout(fundusTimer);current.fundusTransition=false;current.fundus=false;
  eyeGroup.visible=true;fundusStage.group.visible=false;current.anatomy=false;current.selected=null;
  current.focusTarget.set(0,0,0);current.targetYaw=0;current.targetPitch=0;camera.position.set(0,0,4.7);
@@ -349,15 +354,31 @@ function drawDots(){
  list.forEach((spec,index)=>{const b=document.createElement('button');b.type='button';b.className='hotspot off';b.innerHTML='<span class="dot"></span><span class="tag"></span>';const type=spec.kind;b.querySelector('.tag').textContent=annotations[type][0].toUpperCase();b.setAttribute('aria-label','Explore '+annotations[type][0]);b.addEventListener('pointerdown',e=>e.stopPropagation());b.onclick=e=>{e.stopPropagation();showPin(spec,index,b);if(spec.kind==='crypt'&&!current.fundus){const target=pointAt(spec.radius,spec.angle);approach(target)}};$('hotspots').appendChild(b);domPins.push({el:b,spec})});
 }
 function clearSelection(){domPins.forEach(({el})=>el.classList.remove('current'))}
-function showPin(spec,index,el){current.selected=current.fundus?fundusStage.at(spec.u,spec.v):pointAt(spec.radius,spec.angle);if(current.fundus)current.fundusTarget.copy(current.selected);clearSelection();el.classList.add('current');const a=annotations[spec.kind];$('infoIndex').textContent='STRUCTURE / '+String(index+1).padStart(2,'0');$('infoHeading').textContent=a[0];$('infoBody').textContent=a[1];$('infoDisclosure').textContent=current.fundus?'EDUCATIONAL FUNDUS / NOT A RETINAL SCAN':(current.demo?'SYNTHETIC DEMO · ILLUSTRATIVE MARKER':'USER-PLACED MARKER · NOT AUTOMATED DETECTION');$('infoPanel').hidden=false}
+function showPin(spec,index,el){scalePaths?.select(({fundusVessels:'vessels',fundusDisc:'nerve',fundusMacula:'retina',fundusRetina:'retina'}[spec.kind])||(current.fundus?'retina':'iris'));current.selected=current.fundus?fundusStage.at(spec.u,spec.v):pointAt(spec.radius,spec.angle);if(current.fundus)current.fundusTarget.copy(current.selected);clearSelection();el.classList.add('current');const a=annotations[spec.kind];$('infoIndex').textContent='STRUCTURE / '+String(index+1).padStart(2,'0');$('infoHeading').textContent=a[0];$('infoBody').textContent=a[1];$('infoDisclosure').textContent=current.fundus?'EDUCATIONAL FUNDUS / NOT A RETINAL SCAN':(current.demo?'SYNTHETIC DEMO · ILLUSTRATIVE MARKER':'USER-PLACED MARKER · NOT AUTOMATED DETECTION');$('infoPanel').hidden=false}
 function updateDots(){for(const {el,spec} of domPins){if(!current.anatomy){el.classList.add('off');continue}const v=current.fundus?fundusStage.at(spec.u,spec.v):pointAt(spec.radius,spec.angle);if(!current.fundus)v.applyMatrix4(eyeGroup.matrixWorld);v.project(camera);const x=(v.x+1)*innerWidth*.5,y=(1-v.y)*innerHeight*.5;const seen=v.z<1&&v.z>-1&&x>20&&x<innerWidth-90&&y>80&&y<innerHeight-75;el.classList.toggle('off',!seen);el.style.left=x+'px';el.style.top=y+'px'}}
 function rayPin(x,y){if(current.fundus)return false;const v=new THREE.Vector2(x/innerWidth*2-1,-(y/innerHeight*2-1)),ray=new THREE.Raycaster();ray.setFromCamera(v,camera);const hits=ray.intersectObject(iris);if(!hits.length)return false;const p=hits[0].point,r=Math.hypot(p.x,p.y),a=Math.atan2(p.y,p.x);current.pinList.push({kind:current.pinKind,radius:r,angle:a});current.place=false;$('placeAnnotation').classList.remove('armed');drawDots();setNotice('MANUAL ANNOTATION PLACED');return true}
+function selectSurfacePath(x,y){
+ const v=new THREE.Vector2(x/innerWidth*2-1,-(y/innerHeight*2-1)),ray=new THREE.Raycaster();
+ ray.setFromCamera(v,camera);
+ if(current.fundus){
+   const candidates=fundusStage.spots.map(s=>({spec:s,point:fundusStage.at(s.u,s.v)}));
+   const target=candidates.sort((a,b)=>a.point.distanceToSquared(current.fundusLook)-b.point.distanceToSquared(current.fundusLook))[0];
+   // Fundus area selection is anchored to the visible retinal surface, not a pixel-perfect vessel segmentation.
+   scalePaths?.select(target?.spec?.kind==='fundusDisc'?'nerve':target?.spec?.kind==='fundusVessels'?'vessels':'retina');
+   return;
+ }
+ if(current.rear)return;
+ const candidates=ray.intersectObjects([iris,eyeWhite].filter(Boolean),false);
+ if(!candidates.length)return;
+ const object=candidates[0].object;
+ scalePaths?.select(object===iris?'iris':'sclera');
+}
 function pointerSetup(){let pinchDistance=0;
  canvas.addEventListener('wheel',e=>{e.preventDefault();setZoom(current.targetZoom+(e.deltaY>0?1:-1)*Math.min(.09,Math.abs(e.deltaY)*.00045))},{passive:false});
  canvas.addEventListener('pointerdown',e=>{canvas.setPointerCapture(e.pointerId);pointers.set(e.pointerId,{x:e.clientX,y:e.clientY,startX:e.clientX,startY:e.clientY});moveTotal=0;if(pointers.size===2){const arr=[...pointers.values()];pinchDistance=Math.hypot(arr[0].x-arr[1].x,arr[0].y-arr[1].y)}});
  canvas.addEventListener('pointermove',e=>{if(!pointers.has(e.pointerId))return;const old=pointers.get(e.pointerId);pointers.set(e.pointerId,{...old,x:e.clientX,y:e.clientY});moveTotal+=Math.abs(e.clientX-old.x)+Math.abs(e.clientY-old.y);if(pointers.size===2){const arr=[...pointers.values()],d=Math.hypot(arr[0].x-arr[1].x,arr[0].y-arr[1].y);if(pinchDistance)setZoom(current.targetZoom+Math.log(d/pinchDistance)*.17);pinchDistance=d;return}
  current.targetYaw=clamp(current.targetYaw+(e.clientX-old.x)*.004,-.48,.48);current.targetPitch=clamp(current.targetPitch-(e.clientY-old.y)*.003,-.29,.29)});
- const release=e=>{let p=pointers.get(e.pointerId);if(!p)return;pointers.delete(e.pointerId);if(pointers.size<2)pinchDistance=0;if(current.place&&Math.hypot(e.clientX-p.startX,e.clientY-p.startY)<9){rayPin(e.clientX,e.clientY)}};
+ const release=e=>{let p=pointers.get(e.pointerId);if(!p)return;pointers.delete(e.pointerId);if(pointers.size<2)pinchDistance=0;if(Math.hypot(e.clientX-p.startX,e.clientY-p.startY)<9){if(current.place)rayPin(e.clientX,e.clientY);else selectSurfacePath(e.clientX,e.clientY)}};
  ['pointerup','pointercancel','lostpointercapture'].forEach(t=>canvas.addEventListener(t,release));
  document.addEventListener('keydown',e=>{
   const tag=document.activeElement?.tagName;
