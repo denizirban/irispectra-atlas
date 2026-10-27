@@ -1,6 +1,7 @@
 import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js";
 import {createFundusStage} from "./fundus.js";
 import {createScalePaths} from "./scale-paths.js";
+import {createMicroWorld} from "./micro-world.js";
 const $=x=>document.getElementById(x),canvas=$('scene'),experience=$('experience');
 const annotations={
  pupil:['Pupil','The dark central opening that admits light. Its appearance in a still photograph cannot measure the pupil light reflex.'],
@@ -19,7 +20,7 @@ const smooth=(a,b,t)=>{t=clamp((t-a)/(b-a),0,1);return t*t*(3-2*t)};
 const lerp=(a,b,t)=>a+(b-a)*t;
 function seeded(seed){return()=>{seed=(seed*1664525+1013904223)>>>0;return seed/4294967296}};
 const rand=seeded(9348);
-let scalePaths;
+let scalePaths,microWorld;
 let renderer,scene,camera,eyeGroup,iris,irisMaterial,eyeWhite,cornea,pupil,lighting,texture=null,retina,opticNerve,retinalVessels,fundusStage,fundusTimer;
 const current={zoom:.10,targetZoom:.10,yaw:0,targetYaw:0,pitch:0,targetPitch:0,focus:new THREE.Vector3(),focusTarget:new THREE.Vector3(),demo:true,anatomy:false,place:false,pinKind:'crypt',pinList:[],selected:null,animate:true,irisPalette:0,rear:false};
 current.fundus=false;current.fundusTransition=false;current.fundusLook=new THREE.Vector3(0,0,-1.115);current.fundusTarget=new THREE.Vector3(0,0,-1.115);
@@ -260,7 +261,7 @@ function makeScene(){
  const hole=new THREE.Mesh(new THREE.CylinderGeometry(.18,.18,.13,128,1,true),new THREE.MeshStandardMaterial({color:0x090a09,roughness:1,side:THREE.DoubleSide}));hole.rotation.x=Math.PI/2;hole.position.z=1.19;hole.renderOrder=2;eyeGroup.add(hole);
  pupil=new THREE.Mesh(new THREE.CircleGeometry(.189,128),new THREE.MeshBasicMaterial({color:0x030504}));pupil.position.z=1.13;pupil.renderOrder=2;eyeGroup.add(pupil);
  makeIris();const pupilRim=rim(.195,1.215,0x181c14,.013);pupilRim.userData.pupilEdge=true;rim(.623,1.116,0x151e1c,.019);makeCornea();makePosteriorAnatomy();fundusStage=createFundusStage();scene.add(fundusStage.group); // clean eye-only frame
- drawDots();resize();window.addEventListener('resize',resize);setPhotographicDemo();
+ scalePaths=createScalePaths();microWorld=createMicroWorld();drawDots();resize();window.addEventListener('resize',resize);setPhotographicDemo();
  $('loading').classList.add('hidden');animate();
 }
 function resize(){const w=innerWidth,h=innerHeight;if(!renderer)return;renderer.setSize(w,h,false);camera.aspect=w/h;camera.updateProjectionMatrix();}
@@ -296,6 +297,8 @@ const ZOOM_DEPTH=[
 let lastDepth=-1;
 function updatePassiveDepth(){
   scalePaths?.update(current.zoom);
+  microWorld?.setRoute(scalePaths?.route||"iris");
+  microWorld?.setZoom(current.zoom);
  if(current.rear||current.fundus)return;
  const z=current.zoom,stage=z<.2?0:z<.49?1:z<.71?2:z<.84?3:z<.94?4:5;
  if(stage===lastDepth)return;lastDepth=stage;
