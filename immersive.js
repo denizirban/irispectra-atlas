@@ -161,11 +161,11 @@ function updateDeepWorld(){
  if(!deepGroup)return;
  const z=current.zoom,stage=z<.42?0:z<.67?1:z<.80?2:z<.93?3:4;
  if(stage!==deepStage){deepStage=stage;deepGroup.clear();buildDeepWorldGeometry();}
- deepGroup.visible=stage>=2;
+ deepGroup.visible=stage>=2&&!current.fundus&&!current.rear;
  if(deepGroup.visible){
-  deepGroup.position.set(0,0,0);
+  deepGroup.position.copy(current.focus);
   deepGroup.rotation.y+=.002;
-  deepGroup.scale.setScalar(stage===2?1.7:stage===3?2.1:2.4);
+  deepGroup.scale.setScalar(stage===2?.24:stage===3?.18:.12);
   eyeGroup.visible=false;
  }else if(!current.fundus){eyeGroup.visible=true;}
  const d=$('depthExplainer');if(d)d.textContent=(DEEP_ROUTES[deepRoute]||DEEP_ROUTES.iris)[stage]+(stage>=2?' / EDUCATIONAL 3D MODEL — NOT MEASURED':' / VISIBLE MORPHOLOGY');
