@@ -17,6 +17,7 @@
       <button class="control active" id="exploreBtn" type="button"><span class="tiny-circle"></span> EXPLORE</button>
       <button class="control" id="anatomyBtn" type="button"><span class="tiny-circle"></span> ANATOMY</button>
       <button class="control" id="rearBtn" type="button"><span class="tiny-circle"></span> RETINA / NERVE ↗</button>
+       <button class="control" id="fundusBtn" type="button"><span class="tiny-circle"></span> INSIDE FUNDUS ↗</button>
       <button class="control" id="uploadBtn" type="button"><span class="tiny-circle"></span> YOUR IRIS <span class="arrow">↗</span></button>
     </div>
   </div>
@@ -67,7 +68,7 @@
       <div class="dialog-kicker">IRISPECTRA / NOTES <button type="button" class="close-dialog" id="aboutClose" aria-label="Close">×</button></div>
       <h2 id="aboutTitle">An optical exploration.</h2>
       <p>This scene is an original procedural 3D illustration, not a medical scan or a TurboSquid model. The demo iris is synthetic. Personal photos become image textures on a 3D surface; the 3D relief is illustrative.</p>
-      <p>Anatomical labels explain common iris structures. They do not identify conditions or determine clinical findings from your photo.</p>
+      <p>Anatomical labels explain common iris structures. A separate fundus mode shows a generated retinal teaching model, not a scan or retinal image of the person whose iris was uploaded. No anatomical layer here provides a diagnosis.</p>
     </section>
   </div>
   <div class="annotate" id="annotate" hidden><label for="annotationType">MANUAL ANNOTATION</label><select id="annotationType"><option value="crypt">CRYPT-LIKE REGION</option><option value="collarette">COLLARETTE</option><option value="furrow">CONTRACTION FURROW</option><option value="radial">RADIAL TEXTURE</option><option value="limbal">LIMBAL BOUNDARY</option></select><button id="placeAnnotation" type="button">+ PLACE</button><button id="clearAnnotations" type="button">CLEAR</button></div>
