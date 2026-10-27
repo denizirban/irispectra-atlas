@@ -42,26 +42,45 @@ function boot(){
  setActive(0);
 }
 function setActive(i){active=i;document.querySelectorAll('.atlas-step').forEach((b,j)=>b.classList.toggle('selected',j===i))}
+let activeScene='eye';
+function move3d(name){
+ if(name===activeScene)return;
+ const fundus=document.getElementById('fundusBtn'),rear=document.getElementById('rearBtn');
+ // Leave retinal scene before any anterior visit; avoid toggles on repeated layer clicks.
+ if(activeScene==='fundus' && name!=='fundus' && fundus?.classList.contains('active'))fundus.click();
+ if(activeScene==='rear' && name!=='rear' && rear?.classList.contains('active'))rear.click();
+ if(name==='eye'){document.getElementById('resetBtn')?.click();}
+ if(name==='iris'){
+   if(activeScene!=='iris')document.getElementById('enterBtn')?.click();
+   const anatomy=document.getElementById('anatomyBtn');
+   if(anatomy&&!anatomy.classList.contains('active'))anatomy.click();
+ }
+ if(name==='fundus' && !fundus?.classList.contains('active'))fundus?.click();
+ activeScene=name;
+}
 function activate(i){
- setActive(i);let x=layers[i];$('atlasSciencePanel').hidden=false;$('atlasTag').textContent='IRISPECTRA / '+x[1]+' / '+x[2];$('atlasTitle').textContent=x[0];$('atlasIntro').textContent=x[4];
+ if(i<0||i>=layers.length)return;
+ setActive(i);const x=layers[i],p=$('atlasSciencePanel');p.hidden=false;
+ $('atlasTag').textContent='IRISPECTRA / '+x[1]+' / '+x[2];$('atlasTitle').textContent=x[0];$('atlasIntro').textContent=x[4];
  $('atlasArt').innerHTML=['anterior','tissue','cell','molecule','neural'].includes(x[5])?diagram(x[5]):'<div class="atlas-live">◉<small>INTERACTIVE 3D ANATOMY<br>SCENE BEHIND PANEL</small></div>';
  $('atlasFacts').innerHTML=facts[i].map((f,j)=>'<button type="button" data-fact="'+j+'" class="atlas-fact"><b>'+String(j+1).padStart(2,'0')+'</b>'+f[0]+' <span>↗</span></button>').join('');
  document.querySelectorAll('[data-fact]').forEach(b=>b.onclick=()=>showFact(i,+b.dataset.fact));
  document.querySelector('.atlas-journey-nav')?.remove();
- if(i>=3&&i<=5){
-  const nav=document.createElement('div');nav.className='atlas-journey-nav';
-  nav.innerHTML='<button type="button" id="scienceBack">← PREVIOUS SCALE</button><button type="button" id="scienceNext">'+(i===5?'RETURN TO IRIS ↗':'ENTER '+layers[i+1][0]+' →')+'</button>';
-  document.getElementById('atlasDetail').after(nav);
-  nav.querySelector('#scienceBack').onclick=()=>activate(i===3?1:i-1);
-  nav.querySelector('#scienceNext').onclick=()=>activate(i===5?1:i+1);
- }else{document.querySelector('.atlas-journey-nav')?.remove()}
-
+ const nav=document.createElement('div');nav.className='atlas-journey-nav';
+ nav.innerHTML='<button type="button" id="scienceBack">← BACK</button><button type="button" id="scienceNext">'+(i===7?'BACK TO EYE ↗':'GO DEEPER →')+'</button>';
+ $('atlasDetail').after(nav);
+ nav.querySelector('#scienceBack').onclick=()=>activate(Math.max(0,i-1));
+ nav.querySelector('#scienceNext').onclick=()=>activate(i===7?0:i+1);
  showFact(i,0);
- if(i===0)document.getElementById('resetBtn')?.click();
- if(i===1){document.getElementById('enterBtn')?.click(); if(!document.getElementById('anatomyBtn')?.classList.contains('active'))document.getElementById('anatomyBtn')?.click()}
- if(i===6)document.getElementById('rearBtn')?.click();
+ if(i===0)move3d('eye');
+ else if(i===1)move3d('iris');
+ else if(i===6)move3d('fundus');
+ else if(activeScene==='fundus')move3d('eye');
+ // Consciously retain 3D model behind schematic layers; these are explanatory, not impossible photo zoom.
+ p.scrollTop=0;
+ document.querySelectorAll('[data-layer]')[i]?.scrollIntoView({behavior:'smooth',block:'nearest',inline:'center'});
 }
 function showFact(i,j){document.querySelectorAll('.atlas-fact').forEach((b,k)=>b.classList.toggle('selected',j===k));const x=facts[i][j];$('atlasDetail').innerHTML='<strong>'+x[0]+'</strong><p>'+x[1]+'</p>'}
-window.IrispectraScience={activate,advanceFromCrypt(){activate(3);document.getElementById('atlasSciencePanel')?.classList.add('science-journey');},next(){activate(Math.min(7,active+1))},previous(){activate(Math.max(0,active-1))}};
+window.IrispectraScience={activate,advanceFromCrypt(){activeScene='iris';activate(3);$('atlasSciencePanel')?.classList.add('science-journey');},next(){activate(Math.min(7,active+1))},previous(){activate(Math.max(0,active-1))}};
 document.readyState==='loading'?document.addEventListener('DOMContentLoaded',boot):boot();
 })();
