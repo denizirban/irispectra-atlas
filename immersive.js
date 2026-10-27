@@ -2,6 +2,7 @@ import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.m
 import {createFundusStage} from "./fundus.js";
 import {MORPHOLOGY,polarRegion} from "./morphology-data.js";
 import {zoneForEyePoint} from "./chart-zones.js";
+import {populateMicroScene} from "./micro-models.js";
 import {SPECIMENS,makeAnnularSpecimen} from "./specimen-pipeline.js";
 const $=x=>document.getElementById(x),canvas=$('scene'),experience=$('experience');
 const annotations={
@@ -161,32 +162,46 @@ function buildDeepWorld(){
   else if(deepStage===4){let t=i*.7;ball(Math.sin(t)*.6,t*.075-1.1,Math.cos(t)*.6,.09,pal[i%3]);if(i>0)fibre([Math.sin((i-1)*.7)*.6,(i-1)*.075-1.1,Math.cos((i-1)*.7)*.6],[Math.sin(t)*.6,t*.075-1.1,Math.cos(t)*.6],.028,0xddd2bc)}
  }
 }
+let deepOpacity=0,deepStageActive=0;
+function clearDeepGeometry(){
+ if(!deepGroup)return;
+ const geo=new Set(),mats=new Set();
+ deepGroup.traverse(child=>{if(child.isMesh){if(child.geometry)geo.add(child.geometry);if(Array.isArray(child.material))child.material.forEach(m=>mats.add(m));else if(child.material)mats.add(child.material);}});
+ deepGroup.clear();geo.forEach(x=>x.dispose());mats.forEach(x=>x.dispose());
+}
 function updateDeepWorld(){
  if(!deepGroup)return;
  const z=current.zoom,stage=z<.42?0:z<.67?1:z<.80?2:z<.93?3:4;
- if(stage!==deepStage||deepGroup.userData.route!==deepRoute){deepStage=stage;deepGroup.userData.route=deepRoute;updateSelectionCard(stage);for(const child of [...deepGroup.children]){deepGroup.remove(child);child.geometry?.dispose();}buildDeepWorldGeometry();}
- deepGroup.visible=stage>=2&&!!current.selected&&!current.rear;
- if(deepGroup.visible){
-  deepGroup.position.copy(current.fundus?current.fundusLook:current.focus);
-  deepGroup.rotation.y+=.002;
-  deepGroup.scale.setScalar(stage===2?.24:stage===3?.18:.12);
-  eyeGroup.visible=false;if(current.fundus)fundusStage.group.visible=false;
- }else if(!current.fundus){eyeGroup.visible=true;}else{fundusStage.group.visible=true;}
- const d=$('depthExplainer');if(d)d.textContent=(DEEP_ROUTES[deepRoute]||DEEP_ROUTES.iris)[stage]+(stage>=2?' / EDUCATIONAL 3D MODEL — NOT MEASURED':' / VISIBLE MORPHOLOGY');
-}
-function buildDeepWorldGeometry(){
- if(!deepGroup)return;
- const palette=deepRoute==='iris'?[0xbfa078,0x9c7754,0x685a51]:deepRoute==='sclera'?[0xd2c5ae,0x9eaba8,0x776b69]:[0xb07975,0x997e92,0xd7b2a2];
- const geo=new THREE.SphereGeometry(1,14,10),cellMat=palette.map(color=>new THREE.MeshStandardMaterial({color,roughness:.7}));
- for(let i=0;i<90;i++){
-  let a=i*2.399,r=Math.sqrt(i/90)*2.7,x=Math.cos(a)*r,y=Math.sin(a)*r,z=(i%7-3)*.12;
-  const b=new THREE.Mesh(geo,cellMat[i%3]);b.position.set(x,y,z);
-  b.scale.set(stageToRadius(),stageToRadius()*(deepStage===2?.21:1),stageToRadius());deepGroup.add(b);
-  if(deepStage===2&&i>0){const from=new THREE.Vector3(x-1.2,y,z),to=new THREE.Vector3(x+1.2,y+.09,z);let tube=new THREE.Mesh(new THREE.CylinderGeometry(.024,.024,2.4,6),cellMat[i%3]);tube.position.set(x,y,z);tube.rotation.z=Math.PI/2-.04;tube.scale.x=1;deepGroup.add(tube)}
+ const active=!!current.selected&&!current.rear;
+ const show3D=stage>=2&&active;
+ const entering=show3D&&(!deepGroup.visible||deepStage!==stage||deepGroup.userData.route!==deepRoute);
+ if(entering){
+  deepStage=stage;deepGroup.userData.route=deepRoute;
+  clearDeepGeometry();populateMicroScene(THREE,deepGroup,deepRoute,stage);
+  deepOpacity=0;updateSelectionCard(stage);
  }
+ if(!show3D)deepOpacity=0;
+ else deepOpacity=lerp(deepOpacity,1,.11);
+ deepGroup.visible=show3D;
+ if(show3D){
+  const anchor=current.fundus?current.fundusLook:current.focus;
+  deepGroup.position.copy(anchor);
+  deepGroup.rotation.y+=.0025;
+  deepGroup.rotation.x=Math.sin(performance.now()*.0002)*.08;
+  deepGroup.scale.setScalar(stage===2?.24:stage===3?.22:.20);
+  // Fade educational geometry into the selected anatomical region.
+  deepGroup.traverse(obj=>{
+   if(obj.isMesh&&obj.material){obj.material.opacity=deepOpacity;obj.material.transparent=true;obj.material.depthWrite=false;}
+  });
+  // The macro model remains visible during the first few frames of handoff.
+  eyeGroup.visible=current.fundus?false:deepOpacity<.80;
+  fundusStage.group.visible=current.fundus&&deepOpacity<.80;
+ }else{
+  if(!current.fundus)eyeGroup.visible=true;
+  else fundusStage.group.visible=true;
+ }
+ const d=$('depthExplainer');if(d)d.textContent=(DEEP_ROUTES[deepRoute]||DEEP_ROUTES.iris)[stage];
 }
-function stageToRadius(){return deepStage===2?.085:deepStage===3?.22:.12}
-
 function makeTexture(source){
  if(texture)texture.dispose();texture=new THREE.CanvasTexture(source);texture.colorSpace=THREE.SRGBColorSpace;texture.anisotropy=Math.min(12,renderer.capabilities.getMaxAnisotropy());texture.needsUpdate=true;
  if(irisMaterial){irisMaterial.map=texture;irisMaterial.bumpMap=current.demo?texture:null;irisMaterial.bumpScale=current.demo ? 0.015 : 0;irisMaterial.roughness=current.demo?.88:.93;irisMaterial.clearcoat=.025;irisMaterial.needsUpdate=true;refreshIrisRelief(source);}
