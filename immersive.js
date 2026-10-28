@@ -1067,10 +1067,10 @@ function updateMicroExplorerHUD(active,now){
  const chapter=bioInfo(activeBioRoute,Math.max(2,data.stage));
  $('microChapter').textContent=(bioGuided?BIO_ROUTES[activeBioRoute].name+' / ':'')+chapter.short;
  const steps=['THE HUMAN EYE','IRIS MORPHOLOGY','STROMAL ARCHITECTURE','CELLULAR WORLD','INSIDE THE CELL','MOLECULAR STRUCTURE','CHEMICAL FOUNDATIONS'];
- const names=activeBioRoute==='crypt'?['THE HUMAN EYE','IRIS CRYPT','INSIDE THE STROMA','MEET THE FIBROBLAST','CELLULAR MACHINERY','COLLAGEN TRIPLE HELIX','PEPTIDE CHEMISTRY']:steps;
+ const names=activeBioRoute==='crypt'?['THE HUMAN EYE','IRIS CRYPT','INSIDE THE STROMA','MEET THE FIBROBLAST','MITOCHONDRIAL CRISTAE','COLLAGEN TRIPLE HELIX','PEPTIDE CHEMISTRY']:steps;
  $('microJourneyStep').textContent=String(data.stage+1).padStart(2,'0')+' / 07';
  $('microJourneyTitle').textContent=names[data.stage]||'MICRO EXPEDITION';
- $('microJourneyScale').textContent=data.stage>=5?'SCHEMATIC MOLECULAR MODEL':'ILLUSTRATIVE BIOLOGY';
+ $('microJourneyScale').textContent=data.stage===4&&activeBioRoute==='crypt'?'ORGANELLE CUTAWAY · SCHEMATIC':data.stage>=5?'SCHEMATIC MOLECULAR MODEL':'ILLUSTRATIVE BIOLOGY';
  $('microJourneyNext').textContent=data.stage>=6?'RETURN TO IRIS ↗':'GO DEEPER →';
  $('microMobileNext').textContent=data.stage>=6?'RETURN TO IRIS ↗':'GO DEEPER →';
  const nodeKey=activeBioRoute+':'+data.stage+':'+String(bioGuided);
