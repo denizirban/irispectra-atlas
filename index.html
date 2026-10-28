@@ -33,6 +33,14 @@
     </div>
   </div>
   <div id="tourCaption" class="tour-caption" hidden aria-live="polite"><span id="tourCount">01 / 05</span><strong id="tourText">Explore the visible eye</strong><button type="button" id="tourSkip">EXIT</button></div><div id="depthHint" class="depth-hint" aria-live="polite"><span id="depthTitle">WHOLE EYE</span><small id="depthExplainer">SCROLL OR PINCH TO EXPLORE</small></div>
+  <div class="scale-journey" id="scaleJourney" aria-label="Anatomical magnification depth">
+    <span class="scale-marker active" data-scale="0">EYE</span>
+    <span class="scale-marker" data-scale="1">SURFACE</span>
+    <span class="scale-marker" data-scale="2">TISSUE</span>
+    <span class="scale-marker" data-scale="3">CELL</span>
+    <span class="scale-marker" data-scale="4">MOLECULE</span>
+    <span class="scale-progress"><i id="scaleProgress"></i></span>
+  </div>
   <div id="hotspots" class="hotspots" aria-label="Anatomy hotspots"></div><button type="button" id="morphToggle" class="morph-trigger" aria-expanded="false" aria-controls="morphChart">IRIS MAP <span>◎</span></button>
 <section id="morphChart" class="morph-chart" hidden aria-label="Interactive iris positional morphology map">
  <div class="morph-head"><span>IRISPECTRA / MORPHOLOGY EXPLORER</span><button type="button" data-close aria-label="Close morphology map">×</button></div>
@@ -53,7 +61,9 @@
      <div><span>PATTERN</span><strong id="infoPattern">—</strong><select id="infoPatternSelect" aria-label="Choose visible morphology type" hidden></select></div>
      <div><span>DEPTH</span><strong id="infoStage">SURFACE</strong></div>
     </div>
-    <p id="infoBody"></p><small id="infoSource"></small>
+    <p id="infoBody"></p>
+    <details class="micro-facts" id="microFacts"><summary>Explore the biology <span>+</span></summary><div id="microFactList"></div></details>
+    <small id="infoSource"></small>
     <div class="info-disclaimer" id="infoDisclosure" hidden></div>
     <button type="button" id="approachBtn" class="deep-link">ZOOM INTO STRUCTURE <span>↗</span></button>
   </aside>
