@@ -1011,7 +1011,10 @@ function connectUi(){
   $('uploadBtn').onclick=()=>openDialog('uploadDialog');$('uploadClose').onclick=()=>closeDialog('uploadDialog');
  $('infoClose').onclick=()=>{$('infoPanel').hidden=true;current.selected=null;current.selection=null;clearSelection()};$('approachBtn').onclick=()=>{if(current.selected)approach(current.selected)};
  for(const id of ['uploadDialog'])$(id).addEventListener('click',e=>{if(e.target===$(id))closeDialog(id)});
- document.addEventListener('keydown',e=>{if(e.key==='Escape'){closeDialog('uploadDialog');closeDialog('aboutDialog');$('infoPanel').hidden=true}});
+ document.addEventListener('keydown',e=>{if(e.key==='Escape'){
+  closeDialog('uploadDialog');$('infoPanel').hidden=true;
+  $('microLabel').hidden=true;
+ }});
  $('annotationType').onchange=e=>current.pinKind=e.target.value;
  $('placeAnnotation').onclick=()=>{current.place=!current.place;$('placeAnnotation').classList.toggle('armed',current.place);setNotice(current.place?'CLICK A VISIBLE IRIS REGION':'PIN PLACEMENT OFF')};
  $('clearAnnotations').onclick=()=>{current.pinList=[];drawDots();$('infoPanel').hidden=true};
