@@ -7,7 +7,7 @@
   <header class="header">
     <a class="brand" href="/" aria-label="Irispectra home"><img class="brand-mark" src="/irispectra-mark.svg" alt=""><span>IRISPECTRA</span></a>
     
-    <button class="tour-control" id="tourBtn" type="button" aria-pressed="false"><span class="tour-dot"></span> START DISCOVERY</button><button class="text-button top-guide" id="aboutBtn" type="button">ABOUT <span class="arrow">↗</span></button><button class="audio-toggle" id="audioToggle" type="button" aria-pressed="false" aria-label="Select ambient soundtrack" title="Ambient sound"><span aria-hidden="true">♫</span></button>
+    <button class="tour-control" id="tourBtn" type="button" aria-pressed="false"><span class="tour-dot"></span> START DISCOVERY</button><button class="audio-toggle" id="audioToggle" type="button" aria-pressed="false" aria-label="Select ambient soundtrack" title="Ambient sound"><span aria-hidden="true">♫</span></button>
     
     
     <span class="visually-hidden" id="audioStatus" role="status" aria-live="polite"></span>
@@ -94,14 +94,6 @@
         <button class="apply-button" type="button" id="applyUpload">APPLY TO 3D EYE <span>↗</span></button>
       </div>
       <small>PHOTO-BASED COLOR AND PATTERN. DEPTH IS AN ARTISTIC SIMULATION, NOT A MEASUREMENT OF YOUR IRIS.</small>
-    </section>
-  </div>
-  <div class="dialog-backdrop" id="aboutDialog" hidden>
-    <section class="dialog about-dialog" role="dialog" aria-modal="true" aria-labelledby="aboutTitle">
-      <div class="dialog-kicker">IRISPECTRA / NOTES <button type="button" class="close-dialog" id="aboutClose" aria-label="Close">×</button></div>
-      <h2 id="aboutTitle">An optical exploration.</h2>
-      <p>This scene is an original procedural 3D illustration, not a medical scan or a TurboSquid model. The demo iris is synthetic. Personal photos become image textures on a 3D surface; the 3D relief is illustrative.</p>
-      <p>Anatomical labels explain common iris structures. A separate fundus mode shows a generated retinal teaching model, not a scan or retinal image of the person whose iris was uploaded. No anatomical layer here provides a diagnosis.</p>
     </section>
   </div>
   <div class="annotate" id="annotate" hidden><label for="annotationType">MANUAL ANNOTATION</label><select id="annotationType"><option value="crypt">CRYPT-LIKE REGION</option><option value="collarette">COLLARETTE</option><option value="furrow">CONTRACTION FURROW</option><option value="radial">RADIAL TEXTURE</option><option value="limbal">LIMBAL BOUNDARY</option></select><button id="placeAnnotation" type="button">+ PLACE</button><button id="clearAnnotations" type="button">CLEAR</button></div>
