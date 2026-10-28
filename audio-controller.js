@@ -170,7 +170,7 @@ function onStage(s){
  if(lastStage===null){lastStage=s;return}
  if(lastStage===s)return;
  lastStage=s;
- tone([235,294,349,415,494][clamp(s,0,4)],'stage',.11);
+ tone([235,294,349,415,494,523,587][clamp(s,0,6)],'stage',.11);
 }
 function onSelect(k,x){
  const t=performance.now();if(t-lastSelectAt<165)return;lastSelectAt=t;
