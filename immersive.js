@@ -690,6 +690,7 @@ function setIrisSelection(spec,index=-1,origin='eye',zoneOverride=null){
  if(spec.kind==='pupil')activeBioRoute='muscle';
  else if(spec.kind==='crypt'||spec.kind==='collarette')activeBioRoute='crypt';
  else if(spec.kind==='radial'||spec.kind==='pigment')activeBioRoute='pigment';
+ else if(spec.kind==='furrow')activeBioRoute='muscle';
  window.dispatchEvent(new CustomEvent('irispectra-sound',{detail:{
   type:'select',kind:spec.kind||'iris',x:(1+Math.cos(spec.angle??0))/2
  }}));
@@ -747,6 +748,21 @@ function showPin(spec,index,el){
 }
 function updateDots(){for(const {el,spec} of domPins){if(!current.anatomy){el.classList.add('off');continue}const v=current.fundus?fundusStage.at(spec.u,spec.v):pointAt(spec.radius,spec.angle);if(!current.fundus)v.applyMatrix4(eyeGroup.matrixWorld);v.project(camera);const x=(v.x+1)*innerWidth*.5,y=(1-v.y)*innerHeight*.5;const seen=v.z<1&&v.z>-1&&x>20&&x<innerWidth-90&&y>80&&y<innerHeight-75;el.classList.toggle('off',!seen);el.style.left=x+'px';el.style.top=y+'px'}}
 function rayPin(x,y){if(current.fundus)return false;const v=new THREE.Vector2(x/innerWidth*2-1,-(y/innerHeight*2-1)),ray=new THREE.Raycaster();ray.setFromCamera(v,camera);const hits=ray.intersectObject(iris);if(!hits.length)return false;const p=hits[0].point,r=Math.hypot(p.x,p.y),a=Math.atan2(p.y,p.x);current.pinList.push({kind:current.pinKind,radius:r,angle:a});current.place=false;$('placeAnnotation').classList.remove('armed');drawDots();setNotice('MANUAL ANNOTATION PLACED');return true}
+function inferIrisEntry(radius,angle,onPupil){
+ if(onPupil||radius<.20)return 'pupil';
+ // Nearest known reference hotspot in the synthetic demo; this is NOT
+ // automated crypt detection on a user's photograph.
+ if(current.demo){
+  const px=Math.cos(angle)*radius,py=Math.sin(angle)*radius;
+  const nearest=initPins.filter(p=>['crypt','collarette','furrow','radial'].includes(p.kind))
+   .map(p=>({kind:p.kind,distance:Math.hypot(px-p.radius*Math.cos(p.angle),py-p.radius*Math.sin(p.angle))}))
+   .sort((a,b)=>a.distance-b.distance)[0];
+  if(nearest&&nearest.distance<.085)return nearest.kind;
+ }
+ if(radius>.53)return 'furrow';
+ if(radius<.31)return 'collarette';
+ return 'radial';
+}
 function selectByTap(x,y,{preserveZoom=false}={}){
  if(current.place||current.rear||current.fundusTransition)return false;
  // A click at a meaningful surface makes a soft glass selection sound.
@@ -789,8 +805,12 @@ function selectByTap(x,y,{preserveZoom=false}={}){
   current.selected=hit.point.clone();current.focusTarget.copy(current.selected);
   deepRoute=onSclera?'sclera':'iris';
   if(onSclera)current.selection={kind:'sclera',zone:'Sclera',anatomicalZone:'Outer eye coat',origin:'eye',pattern:'',description:'Dense fibrous tunic'};
-  else setIrisSelection({kind:onPupil?'pupil':'radial',radius,angle});
-  if(!onSclera)window.IrispectraMorphology?.focus?.({kind:onPupil?'pupil':'radial',radius,angle});
+  else {
+   const kind=inferIrisEntry(radius,angle,onPupil);
+   setIrisSelection({kind,radius,angle});
+  }
+  if(!onSclera)window.IrispectraMorphology?.focus?.({
+   kind:inferIrisEntry(radius,angle,onPupil),radius,angle});
  }
  window.dispatchEvent(new CustomEvent('irispectra-sound',{detail:{
   type:'select',kind:current.selection?.kind||'surface',x:soundX
@@ -918,6 +938,15 @@ function startDiscoveryTour(){
 
 function selectBioRoute(route){
  if(!BIO_ROUTES[route])return;
+ if(route==='neural'&&!current.fundus&&!current.fundusTransition){
+  // Retina is anatomically posterior: transition via the fundus instead
+  // of pretending that retina lies within the anterior iris.
+  enterFundus();
+  setTimeout(()=>{
+   if(current.fundus&&activeBioRoute==='neural')selectBioRoute('neural');
+  },window.matchMedia('(prefers-reduced-motion: reduce)').matches?140:760);
+  return;
+ }
  activeBioRoute=route;
  if(route==='neural')deepRoute='retina';
  else deepRoute='iris';
