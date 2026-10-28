@@ -152,6 +152,48 @@ export function populateBioWorld(T,group,route,stage){
   const torus=add(new T.TorusGeometry(radius,.045,8,80),material,0,0,z,role);
   return torus;
  };
+ // Cutaway membrane: two phospholipid head planes, tails and transmembrane channels.
+ // Schematic proportions, intentionally not an atomistic molecular model.
+ const membranePatch=(x=0,y=0,z=0)=>{
+  const count=mobile?168:320;
+  const headGeo=new T.IcosahedronGeometry(.045,1);
+  const headMat=new T.MeshStandardMaterial({color:0xa9c6ad,roughness:.52});
+  const tailMat=new T.MeshStandardMaterial({color:0xc7a980,roughness:.72});
+  const heads=new T.InstancedMesh(headGeo,headMat,count*2);
+  const tails=new T.InstancedMesh(new T.CylinderGeometry(.009,.009,.155,5),tailMat,count*2);
+  const dummy=new T.Object3D();
+  for(let layer=0;layer<2;layer++){
+   for(let i=0;i<count;i++){
+    const col=i%Math.ceil(Math.sqrt(count)),row=Math.floor(i/Math.ceil(Math.sqrt(count)));
+    const pitch=3.65/Math.ceil(Math.sqrt(count));
+    const px=x+(col-(Math.ceil(Math.sqrt(count))-1)/2)*pitch;
+    const py=y+(row-(Math.ceil(Math.sqrt(count))-1)/2)*pitch;
+    const phase=Math.sin(px*2.1+py*1.7)*.07;
+    const side=layer===0?1:-1;
+    dummy.position.set(px,py,z+phase+side*.125);
+    dummy.scale.setScalar(.82+.12*rand(i,layer));dummy.updateMatrix();
+    heads.setMatrixAt(layer*count+i,dummy.matrix);
+    dummy.position.z=z+phase+side*.054;
+    dummy.scale.set(1,.9,1);
+    dummy.rotation.set(Math.PI/2,0,0);dummy.updateMatrix();
+    tails.setMatrixAt(layer*count+i,dummy.matrix);
+    dummy.rotation.set(0,0,0);
+   }
+  }
+  heads.instanceMatrix.needsUpdate=true;tails.instanceMatrix.needsUpdate=true;
+  heads.userData.role='Phospholipid hydrophilic head';
+  tails.userData.role='Phospholipid hydrophobic tails';
+  group.add(heads,tails);
+  for(let i=0;i<(mobile?5:9);i++){
+   const px=x+(rand(i,31)-.5)*3.1,py=y+(rand(i,32)-.5)*2.7;
+   const channel=add(new T.CylinderGeometry(.088,.11,.48,12,1),mats.green,
+     px,py,z,'Transmembrane protein');
+   channel.rotation.x=Math.PI/2;
+   const pore=add(new T.CylinderGeometry(.029,.029,.49,9,1),mats.dark,
+     px,py,z,'Membrane protein channel pore');
+   pore.rotation.x=Math.PI/2;
+  }
+ };
  const cellBody=(x,y,z,role,scale=[.76,.43,.34])=>{
   sphere(x,y,z,scale,mats.cell,role);
   sphere(x,y,z,scale.map(v=>v*1.035),mats.membrane,role+' plasma membrane');
@@ -331,7 +373,7 @@ export function populateBioWorld(T,group,route,stage){
  if(stage===3){
   if(route==='crypt'){
    cellBody(0,0,.6,'Fibroblast',[1.05,.35,.28]);
-   sphere(0,0,.6,[1.13,.43,.35],mats.membrane,'Fibroblast plasma membrane');
+   // Cell envelope is supplied by cellBody, with a separate bilayer cutaway in organelle view.
    for(let k=0;k<20;k++){
     const a=k*2.39996,y=(rand(k,23)-.5)*.48;
     path([[-1.75,y-.06*Math.sin(a),.42],[-.62,y+.07*Math.cos(a),.52],
@@ -369,6 +411,7 @@ export function populateBioWorld(T,group,route,stage){
  }
  // ORGANELLE 4 — physically distinct subcellular destinations.
  if(stage===4){
+  if(route==='crypt'||route==='pigment')membranePatch(0,0,-1.25);
   if(route==='pigment'){
    melanosome(-.8,.15,.3);
    sphere(1.4,-1.0,.1,[.62,.35,.30],mats.cell,'Golgi apparatus');
