@@ -44,7 +44,7 @@ export function createMicroNavigator(T, camera) {
   // Deliberately transfer between depth scales only after reaching the edge
   // of a traversable zone. Standard +/- and the timeline always remain usable.
   if(proposed<2.65){
-   if(stage<4)return 'deeper';
+   if(stage<6)return 'deeper';
    desired.z=2.65;return 'end';
   }
   if(proposed>initialDistance()+1.55){
