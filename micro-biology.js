@@ -250,6 +250,20 @@ export function populateBioWorld(T,group,route,stage){
     }
     path(pts,.025+rand(k)*.020,k%4===0?mats.gold:mats.matrix,'Stromal collagen bundle');
    }
+   // Fine collagen microfibrils: instanced geometry retains mobile performance.
+   const fiberCount=mobile?180:360;
+   const fiberGeo=new T.CylinderGeometry(.006,.012,.31,5,1);
+   const fiberMat=new T.MeshStandardMaterial({color:0xd2c1a0,roughness:.8,transparent:true,opacity:.49});
+   const fiberBatch=new T.InstancedMesh(fiberGeo,fiberMat,fiberCount);
+   const fiberDummy=new T.Object3D(),fiberAxis=new T.Vector3(0,1,0);
+   for(let i=0;i<fiberCount;i++){
+    const phase=i*2.39996;
+    fiberDummy.position.set((rand(i,9)-.5)*7.4,Math.sin(phase)*(1+2.4*rand(i,12)),-2.3+rand(i,11)*3.8);
+    fiberDummy.quaternion.setFromUnitVectors(fiberAxis,new T.Vector3(1,.09*Math.sin(phase),.1*Math.cos(phase)).normalize());
+    fiberDummy.scale.set(1,.7+rand(i,17)*1.4,1);
+    fiberDummy.updateMatrix();fiberBatch.setMatrixAt(i,fiberDummy.matrix);
+   }
+   fiberBatch.instanceMatrix.needsUpdate=true;fiberBatch.userData.role='Illustrative collagen microfibrils';group.add(fiberBatch);
    const inner=membraneRing(.85,.66,mats.dark,'Crypt-like stromal opening');
    inner.scale.set(1.3,.7,1);
    capillary();
@@ -301,6 +315,13 @@ export function populateBioWorld(T,group,route,stage){
  if(stage===3){
   if(route==='crypt'){
    cellBody(0,0,.6,'Fibroblast',[1.05,.35,.28]);
+   sphere(0,0,.6,[1.13,.43,.35],mats.membrane,'Fibroblast plasma membrane');
+   for(let k=0;k<20;k++){
+    const a=k*2.39996,y=(rand(k,23)-.5)*.48;
+    path([[-1.75,y-.06*Math.sin(a),.42],[-.62,y+.07*Math.cos(a),.52],
+     [.52,y-.05*Math.sin(a),.55],[1.7,y+.09*Math.cos(a),.47]],
+     .006+(k%4)*.002,k%3===0?mats.pale:mats.matrix,'Fibroblast cytoskeletal filament');
+   }
    for(let i=0;i<8;i++){
     const a=i*2*Math.PI/8;
     path([[.4*Math.cos(a),.1*Math.sin(a),.62],
