@@ -354,3 +354,32 @@
 @media(prefers-reduced-motion:reduce){
  .scale-marker{transition:none}
 }
+
+/* Small, accessible ambient-sound control; no media playback until user intent. */
+.header{position:absolute}
+.audio-toggle{
+ position:absolute;right:0;top:0;z-index:63;
+ width:36px;height:36px;border-radius:50%;display:grid;place-items:center;
+ color:#e4f5e9;border:1px solid rgba(222,245,229,.30);
+ background:rgba(7,14,11,.56);backdrop-filter:blur(16px);
+ -webkit-backdrop-filter:blur(16px);pointer-events:auto;
+ transition:background .2s,border-color .2s,transform .2s,opacity .2s;
+ box-shadow:0 12px 34px rgba(0,0,0,.22);
+}
+.audio-toggle svg{width:17px;height:17px;display:block;pointer-events:none}
+.audio-toggle[data-state=playing]{border-color:rgba(215,247,224,.56);background:rgba(30,57,39,.70)}
+.audio-toggle[data-state=muted]{opacity:.68}
+.audio-toggle:hover{background:rgba(30,52,39,.78);transform:scale(1.05)}
+.audio-toggle:active{transform:scale(.96)}
+.top-guide{margin-right:44px}
+.visually-hidden{position:absolute!important;width:1px!important;height:1px!important;
+ padding:0!important;margin:-1px!important;overflow:hidden!important;
+ clip:rect(0,0,0,0)!important;white-space:nowrap!important;border:0!important}
+.info-panel{max-height:min(70dvh,625px);overflow-y:auto;scrollbar-width:thin}
+.micro-facts[open] summary{color:#eef9ec}
+@media(max-width:820px){
+ .audio-toggle{right:0;top:0;width:32px;height:32px}
+ .audio-toggle svg{width:16px;height:16px}
+ .top-guide{display:none!important}
+ .info-panel{max-height:min(49dvh,490px)}
+}
