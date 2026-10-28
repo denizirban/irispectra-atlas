@@ -1,190 +1,215 @@
-// Irispectra Soundscape — original, synthesized spatial UI audio.
-// No external soundtrack, download, or music file. Everything is generated
-// locally through Web Audio after an explicit browser interaction.
-const toggle=document.getElementById('audioToggle');
+// IRISPECTRA SONIC SYSTEM v3
+// Original procedural tones; no remote audio files. HTMLMediaElement is primary
+// on iOS Safari; Web Audio adds motion-sensitive timbre where available.
+const button=document.getElementById('audioToggle');
 const status=document.getElementById('audioStatus');
-const KEY='irispectra-sound-enabled-v2';
-const AC=window.AudioContext||window.webkitAudioContext;
-const clamp=(n,min,max)=>Math.max(min,Math.min(max,n));
-let enabled=true;
-try{enabled=localStorage.getItem(KEY)!=='0'}catch{}
-let ctx=null,master=null,drone=[],water=null,waterFilter=null,waterGain=null;
-let reverb=null,reverbInput=null;
-let lastZoomPing=0,lastMotionPing=0,lastSelectPing=0,stageSeen=null;
-let zoomPosition=.1,launching=false,created=false,permissionNotice=false;
-const svg=(on)=>on?
- '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.65" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9v6h4l5 4V5L8 9H4z"/><path d="M16 9a4 4 0 0 1 0 6"/><path d="M18.6 6.5a8 8 0 0 1 0 11"/></svg>':
- '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.65" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9v6h4l5 4V5L8 9H4z"/><path d="m17 9 5 6m0-6-5 6"/></svg>';
-function report(msg){if(status)status.textContent=msg}
-function redraw(){
- if(!toggle)return;
- const active=enabled&&ctx?.state==='running';
- toggle.dataset.state=active?'playing':'muted';
- toggle.innerHTML=svg(active);
- toggle.title=enabled?(active?'Mute Irispectra sounds':'Activate Irispectra sounds'):'Enable Irispectra sounds';
- toggle.setAttribute('aria-label',toggle.title);
- toggle.setAttribute('aria-pressed',String(!!active));
- report(toggle.title);
-}
-function ambientNoise(){
- // 2 seconds of filtered, softly moving air / liquid texture.
- const length=ctx.sampleRate*2|0;
- const buffer=ctx.createBuffer(1,length,ctx.sampleRate);
- const data=buffer.getChannelData(0);let brown=0;
- for(let i=0;i<length;i++){
-  brown=(brown+(Math.random()*2-1)*.03)*.995;
-  data[i]=clamp(brown,-1,1);
+const AudioContextClass=window.AudioContext||window.webkitAudioContext;
+const USER_PREF='irispectra-sonic-v3-muted';
+const clamp=(x,a,b)=>Math.max(a,Math.min(b,x));
+const IS_IOS=/iPad|iPhone|iPod/.test(navigator.userAgent)||
+  (navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
+let muted=false;
+try{muted=localStorage.getItem(USER_PREF)==='1'}catch{}
+let ambient=null,context=null,gain=null,shimmer=null,shimmerGain=null;
+let ready=false,unlockPending=false,loopUrl='',activeVoices=new Set();
+let soundPosition=.10,stageIndex=null,lastZoom=0,lastMove=0,lastSelection=0;
+let browserNotice='';
+const symbols={
+ playing:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9v6h4l5 4V5L8 9H4z"/><path d="M16 9a4 4 0 0 1 0 6"/><path d="M19 6a9 9 0 0 1 0 12"/></svg>',
+ off:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9v6h4l5 4V5L8 9H4z"/><path d="m17 9 5 6m0-6-5 6"/></svg>'
+};
+function state(){
+ const isPlaying=!muted&&!!ambient&&!ambient.paused;
+ const txt=muted?'Sound off':isPlaying?'Sound on':'Tap for sound';
+ if(button){
+  button.innerHTML=symbols[isPlaying?'playing':'off'];
+  button.dataset.state=isPlaying?'playing':muted?'muted':'ready';
+  button.setAttribute('aria-label',txt);
+  button.setAttribute('aria-pressed',String(isPlaying));
+  button.title=txt;
  }
- const node=ctx.createBufferSource();node.buffer=buffer;node.loop=true;node.start();return node;
+ if(status)status.textContent=browserNotice||txt;
 }
-function impulse(){
- const length=(ctx.sampleRate*1.3)|0;
- const buf=ctx.createBuffer(2,length,ctx.sampleRate);
- for(let ch=0;ch<2;ch++){
-  const arr=buf.getChannelData(ch);
-  for(let i=0;i<length;i++)arr[i]=(Math.random()*2-1)*Math.pow(1-i/length,3);
+function signed16(value){return Math.round(clamp(value,-.96,.96)*32767)}
+function encodeWav(samples,rate){
+ const buffer=new ArrayBuffer(44+samples.length*2);
+ const view=new DataView(buffer);
+ const write=(i,s)=>{for(let k=0;k<s.length;k++)view.setUint8(i+k,s.charCodeAt(k))};
+ write(0,'RIFF');view.setUint32(4,36+samples.length*2,true);
+ write(8,'WAVE');write(12,'fmt ');view.setUint32(16,16,true);
+ view.setUint16(20,1,true);view.setUint16(22,1,true);
+ view.setUint32(24,rate,true);view.setUint32(28,rate*2,true);
+ view.setUint16(32,2,true);view.setUint16(34,16,true);
+ write(36,'data');view.setUint32(40,samples.length*2,true);
+ for(let i=0;i<samples.length;i++)view.setInt16(44+i*2,signed16(samples[i]),true);
+ return new Blob([buffer],{type:'audio/wav'});
+}
+function generatedAmbient(){
+ const sr=22050,duration=4,N=sr*duration,samples=new Float32Array(N);
+ // Frequencies are multiples of .25Hz for a perfectly seamless 4-second loop.
+ // Upper-register warmth remains audible on phone speakers at modest volume.
+ const fundamentals=[164.75,220,277.25,330];
+ const phase=[0,.74,1.81,2.65];
+ for(let i=0;i<N;i++){
+  const t=i/sr;
+  const swell=.79+.17*Math.cos(2*Math.PI*.25*t);
+  const a=Math.sin(2*Math.PI*fundamentals[0]*t+phase[0])*.19;
+  const b=Math.sin(2*Math.PI*fundamentals[1]*t+phase[1])*.14;
+  const c=Math.sin(2*Math.PI*fundamentals[2]*t+phase[2])*.09;
+  const d=Math.sin(2*Math.PI*fundamentals[3]*t+phase[3])*.065;
+  const silk=Math.sin(2*Math.PI*440*t)*.021;
+  samples[i]=(a+b+c+d+silk)*swell;
  }
- return buf;
+ return encodeWav(samples,sr);
 }
-function createEngine(){
- ctx=new AC({latencyHint:'interactive'});
- master=ctx.createGain();master.gain.value=0;
- const comp=ctx.createDynamicsCompressor();
- comp.threshold.value=-23;comp.ratio.value=2.2;comp.knee.value=12;
- comp.attack.value=.012;comp.release.value=.21;
- master.connect(comp);comp.connect(ctx.destination);
- // A quiet synthetic atmospheric bed; 3 tones form a slowly modulating harmonic field.
- for(const [freq,level,type] of [[87.31,.007,'sine'],[130.81,.005,'sine'],[174.61,.0025,'triangle']]){
-  const o=ctx.createOscillator(),g=ctx.createGain();
-  o.type=type;o.frequency.value=freq;g.gain.value=level;
-  o.connect(g);g.connect(master);o.start();drone.push({o,g,freq});
+function generatedCue(type,frequency){
+ const sr=22050,seconds=type==='stage'?1.04:type==='select'?.68:.28;
+ const N=Math.round(sr*seconds),s=new Float32Array(N);
+ for(let i=0;i<N;i++){
+  const t=i/sr,p=i/N;
+  const env=(1-Math.exp(-t*130))*Math.pow(1-p,type==='stage'?2.8:2.1);
+  const base=frequency*(1+.10*Math.exp(-t*25));
+  const wave=Math.sin(2*Math.PI*base*t) +.22*Math.sin(2*Math.PI*base*1.5*t+.3)+
+    .08*Math.sin(2*Math.PI*base*2.02*t+.7);
+  s[i]=wave*env*(type==='stage'?.43:type==='select'?.46:.31);
  }
- water=ambientNoise();waterFilter=ctx.createBiquadFilter();
- waterFilter.type='lowpass';waterFilter.frequency.value=320;waterFilter.Q.value=.45;
- waterGain=ctx.createGain();waterGain.gain.value=.006;
- water.connect(waterFilter);waterFilter.connect(waterGain);waterGain.connect(master);
- try{reverb=ctx.createConvolver();reverb.buffer=impulse();
-  reverbInput=ctx.createGain();reverbInput.gain.value=.20;
-  reverbInput.connect(reverb);reverb.connect(master);
- }catch{reverb=null;reverbInput=null}
- created=true;
+ return encodeWav(s,sr);
 }
-function glide(value,time=.25){
- if(!ctx||!master)return;
- const now=ctx.currentTime;
- master.gain.cancelScheduledValues(now);
- master.gain.setTargetAtTime(value,now,Math.max(.01,time));
-}
-function updateAtmosphere(z){
- zoomPosition=clamp(z,0,1);
- if(!ctx||!created)return;
- const t=ctx.currentTime;
- waterFilter.frequency.setTargetAtTime(250+zoomPosition*990,t,.32);
- waterGain.gain.setTargetAtTime(.005+zoomPosition*.004,t,.40);
- for(let i=0;i<drone.length;i++){
-  const tone=drone[i];
-  tone.o.detune.setTargetAtTime(Math.sin(zoomPosition*2.9+i)*3.1,t,.50);
+const cueCache=new Map();
+function cueURL(type,freq){
+ const note=Math.round(freq/15)*15,key=type+note;
+ if(!cueCache.has(key)){
+  cueCache.set(key,URL.createObjectURL(generatedCue(type,note)));
  }
+ return cueCache.get(key);
 }
-async function unlock(){
- if(!enabled||!AC||document.hidden)return false;
- if(launching)return false;
- if(!ctx){
-  try{createEngine()}catch{report('Audio unavailable');return false}
- }
- if(ctx.state==='running'){glide(.53,.35);redraw();return true}
- launching=true;
+function prepare(){
+ if(ready)return;
+ // A native HTML audio loop is substantially easier to hear and resume on iOS
+ // than a low-frequency oscillator graph on a suspended AudioContext.
+ loopUrl=URL.createObjectURL(generatedAmbient());
+ ambient=document.createElement('audio');
+ ambient.src=loopUrl;ambient.loop=true;ambient.preload='auto';
+ ambient.playsInline=true;ambient.volume=.50;
+ ambient.addEventListener('play',state);
+ ambient.addEventListener('pause',state);
+ ambient.addEventListener('error',()=>{browserNotice='Sound unavailable';state()});
+ ready=true;
+}
+function webAudioStart(){
+ if(!AudioContextClass)return;
  try{
-  await ctx.resume();
-  glide(.53,.35);
-  updateAtmosphere(zoomPosition);
- }catch{permissionNotice=true;report('Tap the sound icon to enable audio')}
- finally{launching=false;redraw()}
- return ctx.state==='running';
+  if(!context){
+   context=new AudioContextClass();
+   gain=context.createGain();gain.gain.value=0;
+   const filt=context.createBiquadFilter();filt.type='lowpass';filt.frequency.value=1200;
+   gain.connect(filt);filt.connect(context.destination);
+   shimmer=context.createOscillator();shimmer.type='sine';
+   shimmer.frequency.value=440;shimmerGain=context.createGain();
+   shimmerGain.gain.value=.021;
+   shimmer.connect(shimmerGain);shimmerGain.connect(gain);shimmer.start();
+  }
+  if(context.state!=='running')context.resume().catch(()=>{});
+  if(gain){
+   gain.gain.setTargetAtTime(muted?0:.35,context.currentTime,.16);
+   shimmer.frequency.setTargetAtTime(400+soundPosition*480,context.currentTime,.20);
+  }
+ }catch{ /* HTML audio remains the primary reliable sound path */ }
 }
-function ping(freq,volume=.08,pan=0,kind='water'){
- if(!enabled||!ctx||ctx.state!=='running')return;
- const now=ctx.currentTime;
- const f=ctx.createOscillator(),g=ctx.createGain();
- const stereo=typeof ctx.createStereoPanner==='function'?ctx.createStereoPanner():ctx.createGain();
- if('pan' in stereo)stereo.pan.value=clamp(pan,-.75,.75);
- f.type=kind==='glass'?'sine':'triangle';
- f.frequency.setValueAtTime(Math.max(70,freq)*1.25,now);
- f.frequency.exponentialRampToValueAtTime(Math.max(70,freq),now+.095);
- const tail=kind==='glass'?.80:.33;
- g.gain.setValueAtTime(.0001,now);
- g.gain.exponentialRampToValueAtTime(Math.max(.0002,volume),now+.014);
- g.gain.exponentialRampToValueAtTime(.0001,now+tail);
- f.connect(g);g.connect(stereo);stereo.connect(master);
- if(reverbInput)stereo.connect(reverbInput);
- f.start(now);f.stop(now+tail+.02);
- f.onended=()=>{try{f.disconnect();g.disconnect();stereo.disconnect()}catch{}};
+function start(){
+ if(muted||document.hidden)return;
+ try{prepare()}catch{browserNotice='Audio could not initialize';state();return}
+ // Play immediately inside the gesture, *before* awaiting any promise.
+ // A delayed .play() is rejected in some versions of mobile Safari.
+ const result=ambient.play();
+ webAudioStart();
+ if(result&&typeof result.catch==='function'){
+  result.then(()=>{browserNotice='';state()})
+    .catch(()=>{browserNotice='Tap the sound icon to activate sound';state()});
+ }
+ state();
 }
-function soundZoom(z,delta=0,pan=0){
- const t=performance.now();updateAtmosphere(z);
- if(!enabled||!ctx||ctx.state!=='running'||Math.abs(delta)<.001)return;
- if(t-lastZoomPing<108)return;lastZoomPing=t;
- const pitch=(delta>0?245:174)*Math.pow(2,zoomPosition*.67);
- ping(pitch,.028+Math.min(.018,Math.abs(delta)*.13),pan,'water');
+function stop(){
+ if(ambient&&!ambient.paused)ambient.pause();
+ for(const v of activeVoices){try{v.pause();v.src=''}catch{}}
+ activeVoices.clear();
+ if(gain&&context)gain.gain.setTargetAtTime(0,context.currentTime,.045);
+ state();
 }
-function soundStage(stage,previous=stage-1){
- if(stageSeen===null){stageSeen=stage;return}
- if(stage===stageSeen)return;
- const old=stageSeen;stageSeen=stage;
- if(!enabled||!ctx||ctx.state!=='running')return;
- const freqs=[174.61,196,261.63,329.63,392];
- const freq=freqs[clamp(stage,0,4)]*(stage>=old?1:.83);
- ping(freq,.085,0,'glass');
- // One faint overtone gives each layer a soft opening/closing cue.
- ping(freq*1.5,.018,.22,'glass');
+function setMuted(value){
+ muted=!!value;try{localStorage.setItem(USER_PREF,muted?'1':'0')}catch{}
+ if(muted)stop();else start();
+ state();
 }
-function soundSelect(kind='',x=.5){
- if(!enabled||!ctx||ctx.state!=='running')return;
- const t=performance.now();if(t-lastSelectPing<180)return;lastSelectPing=t;
- const id=String(kind).split('').reduce((a,c)=>a+c.charCodeAt(0),0);
- ping(300+id%160,.065,x*2-1,'glass');
+function fireCue(type,freq,volume=.38){
+ if(muted||!ambient||ambient.paused||document.hidden)return;
+ const player=document.createElement('audio');
+ player.src=cueURL(type,freq);
+ player.preload='auto';player.playsInline=true;player.volume=volume;
+ activeVoices.add(player);
+ player.addEventListener('ended',()=>{activeVoices.delete(player);player.src=''}, {once:true});
+ const promise=player.play();
+ if(promise?.catch)promise.catch(()=>{activeVoices.delete(player)});
+ if(activeVoices.size>8){
+  const old=activeVoices.values().next().value;old.pause();old.src='';activeVoices.delete(old);
+ }
 }
-function soundMove(amount=.1,x=.5){
- if(!enabled||!ctx||ctx.state!=='running')return;
- const t=performance.now();if(t-lastMotionPing<240)return;lastMotionPing=t;
- if(Math.abs(amount)<1.1)return;
- ping(450+zoomPosition*270,.014+clamp(amount/200,0,.013),x*2-1,'water');
+function zoom(z,delta=0){
+ soundPosition=clamp(z,0,1);
+ if(context&&shimmer&&context.state==='running'){
+  shimmer.frequency.setTargetAtTime(380+soundPosition*530,context.currentTime,.13);
+ }
+ const now=performance.now();
+ if(Math.abs(delta)<.004||now-lastZoom<145)return;
+ lastZoom=now;
+ fireCue('zoom',(delta>0?392:261)*(1+soundPosition*.36),.18);
 }
-function setEnabled(next){
- enabled=!!next;
- try{localStorage.setItem(KEY,enabled?'1':'0')}catch{}
- if(enabled){unlock().then(ok=>{if(ok)ping(392,.047,0,'glass')})}
- else glide(0,.12);
- redraw();
+function stage(next){
+ if(stageIndex===null){stageIndex=next;return}
+ if(stageIndex===next)return;
+ stageIndex=next;
+ fireCue('stage',[261,329,392,440,523][clamp(next,0,4)],.34);
 }
-toggle?.addEventListener('click',()=>{
- // A muted icon means audio hasn't been unlocked yet, or user turned it off.
- if(!enabled)setEnabled(true);
- else if(!ctx||ctx.state!=='running')unlock();
- else setEnabled(false);
+function select(kind='surface'){
+ const now=performance.now();if(now-lastSelection<175)return;
+ lastSelection=now;
+ const hash=[...String(kind)].reduce((s,c)=>s+c.charCodeAt(0),0);
+ fireCue('select',440+(hash%7)*25,.35);
+}
+function motion(n){
+ const now=performance.now();
+ if(n<4||now-lastMove<460)return;
+ lastMove=now;
+ fireCue('zoom',520+soundPosition*200,.09);
+}
+button?.addEventListener('click',e=>{
+ e.stopPropagation();
+ if(muted)setMuted(false);
+ else if(ambient?.paused||!ready)start();
+ else setMuted(true);
 });
-function startOnGesture(e){
- if(!enabled||document.hidden||e?.target===toggle)return;
- // WebAudio must start in a gesture. Ignore noisy repeated listeners after initialization.
- if(ctx?.state!=='running')unlock();
+function unlock(e){
+ if(e.target===button||muted||document.hidden)return;
+ if(!ambient||ambient.paused)start();
 }
-document.addEventListener('pointerdown',startOnGesture,{capture:true,passive:true});
-document.addEventListener('touchstart',startOnGesture,{capture:true,passive:true});
-document.addEventListener('keydown',startOnGesture,{capture:true,passive:true});
-document.addEventListener('wheel',startOnGesture,{capture:true,passive:true});
+document.addEventListener('pointerdown',unlock,{capture:true,passive:true});
+document.addEventListener('touchstart',unlock,{capture:true,passive:true});
+document.addEventListener('keydown',unlock,{capture:true,passive:true});
+document.addEventListener('wheel',unlock,{capture:true,passive:true});
 document.addEventListener('visibilitychange',()=>{
- if(!ctx)return;
- if(document.hidden){glide(0,.02);ctx.suspend().catch(()=>{})}
- // Do not unexpectedly auto-play sound when the tab becomes visible again.
- redraw();
+ if(document.hidden)stop();
+ else state();
 });
 window.addEventListener('irispectra-sound',e=>{
  const d=e.detail||{};
- if(d.type==='zoom')soundZoom(d.zoom,d.delta,d.x??.5);
- else if(d.type==='stage')soundStage(d.stage,d.previous);
- else if(d.type==='select')soundSelect(d.kind,d.x??.5);
- else if(d.type==='move')soundMove(d.amount,d.x??.5);
- else if(d.type==='ambient')updateAtmosphere(d.zoom);
+ if(d.type==='zoom')zoom(d.zoom,d.delta);
+ else if(d.type==='stage')stage(d.stage);
+ else if(d.type==='select')select(d.kind);
+ else if(d.type==='move')motion(d.amount);
 });
-window.IrispectraSound={unlock,setEnabled,soundZoom,soundStage,soundSelect,soundMove};
-redraw();
+window.IrispectraSound={start,setEnabled:(v)=>setMuted(!v),getStatus:()=>({
+ muted,ready,playing:!!ambient&&!ambient.paused,
+ mediaTime:ambient?.currentTime??0,contextState:context?.state??'unavailable',
+ mediaVolume:ambient?.volume??0
+})};
+state();
