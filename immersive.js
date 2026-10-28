@@ -4,6 +4,7 @@ import {MORPHOLOGY,polarRegion} from "./morphology-data.js";
 import {zoneForEyePoint} from "./chart-zones.js";
 import {populateMicroScene} from "./micro-models.js";
 import {animateMicroAtmosphere} from "./micro-atmosphere.js";
+import {createMicroNavigator} from "./micro-navigation.js";
 import {getDepthInfo,ATLAS_DEPTH,MORPH_DETAILS} from "./depth-knowledge.js";
 import {SPECIMENS,makeAnnularSpecimen} from "./specimen-pipeline.js";
 const $=x=>document.getElementById(x),canvas=$('scene'),experience=$('experience');
@@ -185,8 +186,10 @@ function setMicroGroupOpacity(group,factor){
   const mats=Array.isArray(obj.material)?obj.material:[obj.material];
   for(const m of mats){
    if(m.userData.macroOriginalOpacity===undefined)m.userData.macroOriginalOpacity=m.opacity??1;
-   m.transparent=true;m.opacity=m.userData.macroOriginalOpacity*factor;
-   m.depthWrite=false;
+   const original=m.userData.macroOriginalOpacity;
+   m.opacity=original*factor;
+   m.transparent=m.opacity<.99;
+   m.depthWrite=m.opacity>.975;
   }
  });
 }
@@ -201,12 +204,14 @@ function updateDeepWorld(){
  const follow=1-Math.exp(-10*dt);
  microBlend=lerp(microBlend,targetBlend,follow);
  const changing=deep&&(stage!==microStage||route!==microRoute||!activeMicro);
+ const navigationActive=deep&&microBlend>.035;
  if(changing){
   disposeMicroGroup(previousMicro);
   previousMicro=activeMicro;
   activeMicro=new THREE.Group();deepGroup.add(activeMicro);
   populateMicroScene(THREE,activeMicro,route,stage);
   microStage=stage;microRoute=route;microTransitionStart=now;
+  microNav?.setActive(true,stage);
   setMicroGroupOpacity(activeMicro,0);
  }
  const cross=clamp((now-microTransitionStart)/620,0,1);
@@ -215,19 +220,21 @@ function updateDeepWorld(){
  if(deepGroup.visible){
   microMotionTime+=dt;
   deepGroup.position.set(0,0,0);
-  deepGroup.rotation.y+=dt*.085;
-  deepGroup.rotation.x=Math.sin(microMotionTime*.37)*.055;
-  // The micro-scene owns its own framing: it cannot be hidden inside the eyeball.
-  const scale=stage===2?1:stage===3?1.05:1.09;
-  deepGroup.scale.setScalar(lerp(deepGroup.scale.x||1,scale,follow));
+  // Keep structures stationary in world-space: the viewpoint travels.
+  deepGroup.rotation.set(0,0,0);
+  deepGroup.scale.setScalar(1);
+  microNav?.setActive(navigationActive,stage);
+  microNav?.update(dt,microMotionTime);
   setMicroGroupOpacity(activeMicro,microBlend*cross);
   setMicroGroupOpacity(previousMicro,microBlend*(1-cross));
   animateMicroAtmosphere(activeMicro,microMotionTime,microBlend*cross);
   animateMicroAtmosphere(previousMicro,microMotionTime,microBlend*(1-cross));
  }
+ updateMicroExplorerHUD(navigationActive,now);
  if(!deep&&microBlend<.004&&microStage>=2){
   disposeMicroGroup(previousMicro);disposeMicroGroup(activeMicro);
   previousMicro=null;activeMicro=null;microStage=-1;microRoute='';
+  microNav?.setActive(false);
  }
  eyeGroup.visible=!current.fundus;
  fundusStage.group.visible=!!current.fundus;
@@ -430,11 +437,14 @@ function makeScene(){
  drawDots();resize();window.addEventListener('resize',resize);setPhotographicDemo();initializeMicroWorld();
  $('loading').classList.add('hidden');animate();
 }
-let microScene=null,microCamera=null,microBackdrop=null,microBlend=0;
+let microScene=null,microCamera=null,microBackdrop=null,microBlend=0,microNav=null;
+let microFrameHud=0,microLabelTimeout=null;
 function initializeMicroWorld(){
  microScene=new THREE.Scene();
  microCamera=new THREE.PerspectiveCamera(37,innerWidth/innerHeight,.025,100);
- microCamera.position.set(0,0,10.7);microCamera.lookAt(0,0,0);
+ microCamera.position.set(0,0,9.3);microCamera.lookAt(0,0,0);
+ microNav=createMicroNavigator(THREE,microCamera);
+ microNav.reset(2);
  microScene.add(new THREE.HemisphereLight(0xe4f5ea,0x26342f,1.20));
  const key=new THREE.DirectionalLight(0xffebd0,2.2);key.position.set(-2.5,3.5,6);microScene.add(key);
  const rim=new THREE.DirectionalLight(0xc4e9ef,1.15);rim.position.set(3,-2,3);microScene.add(rim);
@@ -464,12 +474,12 @@ function resize(){
  renderer.setSize(w,h,false);camera.aspect=w/h;camera.updateProjectionMatrix();
  if(microCamera){
   microCamera.aspect=w/h;microCamera.fov=w<821?46:37;
-  microCamera.position.z=w<821?17.5:10.7;
+  // Micro camera movement is owned by the expedition navigator.
   microCamera.updateProjectionMatrix();
   // Full-frame micro-world matte lives behind the fibers and cells.
-  const depth=microCamera.position.z+4.4;
+  const depth=18.5;
   const visibleHeight=2*depth*Math.tan(microCamera.fov*Math.PI/360);
-  microBackdrop.scale.set(visibleHeight*(w/h)*1.07,visibleHeight*1.07,1);
+  microBackdrop.scale.set(visibleHeight*(w/h)*2.6,visibleHeight*2.6,1);
  }
 }
 let cameraLastTime=0,zoomSpringVelocity=0;
@@ -533,7 +543,8 @@ function updatePassiveDepth(){
    node.classList.toggle('active',i===stage);node.classList.toggle('passed',i<stage);
    node.setAttribute('aria-current',i===stage?'step':'false');
   });
-  if(current.selection)updateSelectionCard(stage);
+  if(stage>=2){$('infoPanel').hidden=true;}
+  else if(current.selection)updateSelectionCard(stage);
   window.IrispectraScience?.indicate?.(stage===0?0:stage===1?1:stage+1);
  }
  $('scaleProgress').style.width=(clamp(current.zoom,0,1)*100).toFixed(1)+'%';
@@ -725,18 +736,27 @@ function selectByTap(x,y,{preserveZoom=false}={}){
  // If a marker already emits a cue, event throttling avoids doubling it.
  const soundX=Math.max(0,Math.min(1,x/innerWidth));
  const v=new THREE.Vector2(x/innerWidth*2-1,-(y/innerHeight*2-1)),ray=new THREE.Raycaster();
- ray.setFromCamera(v,camera);
- if(deepGroup?.visible){
+ if(deepGroup?.visible&&microNav?.isActive()){
+  ray.setFromCamera(v,microCamera);
+  deepGroup.updateMatrixWorld(true);
   const hits=ray.intersectObject(deepGroup,true).filter(h=>
    h.object.isMesh&&!h.object.userData.decorative&&!h.object.parent?.userData.decorative
   );
-  if(!hits.length)return false;
+  if(!hits.length){$('microLabel').hidden=true;return false;}
   const hit=hits[0],role=hit.object.userData.role||hit.object.parent?.userData.role||
     (deepRoute==='iris'?'Iris microstructure':deepRoute+' microstructure');
-  if(current.selection){current.selection.microRole=role;updateSelectionCard(selectionStage());}
+  microNav.focus(hit.point);
+  if(!current.selection)current.selection={
+   kind:deepRoute==='iris'?'radial':deepRoute,zone:'Microscopic environment',
+   anatomicalZone:deepRoute==='iris'?'Iris stroma':'Ocular microanatomy',origin:'micro'
+  };
+  current.selection.microRole=role;
+  updateSelectionCard(selectionStage());
+  showMicroLabel(role,x,y);
   window.dispatchEvent(new CustomEvent('irispectra-sound',{detail:{type:'select',kind:role,x:soundX}}));
   return true;
  }
+ ray.setFromCamera(v,camera);
  if(current.fundus){
   const hits=ray.intersectObject(fundusStage.group,true);if(!hits.length)return false;
   current.selected=hits[0].point.clone();current.fundusTarget.copy(current.selected);deepRoute='retina';
@@ -767,6 +787,16 @@ function pointerSetup(){
   if(tourActive)stopDiscoveryTour();
   e.preventDefault();
   const dy=e.deltaY*(e.deltaMode===1?12:e.deltaMode===2?innerHeight:1);
+  if(microNav?.isActive()&&current.zoom>=.66&&!e.shiftKey){
+   const edge=microNav.dolly(-dy*.85);
+   if(edge==='deeper')setZoom(selectionStage()===2?.885:.975);
+   else if(edge==='shallower')setZoom(selectionStage()===4?.885:.76);
+   else if(edge==='surface')setZoom(.49);
+   else window.dispatchEvent(new CustomEvent('irispectra-sound',{detail:{
+    type:'zoom',zoom:current.zoom,delta:-dy*.00021
+   }}));
+   return;
+  }
   if(!current.selected&&dy<0&&current.targetZoom<.68)selectByTap(e.clientX,e.clientY,{preserveZoom:true});
   const change=-(Math.sign(dy))*Math.min(.095,Math.abs(dy)*.00062);
   if(change)setZoom(current.targetZoom+change);
@@ -802,9 +832,13 @@ function pointerSetup(){
    if(pinchDistance>0)setZoom(current.targetZoom+Math.log(Math.max(.01,dist/pinchDistance))*.26);
    pinchDistance=dist;return;
   }
-  // Orbit when dragging, focus on the selected region when scrolling.
-  current.targetYaw=clamp(current.targetYaw+(e.clientX-old.x)*.004,-.48,.48);
-  current.targetPitch=clamp(current.targetPitch-(e.clientY-old.y)*.003,-.29,.29);
+  if(microNav?.isActive()){
+   microNav.lookDelta(e.clientX-old.x,e.clientY-old.y);
+  }else{
+   // Surface orbit stays distinct from micro free-look.
+   current.targetYaw=clamp(current.targetYaw+(e.clientX-old.x)*.004,-.48,.48);
+   current.targetPitch=clamp(current.targetPitch-(e.clientY-old.y)*.003,-.29,.29);
+  }
   window.dispatchEvent(new CustomEvent('irispectra-sound',{detail:{
    type:'move',amount:Math.hypot(e.clientX-old.x,e.clientY-old.y),x:e.clientX/innerWidth
   }}));
@@ -823,9 +857,13 @@ function pointerSetup(){
  document.addEventListener('keydown',e=>{
   const tag=document.activeElement?.tagName;
   if(['INPUT','TEXTAREA','SELECT'].includes(tag)||document.activeElement?.isContentEditable)return;
+  if(microNav?.isActive()&&microNav.pressKey(e.key,true)){e.preventDefault();return;}
   if(e.key==='+'||e.key==='='||e.key==='ArrowUp'||e.key==='PageUp'){e.preventDefault();stopDiscoveryTour();setZoom(current.targetZoom+.075)}
   else if(e.key==='-'||e.key==='_'||e.key==='ArrowDown'||e.key==='PageDown'){e.preventDefault();stopDiscoveryTour();setZoom(current.targetZoom-.075)}
   else if(e.key==='0'||e.key==='Home'){e.preventDefault();stopDiscoveryTour();reset()}
+ },{passive:false});
+ document.addEventListener('keyup',e=>{
+  if(microNav?.isActive()&&microNav.pressKey(e.key,false))e.preventDefault();
  },{passive:false});
  canvas.addEventListener('pointerleave',()=>{eyeGazeX=0;eyeGazeY=0});
  canvas.tabIndex=0;
@@ -859,7 +897,55 @@ function startDiscoveryTour(){
  discoveryStep(9400,5,'See the collagen molecular motif',()=>setZoom(.975));
  discoveryStep(12900,5,'Continue exploring',()=>{stopDiscoveryTour();setZoom(.56)});
 }
+
+function showMicroLabel(role,x,y){
+ const el=$('microLabel');if(!el)return;
+ el.textContent=role;el.style.left=clamp(x,75,innerWidth-75)+'px';
+ el.style.top=clamp(y-40,80,innerHeight-100)+'px';
+ el.hidden=false;
+ if(microLabelTimeout)clearTimeout(microLabelTimeout);
+ microLabelTimeout=setTimeout(()=>{el.hidden=true},2500);
+}
+function updateMicroExplorerHUD(active,now){
+ const hud=$('microExplorer');
+ if(!hud)return;
+ if(hud.hidden===active)hud.hidden=!active;
+ if(!active){$('microLabel').hidden=true;return}
+ if(now-microFrameHud<100)return;
+ microFrameHud=now;
+ const data=microNav?.getStatus();if(!data)return;
+ $('microTravel').style.width=Math.round(data.progress*100)+'%';
+ $('microDistance').textContent=Math.round(data.progress*100)+'% DEPTH';
+ $('microGlide').textContent=data.glide?'DRIFT ON':'DRIFT OFF';
+ $('microStageName').textContent=['EYE','SURFACE','STROMA','CELLULAR','MOLECULAR'][data.stage]||'MICRO';
+}
+function connectMicroExplorer(){
+ const stepBack=()=>setZoom(selectionStage()>=4?.885:selectionStage()===3?.76:.49);
+ $('microBack').onclick=stepBack;
+ $('microGlide').onclick=()=>{microNav?.toggleGlide()};
+ const bind=(id,direction)=>{
+  const btn=$(id);if(!btn)return;
+  let raf=null,last=0,pressed=false;
+  btn.addEventListener('pointerdown',e=>{
+   e.preventDefault();pressed=true;btn.setPointerCapture?.(e.pointerId);
+   microNav?.dolly(direction*190);
+   last=performance.now();
+   const tick=t=>{
+    if(!pressed)return;
+    const dt=Math.min(.05,(t-last)/1000);last=t;
+    microNav?.dolly(direction*dt*400);
+    raf=requestAnimationFrame(tick);
+   };raf=requestAnimationFrame(tick);
+  });
+  const stop=()=>{pressed=false;if(raf!==null)cancelAnimationFrame(raf);raf=null};
+  for(const name of ['pointerup','pointercancel','lostpointercapture'])btn.addEventListener(name,stop);
+  btn.addEventListener('click',()=>{if(!pressed)microNav?.dolly(direction*180)});
+ };
+ bind('microForward',1);bind('microBackward',-1);
+}
+
 function connectUi(){
+ connectMicroExplorer();
  // Each scale is a real destination; selecting deep tissue from the overview
  // anchors the camera to a representative iris feature automatically.
  const destinations=[.07,.49,.76,.885,.975];
