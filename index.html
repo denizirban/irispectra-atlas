@@ -37,14 +37,14 @@
   </div>
   <div id="tourCaption" class="tour-caption" hidden aria-live="polite"><span id="tourCount">01 / 05</span><strong id="tourText">Explore the visible eye</strong><button type="button" id="tourSkip">EXIT</button></div><div id="depthHint" class="depth-hint" aria-live="polite"><span id="depthTitle">WHOLE EYE</span><small id="depthExplainer">SCROLL OR PINCH TO EXPLORE</small></div>
   <section class="micro-explorer" id="microExplorer" aria-label="Microscopic 3D navigation" hidden>
-    <div class="micro-explorer-heading"><span class="micro-live-dot"></span> MICRO EXPEDITION <span id="microStageName">STROMA</span></div>
+    <div class="micro-explorer-heading"><span class="micro-live-dot"></span> MICRO EXPEDITION <span id="microStageName">STROMA</span><button id="microPanelToggle" type="button" class="micro-panel-toggle" aria-expanded="false" aria-controls="microPanelDetails">DETAILS +</button></div>
     <div class="micro-route-row" role="group" aria-label="Choose a biological discovery path">
       <button type="button" data-bio-route="crypt" aria-pressed="true" title="Crypt to collagen">CRYPT</button>
       <button type="button" data-bio-route="pigment" aria-pressed="false" title="Pigment to melanin">PIGMENT</button>
       <button type="button" data-bio-route="muscle" aria-pressed="false" title="Pupil to contractile proteins">PUPIL</button>
       <button type="button" data-bio-route="neural" aria-pressed="false" title="Retina to neural signaling">NEURAL</button>
     </div>
-    <p class="micro-chapter" id="microChapter">Explore the iris connective tissue in three dimensions.</p>
+    <div id="microPanelDetails" class="micro-panel-details"><p class="micro-chapter" id="microChapter">Explore the iris connective tissue in three dimensions.</p>
     <section class="micro-discoveries" aria-label="Discoverable structures">
       <div class="micro-discoveries-label">DISCOVER <span>SELECT TO APPROACH</span></div>
       <div id="microNodes" class="micro-node-list"></div>
@@ -66,6 +66,7 @@
       <button type="button" id="microGlide" aria-label="Toggle slow ambient drifting">DRIFT ON</button>
     </div>
     <div class="micro-travel"><span class="micro-travel-track"><i id="microTravel"></i></span><small id="microDistance">0% DEPTH</small></div>
+    </div>
   </section>
   <div id="microLabel" class="micro-label" hidden role="status"></div>
   <div class="scale-journey" id="scaleJourney" aria-label="Anatomical magnification depth">
