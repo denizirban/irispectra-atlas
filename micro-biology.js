@@ -110,9 +110,18 @@ export function populateBioWorld(T,group,route,stage){
   if(role)o.userData.role=role;
   group.add(o);return o;
  };
- const sphereGeo=new T.SphereGeometry(1,13,10);
+ const sphereGeo=new T.SphereGeometry(1,mobile?20:32,mobile?14:24);
+ const organicGeo=new T.SphereGeometry(1,mobile?24:40,mobile?18:30);
+ const pos=organicGeo.attributes.position;
+ for(let i=0;i<pos.count;i++){
+  const x=pos.getX(i),y=pos.getY(i),z=pos.getZ(i);
+  const noise=.024*Math.sin(x*12.1+y*5.3)*Math.cos(z*13.7-y*4.1)
+   +.012*Math.sin(x*27.2-z*16.3);
+  pos.setXYZ(i,x*(1+noise),y*(1+noise),z*(1+noise));
+ }
+ organicGeo.computeVertexNormals();
  const sphere=(x,y,z,scale,material,role='')=>{
-  const o=add(sphereGeo,material,x,y,z,role);o.scale.set(...scale);return o;
+  const o=add(role.includes('membrane')||role.includes('Fibroblast')||role.includes('Melanocyte')?organicGeo:sphereGeo,material,x,y,z,role);o.scale.set(...scale);return o;
  };
  const path=(coordinates,rad,mat,role='')=>{
   const c=new T.CatmullRomCurve3(coordinates.map(p=>new T.Vector3(...p)));
@@ -145,16 +154,23 @@ export function populateBioWorld(T,group,route,stage){
  };
  const cellBody=(x,y,z,role,scale=[.76,.43,.34])=>{
   sphere(x,y,z,scale,mats.cell,role);
+  sphere(x,y,z,scale.map(v=>v*1.035),mats.membrane,role+' plasma membrane');
   sphere(x-.11,y+.04,z+.23,[.25,.19,.14],mats.dark,role+' nucleus');
   sphere(x-.17,y+.07,z+.37,[.07,.07,.045],mats.gold,'Nucleolus');
  };
  const mito=(x,y,z)=>{
-  const o=sphere(x,y,z,[.73,.30,.31],mats.pink,'Mitochondrion');
-  const membrane=sphere(x,y,z,[.69,.27,.29],mats.membrane,'Mitochondrial outer membrane');
-  for(let k=0;k<9;k++){
-   const xx=x+(k-4)*.13;
-   path([[xx,y-.19,z],[xx+.06,y,z+.06],[xx-.02,y+.18,z]],.021,mats.gold,'Mitochondrial crista');
-  }return [o,membrane];
+  const o=add(organicGeo,mats.pink,x,y,z,'Mitochondrion');o.scale.set(.73,.30,.31);
+  const membrane=add(organicGeo,mats.membrane,x,y,z,'Mitochondrial outer membrane');
+  membrane.scale.set(.77,.335,.345);
+  for(let k=0;k<11;k++){
+   const xx=x+(k-5)*.115,fold=[];
+   for(let j=0;j<=12;j++){
+    const t=j/12;
+    fold.push([xx+.042*Math.sin(t*Math.PI*3+k*.4),y+(t-.5)*.44,z+.10*Math.cos(t*Math.PI*2+k*.4)]);
+   }
+   path(fold,.014,mats.gold,'Mitochondrial crista');
+  }
+  return [o,membrane];
  };
  const melanosome=(x,y,z)=>{
   sphere(x,y,z,[.69,.40,.40],mats.dark,'Melanosome');
