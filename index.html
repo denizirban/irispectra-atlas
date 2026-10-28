@@ -7,7 +7,10 @@
   <header class="header">
     <a class="brand" href="/" aria-label="Irispectra home"><img class="brand-mark" src="/irispectra-mark.svg" alt=""><span>IRISPECTRA</span></a>
     
-    <button class="tour-control" id="tourBtn" type="button" aria-pressed="false"><span class="tour-dot"></span> START DISCOVERY</button><button class="text-button top-guide" id="aboutBtn" type="button">ABOUT <span class="arrow">↗</span></button>
+    <button class="tour-control" id="tourBtn" type="button" aria-pressed="false"><span class="tour-dot"></span> START DISCOVERY</button><button class="text-button top-guide" id="aboutBtn" type="button">ABOUT <span class="arrow">↗</span></button><button class="audio-toggle" id="audioToggle" type="button" aria-pressed="false" aria-label="Select ambient soundtrack" title="Ambient sound"><span aria-hidden="true">♫</span></button>
+    <input id="ambientPicker" type="file" accept="audio/*,.mp3,.m4a,.wav,.ogg" hidden aria-label="Choose a local ambient soundtrack">
+    <audio id="ambientAudio" loop playsinline preload="none"></audio>
+    <span class="visually-hidden" id="audioStatus" role="status" aria-live="polite"></span>
   </header>
   <div class="side left">
     <div class="side-caption"><span id="sceneNumber">01 / THE HUMAN EYE</span></div>
@@ -103,4 +106,4 @@
   </div>
   <div class="annotate" id="annotate" hidden><label for="annotationType">MANUAL ANNOTATION</label><select id="annotationType"><option value="crypt">CRYPT-LIKE REGION</option><option value="collarette">COLLARETTE</option><option value="furrow">CONTRACTION FURROW</option><option value="radial">RADIAL TEXTURE</option><option value="limbal">LIMBAL BOUNDARY</option></select><button id="placeAnnotation" type="button">+ PLACE</button><button id="clearAnnotations" type="button">CLEAR</button></div>
 </main>
-<script type="module" src="/immersive.js"></script><script defer src="/science-atlas.js"></script><script type="module" src="/morphology-map.js"></script></body></html>
+<script type="module" src="/immersive.js"></script><script defer src="/science-atlas.js"></script><script type="module" src="/morphology-map.js"></script><script type="module" src="/audio-controller.js"></script></body></html>
