@@ -8,8 +8,8 @@
     <a class="brand" href="/" aria-label="Irispectra home"><img class="brand-mark" src="/irispectra-mark.svg" alt=""><span>IRISPECTRA</span></a>
     
     <button class="tour-control" id="tourBtn" type="button" aria-pressed="false"><span class="tour-dot"></span> START DISCOVERY</button><button class="text-button top-guide" id="aboutBtn" type="button">ABOUT <span class="arrow">↗</span></button><button class="audio-toggle" id="audioToggle" type="button" aria-pressed="false" aria-label="Select ambient soundtrack" title="Ambient sound"><span aria-hidden="true">♫</span></button>
-    <input id="ambientPicker" type="file" accept="audio/*,.mp3,.m4a,.wav,.ogg" hidden aria-label="Choose a local ambient soundtrack">
-    <audio id="ambientAudio" loop playsinline preload="none"></audio>
+    
+    <audio id="ambientAudio" src="/audio/morning-spring.mp3" loop playsinline preload="metadata"></audio>
     <span class="visually-hidden" id="audioStatus" role="status" aria-live="polite"></span>
   </header>
   <div class="side left">
