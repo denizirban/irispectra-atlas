@@ -590,6 +590,7 @@ function setZoom(value){
  if(value>=.995&&!current.selected&&!current.rear&&!current.fundusTransition){enterFundus();return;}if(current.targetZoom<.24){current.selected=null;current.focusTarget.set(0,0,current.targetZoom<.2?0:1.13);current.selection=null;$('infoPanel').hidden=true;clearSelection()}if(current.rear)return;if(current.targetZoom>.62){$('sceneNumber').textContent='02 / THE IRIS';$('sceneTitle').innerHTML='LOOK<br>CLOSER.';$('sceneNote').textContent='Every fiber tells a story of structure.'}else{$('sceneNumber').textContent='01 / THE HUMAN EYE';$('sceneTitle').innerHTML='THE WORLD<br>WITHIN.';$('sceneNote').textContent='A closer look at what makes every iris unique.'}}
 function enterFundus(){
  if(current.fundus||current.fundusTransition)return;
+ activeBioRoute='neural';
  if(current.rear)toggleRear();
  current.fundusTransition=true;current.selected=null;current.selection=null;current.targetYaw=0;current.targetPitch=0;
  current.focusTarget.set(0,0,1.13);setZoom(.95);$('infoPanel').hidden=true;$('enterBtn').disabled=true;
@@ -617,6 +618,7 @@ function exitFundus(){
  drawDots();setZoom(.10);
 }
 function reset(){
+ activeBioRoute='crypt';bioGuided=false;
  clearTimeout(fundusTimer);current.fundusTransition=false;$('enterBtn').disabled=false;
  if(current.fundus)exitFundus();if(current.rear)toggleRear();current.selected=null;current.selection=null;current.focusTarget.set(0,0,0);current.focus.set(0,0,0);current.zoom=.07;current.targetZoom=.07;current.targetYaw=0;current.targetPitch=0;setZoom(.07);$('infoPanel').hidden=true;clearSelection()}
 function approach(p){current.selected=p;if(current.fundus&&deepRoute==='iris')deepRoute='retina';if(current.fundus)current.fundusTarget.copy(p);else current.focusTarget.copy(p);setZoom(.84);updateSelectionCard();}
