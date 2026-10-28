@@ -169,14 +169,14 @@ let microMotionTime=0,lastMicroFrame=0;
 function disposeMicroGroup(group){
  if(!group)return;
  const geometries=new Set(),materials=new Set();
- group.traverse(obj=>{if(obj.isMesh){
+ group.traverse(obj=>{if(obj.isMesh||obj.isPoints||obj.isLine){
   if(obj.geometry)geometries.add(obj.geometry);
   if(Array.isArray(obj.material))obj.material.forEach(m=>materials.add(m));
   else if(obj.material)materials.add(obj.material);
  }});
  group.parent?.remove(group);
  geometries.forEach(geo=>geo.dispose());
- materials.forEach(mat=>mat.dispose());
+ materials.forEach(mat=>{if(mat.map)mat.map.dispose();mat.dispose()});
 }
 function setMicroGroupOpacity(group,factor){
  if(!group)return;
@@ -219,6 +219,8 @@ function updateDeepWorld(){
   deepGroup.scale.lerp(new THREE.Vector3(scale,scale,scale),follow);
   setMicroGroupOpacity(activeMicro,macroToMicro*stageBlend);
   setMicroGroupOpacity(previousMicro,macroToMicro*(1-stageBlend));
+  animateMicroAtmosphere(activeMicro,microMotionTime,macroToMicro*stageBlend);
+  animateMicroAtmosphere(previousMicro,microMotionTime,macroToMicro*(1-stageBlend));
   eyeGroup.visible=current.fundus?false:macroToMicro<.98;
   fundusStage.group.visible=current.fundus&&macroToMicro<.98;
  }else{
@@ -585,12 +587,15 @@ function updateSelectionCard(stage=selectionStage()){
  }
  const d=MORPHOLOGY[sel.kind],layer=getDepthInfo(deepRoute,stage,sel.kind);
  $('infoIndex').textContent=sel.origin==='map'?'MORPHOLOGY / '+sel.side:sel.origin==='fundus'?'POSTERIOR EYE':'SELECTED STRUCTURE';
- $('infoHeading').textContent=stage>=2?layer.title:(sel.zone||d?.name||layer.title);
+ $('infoHeading').textContent=stage>=2?(sel.microRole||layer.title):(sel.zone||d?.name||layer.title);
  $('infoZone').textContent=sel.origin==='fundus'?sel.zone:(sel.anatomicalZone||'Iris surface');
  $('infoStage').textContent=layer.kicker+' · '+layer.title;
  classifySelection();
- $('infoBody').textContent=stage>=2?layer.short:(MORPH_DETAILS[sel.kind]?.short||d?.note||sel.description||layer.short);
+ $('infoBody').textContent=stage>=2?
+  (sel.microRole?'Selected '+sel.microRole.toLowerCase()+'. ':'' )+layer.short:
+  (MORPH_DETAILS[sel.kind]?.short||d?.note||sel.description||layer.short);
  const list=$('microFactList');list.replaceChildren();
+ if(stage<2&&sel.microRole)delete sel.microRole;
  const entries=stage<=1&&MORPH_DETAILS[sel.kind]?
   [...layer.facts,['Observed features',MORPH_DETAILS[sel.kind].features.join(' · ')]]:layer.facts;
  for(const [name,value] of entries){
@@ -671,9 +676,15 @@ function selectByTap(x,y,{preserveZoom=false}={}){
  const v=new THREE.Vector2(x/innerWidth*2-1,-(y/innerHeight*2-1)),ray=new THREE.Raycaster();
  ray.setFromCamera(v,camera);
  if(deepGroup?.visible){
-  const hits=ray.intersectObject(deepGroup,true);
+  const hits=ray.intersectObject(deepGroup,true).filter(h=>
+   h.object.isMesh&&!h.object.userData.decorative&&!h.object.parent?.userData.decorative
+  );
   if(!hits.length)return false;
-  updateSelectionCard(selectionStage());return true;
+  const hit=hits[0],role=hit.object.userData.role||hit.object.parent?.userData.role||
+    (deepRoute==='iris'?'Iris microstructure':deepRoute+' microstructure');
+  if(current.selection){current.selection.microRole=role;updateSelectionCard(selectionStage());}
+  window.dispatchEvent(new CustomEvent('irispectra-sound',{detail:{type:'select',kind:role,x:soundX}}));
+  return true;
  }
  if(current.fundus){
   const hits=ray.intersectObject(fundusStage.group,true);if(!hits.length)return false;
