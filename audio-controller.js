@@ -45,11 +45,19 @@ function ambience(){
  return makeWav(x,sr);
 }
 function fallbackSample(f,type){
- const sr=22050,d=type==='stage'?.8:type==='select'?.5:.24,N=Math.ceil(sr*d),x=new Float32Array(N);
+ // A compact, original droplet model with an upward resonant chirp, rounded
+ // transient and soft tail. Unlike a chime it has no sustained musical pitch.
+ const sr=22050,d=type==='stage'?.98:type==='select'?.48:.35;
+ const N=Math.ceil(sr*d),x=new Float32Array(N);
+ const decay=type==='stage'?5.7:type==='select'?10:14;
  for(let i=0;i<N;i++){
-  const t=i/sr,env=Math.pow(1-t/d,3)*(1-Math.exp(-t*160));
-  const phase=2*Math.PI*f*(t+.07*(1-Math.exp(-16*t))/16);
-  x[i]=env*(.55*Math.sin(phase)+.18*Math.sin(phase*1.51+.3)+.10*Math.sin(phase*2.05))*.55;
+  const t=i/sr,attack=1-Math.exp(-t*240);
+  const phase=2*Math.PI*f*(t-.31*(1-Math.exp(-23*t))/23);
+  const bubble=Math.sin(phase)*Math.exp(-decay*t);
+  const overtone=.22*Math.sin(phase*1.91+.18)*Math.exp(-25*t);
+  const click=.10*Math.sin(2*Math.PI*1750*t)*Math.exp(-165*t);
+  const bloom=type==='stage'?.25*Math.sin(phase*.51)*Math.exp(-3.9*t):0;
+  x[i]=(bubble+overtone+click+bloom)*attack*.47;
  }
  return makeWav(x,sr);
 }
@@ -116,49 +124,62 @@ function toggle(){
 function tone(freq,kind='drop',vol=.18,pan=0){
  if(muted||!ambient||ambient.paused)return;
  if(!ctx||ctx.state!=='running'||!master){nativeFallback(kind,freq,Math.min(.35,vol));return}
- const now=ctx.currentTime;
- const durations={drop:.32,select:.57,stage:1.15,move:.22};
- const d=durations[kind]||.3;
- const out=ctx.createGain(),filter=ctx.createBiquadFilter(),panner=ctx.createStereoPanner?.();
- filter.type='lowpass';filter.frequency.value=kind==='stage'?3500:kind==='drop'?4600:2900;filter.Q.value=.3;
- out.gain.setValueAtTime(.00001,now);
- out.gain.exponentialRampToValueAtTime(vol,now+.012);
- out.gain.exponentialRampToValueAtTime(.00001,now+d);
- filter.connect(out);
- if(panner){panner.pan.value=clamp(pan,-.6,.6);out.connect(panner);panner.connect(master);panner.connect(delay)}
- else {out.connect(master);out.connect(delay)}
- const ratios=kind==='stage'?[1,1.5,2.02]:kind==='select'?[1,1.37,2.20]:[1,1.48,2.66];
- const weights=kind==='stage'?[1,.29,.10]:[1,.20,.065];
- for(let j=0;j<ratios.length;j++){
-  const oscillator=ctx.createOscillator(),g=ctx.createGain();
-  oscillator.type='sine';
-  const f=freq*ratios[j];
-  oscillator.frequency.setValueAtTime(f*(kind==='drop'?1.58:1.10),now);
-  oscillator.frequency.exponentialRampToValueAtTime(f,now+(kind==='drop'?.10:.065));
-  g.gain.value=weights[j];oscillator.connect(g);g.connect(filter);oscillator.start(now);oscillator.stop(now+d+.01);
-  oscillator.onended=()=>{oscillator.disconnect();g.disconnect()};
+ const now=ctx.currentTime,durations={drop:.35,select:.56,stage:1.0,move:.18};
+ const d=durations[kind]||.32;
+ const output=ctx.createGain(),lowpass=ctx.createBiquadFilter();
+ const stereo=ctx.createStereoPanner?.();
+ lowpass.type='lowpass';lowpass.Q.value=.32;
+ lowpass.frequency.setValueAtTime(kind==='stage'?3300:4200,now);
+ output.gain.setValueAtTime(.00001,now);
+ output.gain.exponentialRampToValueAtTime(Math.max(vol,.001),now+.009);
+ output.gain.exponentialRampToValueAtTime(.00001,now+d);
+ lowpass.connect(output);
+ if(stereo){stereo.pan.value=clamp(pan,-.52,.52);output.connect(stereo);stereo.connect(master);stereo.connect(delay)}
+ else{output.connect(master);output.connect(delay)}
+ const partials=kind==='stage'?[1,1.5,2.01,.51]:kind==='select'?[1,1.92,2.8]:[1,1.9,3.15];
+ const weights=kind==='stage'?[1,.11,.035,.23]:kind==='select'?[1,.18,.04]:[1,.20,.024];
+ for(let j=0;j<partials.length;j++){
+  const osc=ctx.createOscillator(),amp=ctx.createGain(),partial=partials[j];
+  osc.type='sine';
+  const base=freq*partial;
+  const rise=kind==='stage'?.91:.69;
+  osc.frequency.setValueAtTime(base*rise,now);
+  osc.frequency.exponentialRampToValueAtTime(base,now+(kind==='stage'?.22:.085));
+  amp.gain.value=weights[j];
+  osc.connect(amp);amp.connect(lowpass);osc.start(now);osc.stop(now+d+.02);
+  osc.onended=()=>{osc.disconnect();amp.disconnect()};
+ }
+ // A tiny clean water-contact transient adds tactile definition without harsh clicks.
+ if(kind==='drop'||kind==='select'){
+  const click=ctx.createOscillator(),cg=ctx.createGain();
+  click.type='sine';click.frequency.value=1420;
+  cg.gain.setValueAtTime(vol*.075,now);
+  cg.gain.exponentialRampToValueAtTime(.00001,now+.026);
+  click.connect(cg);cg.connect(lowpass);click.start(now);click.stop(now+.03);
+  click.onended=()=>{click.disconnect();cg.disconnect()};
  }
 }
 function onZoom(z,delta){
  depth=clamp(z,0,1);
  const t=performance.now();if(Math.abs(delta)<.003||t-lastZoomAt<135)return;
  lastZoomAt=t;
- tone((delta>0?340:228)*(1+depth*.47),'drop',.12);
+ const fineVariation=(Math.sin(t*.021)*.5+.5)*32;
+ tone((delta>0?340:255)*(1+depth*.36)+fineVariation,'drop',.125);
 }
 function onStage(s){
  if(lastStage===null){lastStage=s;return}
  if(lastStage===s)return;
  lastStage=s;
- tone([261,330,391,440,522][clamp(s,0,4)],'stage',.14);
+ tone([235,294,349,415,494][clamp(s,0,4)],'stage',.11);
 }
 function onSelect(k,x){
  const t=performance.now();if(t-lastSelectAt<165)return;lastSelectAt=t;
  const hash=[...String(k)].reduce((a,c)=>a+c.charCodeAt(0),0);
- tone(415+(hash%5)*40,'select',.14,x*2-1);
+ tone(380+(hash%5)*32,'select',.14,x*2-1);
 }
 function onMove(amount,x){
  const t=performance.now();if(amount<5||t-lastMoveAt<290)return;lastMoveAt=t;
- tone(520+depth*240,'move',.028,x*2-1);
+ tone(450+depth*180,'move',.014,x*2-1);
 }
 button?.addEventListener('click',e=>{e.stopPropagation();toggle()});
 function unlock(e){if(!muted&&!document.hidden&&e.target!==button&&(!ambient||ambient.paused))start()}
