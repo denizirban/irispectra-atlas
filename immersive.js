@@ -488,6 +488,7 @@ function updatePassiveDepth(){
   $('depthHint').classList.toggle('micro',stage>=2);
   document.querySelectorAll('.scale-marker').forEach((node,i)=>{
    node.classList.toggle('active',i===stage);node.classList.toggle('passed',i<stage);
+   node.setAttribute('aria-current',i===stage?'step':'false');
   });
   if(current.selection)updateSelectionCard(stage);
   window.IrispectraScience?.indicate?.(stage===0?0:stage===1?1:stage+1);
@@ -809,6 +810,54 @@ function startDiscoveryTour(){
  discoveryStep(12900,5,'Continue exploring',()=>{stopDiscoveryTour();setZoom(.56)});
 }
 function connectUi(){
+ // Each scale is a real destination; selecting deep tissue from the overview
+ // anchors the camera to a representative iris feature automatically.
+ const destinations=[.07,.49,.76,.885,.975];
+ const markers=[...document.querySelectorAll('#scaleJourney .scale-marker')];
+ for(const marker of markers){
+  marker.addEventListener('click',()=>{
+   stopDiscoveryTour();
+   const i=Number(marker.dataset.scale);
+   if(i>=2&&!current.selected&&!current.fundus&&!current.rear){
+    const feature={kind:'crypt',radius:.42,angle:2.38};
+    current.selected=pointAt(feature.radius,feature.angle);
+    current.focusTarget.copy(current.selected);deepRoute='iris';
+    setIrisSelection(feature,0);
+   }
+   setZoom(destinations[Math.min(4,Math.max(0,i))]);
+   if(i===0){
+    current.selected=null;current.selection=null;$('infoPanel').hidden=true;
+    current.focusTarget.set(0,0,0);clearSelection();
+   }
+  });
+ }
+ // Small increments on tap; holding a zoom control glides continuously.
+ for(const [id,sign] of [['zoomIn',1],['zoomOut',-1]]){
+  const el=$(id);let pressTimer=null,holdFrame=null,holding=false,nextTick=0;
+  el.addEventListener('pointerdown',e=>{
+   if(e.pointerType==='mouse'&&e.button!==0)return;
+   pressTimer=setTimeout(()=>{
+    holding=true;nextTick=0;el.classList.add('zoom-holding');
+    const tick=t=>{
+     if(!holding)return;
+     if(t>=nextTick){stopDiscoveryTour();setZoom(current.targetZoom+sign*.018);nextTick=t+55}
+     holdFrame=requestAnimationFrame(tick);
+    };
+    holdFrame=requestAnimationFrame(tick);
+   },320);
+  });
+  const release=()=>{if(pressTimer){clearTimeout(pressTimer);pressTimer=null}
+   if(holdFrame!==null){cancelAnimationFrame(holdFrame);holdFrame=null}
+   el.classList.remove('zoom-holding');
+   if(holding){setTimeout(()=>{holding=false},0)}
+  };
+  el.addEventListener('pointerup',release);
+  el.addEventListener('pointercancel',release);
+  el.addEventListener('pointerleave',release);
+  el.addEventListener('click',e=>{
+   if(holding){e.preventDefault();e.stopImmediatePropagation();holding=false}
+  },true);
+ }
  $('tourBtn')?.addEventListener('click',()=>tourActive?stopDiscoveryTour():startDiscoveryTour());
  $('tourSkip')?.addEventListener('click',stopDiscoveryTour);
  $('lightRange')?.addEventListener('input',e=>{targetLight=Number(e.target.value)/100});
