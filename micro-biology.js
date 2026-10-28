@@ -215,6 +215,43 @@ export function populateBioWorld(T,group,route,stage){
   }
   return [o,membrane];
  };
+ // Large-scale mitochondrial cutaway: folds are traversable architectural
+ // membranes, not a literal nanometre-scale reconstruction.
+ const mitoInterior=()=>{
+  const shell=add(new T.CylinderGeometry(3.25,3.05,8,36,1,true),mats.membrane,0,0,-1.55,'Mitochondrial cutaway boundary');
+  shell.rotation.x=Math.PI/2;
+  const foldMat=new T.MeshPhysicalMaterial({color:0xb78565,roughness:.48,metalness:0,
+   side:T.DoubleSide,transparent:true,opacity:.82,depthWrite:false});
+  for(let k=0;k<(mobile?7:11);k++){
+   const centerX=(k-(mobile?3:5))*.61;
+   const verts=[],idx=[],rows=mobile?14:22,cols=mobile?18:30;
+   for(let j=0;j<=rows;j++){
+    const t=j/rows,y=(t-.5)*5.9;
+    for(let i=0;i<=cols;i++){
+     const u=i/cols,z=-4.6+u*6.1;
+     const bend=Math.sin(u*Math.PI*2.8+k*.56)*(.22+.08*Math.cos(t*Math.PI*2));
+     const pinch=.11*Math.cos(t*Math.PI*4+u*5+k);
+     verts.push(centerX+bend+pinch,y,z);
+     if(j<rows&&i<cols){
+      const a=j*(cols+1)+i;
+      idx.push(a,a+cols+1,a+1,a+1,a+cols+1,a+cols+2);
+     }
+    }
+   }
+   const geo=new T.BufferGeometry();
+   geo.setAttribute('position',new T.Float32BufferAttribute(verts,3));
+   geo.setIndex(idx);geo.computeVertexNormals();
+   const fold=add(geo,foldMat,0,0,0,'Inner mitochondrial membrane / crista');
+   fold.userData.depthBand='crista';
+  }
+  const n=mobile?50:105,geo=new T.IcosahedronGeometry(.045,0);
+  const dots=new T.InstancedMesh(geo,mats.pale,n),d=new T.Object3D();
+  for(let i=0;i<n;i++){
+   d.position.set((rand(i,41)-.5)*6.4,(rand(i,42)-.5)*5.7,-4.4+rand(i,43)*5.7);
+   d.scale.setScalar(.45+rand(i,44)*1.1);d.updateMatrix();dots.setMatrixAt(i,d.matrix);
+  }
+  dots.instanceMatrix.needsUpdate=true;dots.userData.role='Mitochondrial matrix granule';group.add(dots);
+ };
  const melanosome=(x,y,z)=>{
   sphere(x,y,z,[.69,.40,.40],mats.dark,'Melanosome');
   sphere(x,y,z,[.73,.44,.44],mats.membrane,'Melanosome membrane');
@@ -440,6 +477,9 @@ export function populateBioWorld(T,group,route,stage){
    }
   }
  }
+ // An interior chapter: the molecular-scale crypt route becomes a continuous
+ // traversable mitochondrial interior before collagen is explored.
+ if(stage===5&&route==='crypt')mitoInterior();
  // MOLECULAR 5 — illustrative molecular shape and biochemical context.
  if(stage===5){
   if(route==='crypt'){collagen();
