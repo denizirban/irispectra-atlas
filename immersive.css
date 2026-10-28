@@ -693,3 +693,9 @@
  .micro-explorer:not(.expanded) .micro-explore-mode{display:flex!important}
  .micro-explorer:not(.expanded) #microJourneyNext{display:inline-flex!important;align-items:center}
 }
+
+.micro-mobile-next{display:none}
+@media(max-width:820px){
+ .micro-mobile-next{display:block;width:100%;margin-top:9px;padding:10px 13px;border:1px solid rgba(222,238,220,.75);border-radius:8px;background:#deeadc;color:#17291b;font:600 10px ui-monospace,SFMono-Regular,monospace;text-align:center;letter-spacing:.06em;cursor:pointer}
+ .micro-explorer.expanded .micro-mobile-next{display:none}
+}
