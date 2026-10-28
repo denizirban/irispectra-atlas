@@ -659,3 +659,19 @@
  .micro-explorer{top:69px!important;left:9px!important;right:9px!important}
  .micro-route-row button{font-size:7px!important;padding:7px 2px!important}
 }
+
+/* Consent-based iris sharing, with persistent access on small screens */
+.atlas-send-photo{margin-top:16px;padding-top:15px;border-top:1px solid rgba(223,238,219,.22);display:grid;gap:9px}
+.atlas-send-photo>label:first-child{font:9px ui-monospace,SFMono-Regular,monospace;letter-spacing:.07em;color:#c9dace}
+.atlas-send-photo input[type=email]{width:100%;box-sizing:border-box;padding:11px 12px;border:1px solid rgba(215,231,213,.3);border-radius:8px;background:#13221b;color:#f0f7ec;font:13px system-ui}
+.atlas-photo-consent{display:flex;align-items:flex-start;gap:9px;color:#d4e0d1;font:11px/1.5 system-ui,sans-serif}
+.atlas-photo-consent input{flex:0 0 18px;width:18px;height:18px}
+#atlasPhotoSend{background:#e3eee0;color:#0c1910;border:0;border-radius:8px;padding:12px;cursor:pointer}
+#atlasPhotoSend:disabled{opacity:.48;cursor:default}
+#atlasPhotoStatus{color:#bfd1c2;font:11px/1.45 system-ui;margin:0}
+.mobile-upload{display:none}
+@media(max-width:820px){
+ .mobile-upload{display:inline-flex!important;align-items:center;justify-content:center;white-space:nowrap;padding:10px 12px;border-radius:99px;background:#e0ede0;color:#122015;border:0;font:10px ui-monospace,SFMono-Regular,monospace;cursor:pointer}
+ .bottom-actions{display:flex!important;gap:6px;align-items:center}
+ .dialog{max-height:calc(100svh - 80px);overflow-y:auto;-webkit-overflow-scrolling:touch}
+}
