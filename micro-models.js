@@ -137,6 +137,85 @@ export function populateMicroScene(T,root,route,stage){
    return [x+Math.cos(a)*r,y+Math.sin(a)*r*.56,z+(rand(i,32)-.5)*s*.28,.041*s];
   });
  }
+ function stromalMicrofibers(){
+  // Fine fibrils weave around the larger stroma bundles. Each fiber is a
+  // representative 3D teaching motif, not a reconstruction of a real specimen.
+  for(let i=0;i<44;i++){
+   const y=(i-21.5)*.105;
+   const z=(rand(i,71)-.5)*.65-.45;
+   const pts=[];
+   for(let k=0;k<=10;k++){
+    const t=k/10,x=(t-.5)*6.0;
+    const opening=Math.exp(-x*x*.95)*Math.exp(-y*y*1.25);
+    pts.push([x,y+Math.sin(i*.9+x*1.6)*.045+(i%2?1:-1)*opening*.35,
+     z+Math.cos(x*1.4+i*.62)*.065]);
+   }
+   const filament=polyline(pts,.007+rand(i,81)*.008,
+    i%5===0?materials.collagenLight:materials.connective,32);
+   filament.userData.role='stromal collagen microfibril';
+  }
+  // Thin perfused stromal channels can occur among collagen bundles.
+  for(let i=0;i<3;i++){
+   const a=i*2.16;
+   const pts=[];
+   for(let j=0;j<=11;j++){
+    const t=j/11,y=(t-.5)*4.2,x=Math.cos(a)*1.5+Math.sin(t*4+i)*.16;
+    pts.push([x,y,-.30+.14*Math.sin(t*9+i)]);
+   }
+   const vessel=polyline(pts,.036,materials.vessel,38);
+   vessel.userData.role='stromal capillary model';
+  }
+ }
+ function intracellularDetail(x,y,z,s=1){
+  // Nucleolus, vesicles and schematic mitochondria inside the cellular field.
+  const nucleolus=ellipse(x-.09*s,y+.02*s,z+.23*s,[.10*s,.085*s,.07*s],materials.nucleus);
+  nucleolus.userData.role='nucleolus';
+  for(let i=0;i<20;i++){
+   const a=i*2.399,r=Math.sqrt((i+.5)/20)*.67*s;
+   const xx=x+Math.cos(a)*r,yy=y+Math.sin(a)*r*.5;
+   const e=ellipse(xx,yy,z+.11*s,[.041*s,.035*s,.031*s],
+    i%4===0?materials.pigmentLight:materials.connective);
+   e.userData.role=i%4===0?'pigment granule':'intracellular vesicle';
+  }
+  for(let i=0;i<2;i++){
+   const x1=x+(i?-.42:.40)*s,y1=y+(i?.22:-.20)*s;
+   const mito=ellipse(x1,y1,z+.15*s,[.20*s,.08*s,.065*s],materials.collagenLight);
+   mito.rotation.z=i?-.34:.28;mito.userData.role='mitochondrion model';
+  }
+ }
+ function molecularMesh(){
+  // An extracellular-matrix crosslink and proteoglycan-like components
+  // for comparing molecules adjacent to the collagen triple helix.
+  for(let i=0;i<18;i++){
+   const y=(i-8.5)*.28,a=i*.87;
+   const x=Math.sin(a)*1.4,z=Math.cos(a)*.95-.75;
+   const cross=polyline([[x-.34,y-.12,z],[x,y,z+.13],[x+.35,y+.13,z]],
+    .014,materials.connective,14);
+   cross.userData.role='extracellular matrix connection';
+  }
+  grains(85,materials.collagenLight,i=>{
+   const a=i*2.399,r=1.1+1.1*rand(i,94);
+   return [Math.sin(a)*r,(i%21-10)*.24,Math.cos(a)*.35-1.0,
+    .025+rand(i,91)*.017];
+  }).userData.role='matrix-associated molecular motifs';
+ }
+ function photoreceptors(){
+  // Distinct outer/inner segment motifs for retinal visualization.
+  for(let i=0;i<8;i++){
+   const x=(i-3.5)*.64;
+   const body=ellipse(x,.74,.55,[.12,.33,.18],
+    i%3===0?materials.collagenLight:materials.neuron);
+   body.userData.role=i%3===0?'cone photoreceptor':'rod photoreceptor';
+   for(let k=0;k<5;k++){
+    const disc=mesh(new T.TorusGeometry(.11,.013,5,20),
+     materials.neuralDark,x,.95+k*.13,.58);
+    disc.scale.set(1,i%3===0?.70:1,.66);
+    disc.userData.role='photoreceptor disc membrane';
+   }
+   const axon=polyline([[x,.5,.55],[x,-.20,.45],[x-.08,-.68,.44]],
+    .025,materials.neuron,22);axon.userData.role='photoreceptor axon';
+  }
+ }
  function retinalLayers(){
   // Alternating neurite bands and cell strata; not a patient-specific histology slide.
   for(let layer=0;layer<7;layer++){
@@ -188,6 +267,7 @@ export function populateMicroScene(T,root,route,stage){
  if(stage===2){
   if(isIris||isSclera){
    strands(isSclera?44:34,isIris?.93:.25,true);
+   if(isIris)stromalMicrofibers();
    grains(isIris?100:46,materials.pigment,i=>{
     const a=i*2.399,r=.7+rand(i,17)*1.9;
     return [Math.cos(a)*r,Math.sin(a)*r,-.25+rand(i,19)*.24,.017+rand(i,2)*.023];
@@ -201,6 +281,7 @@ export function populateMicroScene(T,root,route,stage){
   if(isIris){
    // A pair of distinguishable cells, dendritic versus spindle-shaped.
    strands(13,.2,false);melanocyte(-1.10,.15,.72,1.05);fibroblast(1.36,-.26,.6,1.03);
+   intracellularDetail(1.36,-.26,.7,.84);
    organelles();
   }else if(isSclera){
    strands(20,.2,true);fibroblast(0,0,.65,1.45);
@@ -209,12 +290,12 @@ export function populateMicroScene(T,root,route,stage){
    ellipse(1.65,.45,.78,[.48,.32,.25],materials.cellMembrane);
   }else if(route==='nerve'){axonBundle(22);nucleus(-.65,.6,.70,.30)}
   else{
-   retinalLayers();
+   retinalLayers();photoreceptors();
    for(let i=0;i<5;i++){const x=(i-2)*.89;ellipse(x,.3,.7,[.23,.64,.25],materials.neuron)}
   }
  }else if(stage===4){
   if(isIris||isSclera){
-   helixTriple();
+   helixTriple();molecularMesh();
    if(isIris){
     melanosome(-1.85,1.05,-1.10,.66);
     melanosome(1.95,-.85,-1.0,.47);
