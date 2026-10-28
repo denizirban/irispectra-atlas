@@ -183,15 +183,16 @@ export function populateBioWorld(T,group,route,stage){
   heads.instanceMatrix.needsUpdate=true;tails.instanceMatrix.needsUpdate=true;
   heads.userData.role='Phospholipid hydrophilic head';
   tails.userData.role='Phospholipid hydrophobic tails';
+  heads.userData.depthBand='membrane';tails.userData.depthBand='membrane';
   group.add(heads,tails);
   for(let i=0;i<(mobile?5:9);i++){
    const px=x+(rand(i,31)-.5)*3.1,py=y+(rand(i,32)-.5)*2.7;
    const channel=add(new T.CylinderGeometry(.088,.11,.48,12,1),mats.green,
      px,py,z,'Transmembrane protein');
-   channel.rotation.x=Math.PI/2;
+   channel.rotation.x=Math.PI/2;channel.userData.depthBand='membrane';
    const pore=add(new T.CylinderGeometry(.029,.029,.49,9,1),mats.dark,
      px,py,z,'Membrane protein channel pore');
-   pore.rotation.x=Math.PI/2;
+   pore.rotation.x=Math.PI/2;pore.userData.depthBand='membrane';
   }
  };
  const cellBody=(x,y,z,role,scale=[.76,.43,.34])=>{
@@ -411,7 +412,8 @@ export function populateBioWorld(T,group,route,stage){
  }
  // ORGANELLE 4 — physically distinct subcellular destinations.
  if(stage===4){
-  if(route==='crypt'||route==='pigment')membranePatch(0,0,-1.25);
+  // Foreground bilayer is physically traversed before the deeper organelle field.
+  if(route==='crypt'||route==='pigment')membranePatch(0,0,3.28);
   if(route==='pigment'){
    melanosome(-.8,.15,.3);
    sphere(1.4,-1.0,.1,[.62,.35,.30],mats.cell,'Golgi apparatus');
@@ -425,9 +427,12 @@ export function populateBioWorld(T,group,route,stage){
   }else if(route==='neural'){
    photoreceptors();sphere(1.65,-.45,.2,[.62,.38,.23],mats.cell,'Synaptic terminal');
   }else{
-   mito(-1,.25,.45);
-   sphere(1.55,-.4,.25,[.72,.64,.42],mats.cell,'Cell nucleus');
-   sphere(1.55,-.4,.70,[.24,.2,.14],mats.dark,'Nucleolus');
+   mito(-.75,.25,-.65);
+   // Additional organelles create visible near/far parallax after the bilayer.
+   mito(1.65,.84,-1.62);
+   sphere(-2.05,-.90,-2.0,[.33,.22,.28],mats.cell,'Transport vesicle');
+   sphere(1.35,-.4,-.76,[.72,.64,.42],mats.cell,'Cell nucleus');
+   sphere(1.35,-.4,-.28,[.24,.2,.14],mats.dark,'Nucleolus');
    for(let j=0;j<7;j++){
     const y=.65-j*.2;
     path([[.25,y,-.40],[1.2,y+.16,-.3],[2.5,y-.08,-.2]],.026,mats.gold,
