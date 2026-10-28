@@ -1095,6 +1095,15 @@ function updateMicroExplorerHUD(active,now){
  $('microGuide').textContent=bioGuided?'FREE EXPLORE':'GUIDED TOUR';
 }
 function connectMicroExplorer(){
+ const dismiss=$('microPanelDismiss'),reopen=$('microPanelReopen'),panel=$('microExplorer');
+ dismiss?.addEventListener('click',()=>{
+  panel.classList.add('mobile-dismissed');
+  reopen.hidden=false;reopen.setAttribute('aria-expanded','false');
+ });
+ reopen?.addEventListener('click',()=>{
+  panel.classList.remove('mobile-dismissed');
+  reopen.hidden=true;reopen.setAttribute('aria-expanded','true');
+ });
  $('microPanelToggle')?.addEventListener('click',()=>{
   const open=$('microExplorer').classList.toggle('expanded');
   $('microPanelToggle').setAttribute('aria-expanded',String(open));
