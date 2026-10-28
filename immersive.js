@@ -191,46 +191,47 @@ function setMicroGroupOpacity(group,factor){
  });
 }
 function updateDeepWorld(){
- if(!deepGroup)return;
+ if(!deepGroup||!microScene)return;
  const now=performance.now(),dt=lastMicroFrame?Math.min(.05,(now-lastMicroFrame)/1000):1/60;
  lastMicroFrame=now;
- const stage=selectionStage(),zoom=current.zoom,selected=!!current.selected&&!current.rear;
- const show3D=selected&&stage>=2;
- // Fade in models only as the source photo nears its usable close-up limit.
- const macroToMicro=selected?smooth(.655,.78,zoom):0;
- const changing=show3D&&(stage!==microStage||deepRoute!==microRoute||!activeMicro);
+ const stage=selectionStage(),zoom=current.zoom;
+ const deep=stage>=2&&!current.rear;
+ const route=current.fundus?(deepRoute==='iris'?'retina':deepRoute):deepRoute;
+ const targetBlend=deep?smooth(.635,.79,zoom):0;
+ const follow=1-Math.exp(-10*dt);
+ microBlend=lerp(microBlend,targetBlend,follow);
+ const changing=deep&&(stage!==microStage||route!==microRoute||!activeMicro);
  if(changing){
-  disposeMicroGroup(previousMicro);previousMicro=activeMicro;
+  disposeMicroGroup(previousMicro);
+  previousMicro=activeMicro;
   activeMicro=new THREE.Group();deepGroup.add(activeMicro);
-  populateMicroScene(THREE,activeMicro,deepRoute,stage);
-  microStage=stage;microRoute=deepRoute;microTransitionStart=now;
+  populateMicroScene(THREE,activeMicro,route,stage);
+  microStage=stage;microRoute=route;microTransitionStart=now;
   setMicroGroupOpacity(activeMicro,0);
  }
- const stageBlend=clamp((now-microTransitionStart)/520,0,1);
- if(previousMicro&&stageBlend>=1){disposeMicroGroup(previousMicro);previousMicro=null;}
- if(show3D){
-  deepGroup.visible=true;
-  const anchor=current.fundus?current.fundusLook:current.focus;
-  deepGroup.position.lerp(anchor,1-Math.exp(-13*dt));
+ const cross=clamp((now-microTransitionStart)/620,0,1);
+ if(previousMicro&&cross>=1){disposeMicroGroup(previousMicro);previousMicro=null;}
+ deepGroup.visible=microBlend>.002;
+ if(deepGroup.visible){
   microMotionTime+=dt;
-  deepGroup.rotation.y+=dt*.12;
-  deepGroup.rotation.x=Math.sin(microMotionTime*.40)*.045;
-  const scale=stage===2?.25:stage===3?.225:.20;
-  const follow=1-Math.exp(-8*dt);
-  deepGroup.scale.lerp(new THREE.Vector3(scale,scale,scale),follow);
-  setMicroGroupOpacity(activeMicro,macroToMicro*stageBlend);
-  setMicroGroupOpacity(previousMicro,macroToMicro*(1-stageBlend));
-  animateMicroAtmosphere(activeMicro,microMotionTime,macroToMicro*stageBlend);
-  animateMicroAtmosphere(previousMicro,microMotionTime,macroToMicro*(1-stageBlend));
-  eyeGroup.visible=current.fundus?false:macroToMicro<.98;
-  fundusStage.group.visible=current.fundus&&macroToMicro<.98;
- }else{
-  if(microStage>=2&&zoom<.64){disposeMicroGroup(previousMicro);disposeMicroGroup(activeMicro);previousMicro=null;activeMicro=null;microStage=-1;}
-  deepGroup.visible=false;
-  if(!current.fundus)eyeGroup.visible=true;
-  else fundusStage.group.visible=true;
+  deepGroup.position.set(0,0,0);
+  deepGroup.rotation.y+=dt*.085;
+  deepGroup.rotation.x=Math.sin(microMotionTime*.37)*.055;
+  // The micro-scene owns its own framing: it cannot be hidden inside the eyeball.
+  const scale=stage===2?1:stage===3?1.05:1.09;
+  deepGroup.scale.setScalar(lerp(deepGroup.scale.x||1,scale,follow));
+  setMicroGroupOpacity(activeMicro,microBlend*cross);
+  setMicroGroupOpacity(previousMicro,microBlend*(1-cross));
+  animateMicroAtmosphere(activeMicro,microMotionTime,microBlend*cross);
+  animateMicroAtmosphere(previousMicro,microMotionTime,microBlend*(1-cross));
  }
- const d=$('depthExplainer');if(d)d.textContent=(ATLAS_DEPTH[deepRoute]||ATLAS_DEPTH.iris)[stage].title;
+ if(!deep&&microBlend<.004&&microStage>=2){
+  disposeMicroGroup(previousMicro);disposeMicroGroup(activeMicro);
+  previousMicro=null;activeMicro=null;microStage=-1;microRoute='';
+ }
+ eyeGroup.visible=!current.fundus;
+ fundusStage.group.visible=!!current.fundus;
+ const d=$('depthExplainer');if(d)d.textContent=(ATLAS_DEPTH[route]||ATLAS_DEPTH.iris)[stage].title;
 }
 function makeTexture(source){
  if(texture)texture.dispose();texture=new THREE.CanvasTexture(source);texture.colorSpace=THREE.SRGBColorSpace;texture.anisotropy=Math.min(12,renderer.capabilities.getMaxAnisotropy());texture.needsUpdate=true;
@@ -426,10 +427,51 @@ function makeScene(){
  const hole=new THREE.Mesh(new THREE.CylinderGeometry(.18,.18,.13,128,1,true),new THREE.MeshStandardMaterial({color:0x090a09,roughness:1,side:THREE.DoubleSide}));hole.rotation.x=Math.PI/2;hole.position.z=1.19;hole.renderOrder=2;eyeGroup.add(hole);
  pupil=new THREE.Mesh(new THREE.CircleGeometry(.189,128),new THREE.MeshBasicMaterial({color:0x030504}));pupil.position.z=1.13;pupil.renderOrder=2;eyeGroup.add(pupil);
  makeIris();const pupilRim=rim(.195,1.215,0x181c14,.013);pupilRim.userData.pupilEdge=true;rim(.623,1.116,0x151e1c,.019);makeCornea();makePosteriorAnatomy();fundusStage=createFundusStage();scene.add(fundusStage.group); // clean eye-only frame
- drawDots();resize();window.addEventListener('resize',resize);setPhotographicDemo();deepGroup=new THREE.Group();scene.add(deepGroup);
+ drawDots();resize();window.addEventListener('resize',resize);setPhotographicDemo();initializeMicroWorld();
  $('loading').classList.add('hidden');animate();
 }
-function resize(){const w=innerWidth,h=innerHeight;if(!renderer)return;renderer.setSize(w,h,false);camera.aspect=w/h;camera.updateProjectionMatrix();}
+let microScene=null,microCamera=null,microBackdrop=null,microBlend=0;
+function initializeMicroWorld(){
+ microScene=new THREE.Scene();
+ microCamera=new THREE.PerspectiveCamera(37,innerWidth/innerHeight,.025,100);
+ microCamera.position.set(0,0,10.7);microCamera.lookAt(0,0,0);
+ microScene.add(new THREE.HemisphereLight(0xe4f5ea,0x26342f,1.20));
+ const key=new THREE.DirectionalLight(0xffebd0,2.2);key.position.set(-2.5,3.5,6);microScene.add(key);
+ const rim=new THREE.DirectionalLight(0xc4e9ef,1.15);rim.position.set(3,-2,3);microScene.add(rim);
+ // This matte fades the macro photograph away while the real 3D scene fades in.
+ microBackdrop=new THREE.Mesh(new THREE.PlaneGeometry(1,1),
+  new THREE.MeshBasicMaterial({color:0x07100f,transparent:true,opacity:0,depthWrite:false,
+   side:THREE.DoubleSide,toneMapped:false}));
+ microBackdrop.position.set(0,0,-4.4);
+ microBackdrop.renderOrder=-100;
+ microScene.add(microBackdrop);
+ deepGroup=new THREE.Group();microScene.add(deepGroup);
+ resize();
+}
+function renderAtlasLayers(){
+ renderer.autoClear=false;
+ renderer.clear(true,true,true);
+ renderer.render(scene,camera);
+ if(microScene&&microBlend>.005){
+  renderer.clearDepth();
+  microBackdrop.material.opacity=microBlend;
+  renderer.render(microScene,microCamera);
+ }
+ renderer.autoClear=true;
+}
+function resize(){
+ const w=innerWidth,h=innerHeight;if(!renderer)return;
+ renderer.setSize(w,h,false);camera.aspect=w/h;camera.updateProjectionMatrix();
+ if(microCamera){
+  microCamera.aspect=w/h;microCamera.fov=w<821?46:37;
+  microCamera.position.z=w<821?17.5:10.7;
+  microCamera.updateProjectionMatrix();
+  // Full-frame micro-world matte lives behind the fibers and cells.
+  const depth=microCamera.position.z+4.4;
+  const visibleHeight=2*depth*Math.tan(microCamera.fov*Math.PI/360);
+  microBackdrop.scale.set(visibleHeight*(w/h)*1.07,visibleHeight*1.07,1);
+ }
+}
 let cameraLastTime=0,zoomSpringVelocity=0;
 function stepCameraZoom(dt){
  // Critically-damped second-order motion, frame-rate independent and reversible.
@@ -506,7 +548,7 @@ function animate(){
  const targetY=idle?eyeGazeX+Math.cos(t*.39)*.010:0;
  eyeGroup.rotation.x=lerp(eyeGroup.rotation.x,targetX,.06);
  eyeGroup.rotation.y=lerp(eyeGroup.rotation.y,targetY,.06);
- updateDots();renderer.render(scene,camera);
+ updateDots();renderAtlasLayers();
 }
 function setZoom(value){
  const previousZoom=current.targetZoom;
@@ -514,6 +556,13 @@ function setZoom(value){
  if(current.fundus&&value<=0){exitFundus();return;}
  if(current.fundusTransition&&value<current.targetZoom){clearTimeout(fundusTimer);current.fundusTransition=false;$('enterBtn').disabled=false;}
  current.targetZoom=clamp(value,0,1);
+ // Even an uninterrupted scroll without an earlier hotspot must enter the real micro-scene.
+ if(current.targetZoom>=.66&&!current.selected&&!current.rear&&!current.fundus){
+  const feature={kind:'crypt',radius:.43,angle:2.38};
+  current.selected=pointAt(feature.radius,feature.angle);
+  current.focusTarget.copy(current.selected);
+  deepRoute='iris';setIrisSelection(feature,1);
+ }
  if(Math.abs(current.targetZoom-previousZoom)>.0008){
   window.dispatchEvent(new CustomEvent('irispectra-sound',{detail:{
    type:'zoom',zoom:current.targetZoom,delta:current.targetZoom-previousZoom,x:.5
