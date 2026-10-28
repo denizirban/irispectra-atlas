@@ -29,9 +29,9 @@ export function createMicroNavigator(T, camera) {
   if(active&&!was)reset(nextStage);
   else if(active&&stage!==nextStage){
    // Keep physical gaze and position through the geometry cross-fade.
-   stage=nextStage;desired.z=cap(desired.z,2.8,initialDistance()+.6);
+   stage=nextStage;desired.z=desired.z<3.4?initialDistance()-.55:cap(desired.z,3.1,initialDistance()+.6);
    desired.x=cap(desired.x,-2.2,2.2);desired.y=cap(desired.y,-1.7,1.7);
-   targetYaw*=.8;targetPitch*=.8;drift=true;lastGesture=performance.now();
+   targetYaw*=.94;targetPitch*=.94;lastGesture=performance.now();
   }
   if(!active)keys.clear();
  }
