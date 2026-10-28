@@ -3,6 +3,7 @@ import {createFundusStage} from "./fundus.js";
 import {MORPHOLOGY,polarRegion} from "./morphology-data.js";
 import {zoneForEyePoint} from "./chart-zones.js";
 import {populateMicroScene} from "./micro-models.js";
+import {animateMicroAtmosphere} from "./micro-atmosphere.js";
 import {getDepthInfo,ATLAS_DEPTH,MORPH_DETAILS} from "./depth-knowledge.js";
 import {SPECIMENS,makeAnnularSpecimen} from "./specimen-pipeline.js";
 const $=x=>document.getElementById(x),canvas=$('scene'),experience=$('experience');
