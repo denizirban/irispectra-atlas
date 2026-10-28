@@ -259,6 +259,39 @@ function makeTexture(source){
 }
 
 let lightIntensity=.38,targetLight=.38,simPupil=.195;
+let plrMode='baseline',plrFlashTimer=null,plrFlashRestore=null,plrDisplayFrame=0;
+function setPlrMode(mode){
+ plrMode=mode;
+ $('plrResponse').textContent=mode==='flash'?'CONSTRICTING':mode==='dark'?'DILATING':'RESPONDING';
+ $('plrLab')?.classList.toggle('is-flashing',mode==='flash');
+}
+function changeSimulatedLight(next,mode){
+ targetLight=Math.max(0,Math.min(1,next));
+ $('lightRange').value=Math.round(targetLight*100);
+ if(plrFlashTimer){clearTimeout(plrFlashTimer);plrFlashTimer=null}
+ if(plrFlashRestore){clearTimeout(plrFlashRestore);plrFlashRestore=null}
+ setPlrMode(mode);
+}
+function flashPlr(){
+ const baseline=targetLight;
+ changeSimulatedLight(1,'flash');
+ // A controlled demonstration pulse; visual kinetics are not calibrated physiology.
+ plrFlashTimer=setTimeout(()=>{
+  plrFlashTimer=null;targetLight=baseline;
+  $('lightRange').value=Math.round(baseline*100);
+  setPlrMode('baseline');
+ },1250);
+}
+function updatePlrReadout(){
+ if(!$('plrPupil'))return;
+ const relative=(simPupil/.235)*100;
+ $('plrPupil').style.width=(relative*.50)+'%';
+ $('plrPupil').style.height=(relative*.50)+'%';
+ $('plrDiameter').textContent='RELATIVE APERTURE · '+Math.round(relative)+'%';
+ $('plrBeam').style.opacity=(.1+lightIntensity*.8).toFixed(2);
+ const moving=Math.abs(simPupil-(.235-.085*lightIntensity))>.0025;
+ if(plrMode==='baseline')$('plrResponse').textContent=moving?(targetLight>lightIntensity?'CONSTRICTING':'ADAPTING'):'STABLE';
+}
 function updateLightSimulation(){
  lightIntensity=lerp(lightIntensity,targetLight,.035);
  const desired=lerp(.235,.15,lightIntensity);
@@ -282,6 +315,7 @@ function updateLightSimulation(){
  if(lighting)lighting.intensity=lerp(2.05,2.75,lightIntensity);
  renderer.toneMappingExposure=lerp(1.12,1.32,lightIntensity);
  $('lightValue')&&($('lightValue').textContent=Math.round(lightIntensity*100)+'%');
+ if(++plrDisplayFrame%3===0)updatePlrReadout();
 }
 
 function makeIris(){
@@ -1156,7 +1190,13 @@ function connectUi(){
  }
  $('tourBtn')?.addEventListener('click',()=>tourActive?stopDiscoveryTour():startDiscoveryTour());
  $('tourSkip')?.addEventListener('click',stopDiscoveryTour);
- $('lightRange')?.addEventListener('input',e=>{targetLight=Number(e.target.value)/100});
+ $('lightRange')?.addEventListener('input',e=>changeSimulatedLight(Number(e.target.value)/100,'baseline'));
+ $('plrFlash')?.addEventListener('click',flashPlr);
+ $('plrDark')?.addEventListener('click',()=>changeSimulatedLight(0,'dark'));
+ $('plrExplore')?.addEventListener('click',()=>{
+  stopDiscoveryTour();selectBioRoute('muscle');setZoom(BIO_TARGETS[2]);
+  $('plrLab')?.classList.add('pathway-open');
+ });
   $('zoomIn').onclick=()=>{stopDiscoveryTour();setZoom(current.targetZoom+.12)};$('zoomOut').onclick=()=>{stopDiscoveryTour();setZoom(current.targetZoom-.12)};$('zoomRange').oninput=e=>{stopDiscoveryTour();setZoom(Number(e.target.value)/100)};
  $('enterBtn').onclick=()=>{if(current.fundus){setZoom(0);return;}if(current.selected){setZoom(Math.min(1,current.targetZoom+.2));return;}current.focusTarget.set(0,0,1.13);setZoom(Math.min(1,current.targetZoom+.24))};
   $('fundusBtn').onclick=()=>current.fundus?exitFundus():enterFundus();
