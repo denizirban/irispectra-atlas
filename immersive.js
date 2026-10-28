@@ -444,7 +444,7 @@ function makeScene(){
  $('loading').classList.add('hidden');animate();
 }
 let microScene=null,microCamera=null,microBackdrop=null,microBlend=0,microNav=null;
-let microFrameHud=0,microLabelTimeout=null,lastMicroNodes='';
+let microFrameHud=0,microLabelTimeout=null,lastMicroNodes='',lastJourneyStep=-1;
 function initializeMicroWorld(){
  microScene=new THREE.Scene();
  microCamera=new THREE.PerspectiveCamera(37,innerWidth/innerHeight,.025,100);
@@ -1017,6 +1017,12 @@ function updateMicroExplorerHUD(active,now){
  $('microStageName').textContent=BIO_STAGES[data.stage]||'MICRO';
  const chapter=bioInfo(activeBioRoute,Math.max(2,data.stage));
  $('microChapter').textContent=(bioGuided?BIO_ROUTES[activeBioRoute].name+' / ':'')+chapter.short;
+ const steps=['THE HUMAN EYE','IRIS MORPHOLOGY','STROMAL ARCHITECTURE','CELLULAR WORLD','INSIDE THE CELL','MOLECULAR STRUCTURE','CHEMICAL FOUNDATIONS'];
+ const names=activeBioRoute==='crypt'?['THE HUMAN EYE','IRIS CRYPT','INSIDE THE STROMA','MEET THE FIBROBLAST','CELLULAR MACHINERY','COLLAGEN TRIPLE HELIX','PEPTIDE CHEMISTRY']:steps;
+ $('microJourneyStep').textContent=String(data.stage+1).padStart(2,'0')+' / 07';
+ $('microJourneyTitle').textContent=names[data.stage]||'MICRO EXPEDITION';
+ $('microJourneyScale').textContent=data.stage>=5?'SCHEMATIC MOLECULAR MODEL':'ILLUSTRATIVE BIOLOGY';
+ $('microJourneyNext').textContent=data.stage>=6?'RETURN TO IRIS ↗':'GO DEEPER →';
  const nodeKey=activeBioRoute+':'+data.stage+':'+String(bioGuided);
  if(nodeKey!==lastMicroNodes){
   lastMicroNodes=nodeKey;
@@ -1051,6 +1057,10 @@ function connectMicroExplorer(){
   bioGuided=!bioGuided;lastMicroNodes='';microFrameHud=0;
   updateMicroExplorerHUD(microNav?.isActive(),performance.now());
   if(bioGuided){const first=nodesAt(activeBioRoute,selectionStage())[0];if(first)focusMicroRole(first.role);}
+ };
+ $('microJourneyNext').onclick=()=>{
+  stopDiscoveryTour();const stage=selectionStage();
+  setZoom(stage>=6?BIO_TARGETS[1]:BIO_TARGETS[stage+1]);
  };
  $('microDeeper').onclick=()=>{
   stopDiscoveryTour();const stage=selectionStage();

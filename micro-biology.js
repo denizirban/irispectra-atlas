@@ -253,6 +253,20 @@ export function populateBioWorld(T,group,route,stage){
    const inner=membraneRing(.85,.66,mats.dark,'Crypt-like stromal opening');
    inner.scale.set(1.3,.7,1);
    capillary();
+   // Depth-separated collagen networks establish strong travel parallax.
+   // Each layer represents a stylized extracellular-matrix plane.
+   for(let plane=0;plane<4;plane++){
+    const z=-2.6+plane*1.15;
+    for(let k=0;k<(mobile?9:16);k++){
+     const y=(k-(mobile?4:7.5))*.39+Math.sin(k*1.7+plane)*.12;
+     const wave=[];
+     for(let j=0;j<9;j++){
+      const x=-3.9+j*.975;
+      wave.push([x,y+Math.sin(j*.83+k+plane)*.13,z+Math.cos(j*.91+k)*.10]);
+     }
+     path(wave,.018+(k%3)*.005,plane%2?mats.matrix:mats.pale,'Stromal collagen bundle');
+    }
+   }
   }else if(route==='pigment'){
    for(let i=0;i<10;i++){
     const a=i*2.399,r=1.0+1.8*Math.sqrt((i+.5)/10);

@@ -46,6 +46,8 @@ export function createMicroNavigator(T, camera) {
   if(!active)return null;
   drift=false;lastGesture=performance.now();
   const delta=cap(amount,-220,220)*.006;
+  // Maintain the direction of the selected target while travelling.
+  // This replaces a sudden camera reset with a smooth, bounded approach.
   const proposed=desired.z-delta;
   // Deliberately transfer between depth scales only after reaching the edge
   // of a traversable zone. Standard +/- and the timeline always remain usable.

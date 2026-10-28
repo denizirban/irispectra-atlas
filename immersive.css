@@ -675,3 +675,21 @@
  .bottom-actions{display:flex!important;gap:6px;align-items:center}
  .dialog{max-height:calc(100svh - 80px);overflow-y:auto;-webkit-overflow-scrolling:touch}
 }
+
+/* Atlas vNext — journey-first controls */
+.micro-journey-status{margin:11px 0 0;padding:10px 0 9px;border-top:1px solid rgba(215,239,220,.18);display:grid;grid-template-columns:auto 1fr;column-gap:10px;row-gap:5px;align-items:center}
+#microJourneyStep{font:9px ui-monospace,SFMono-Regular,monospace;color:#a7b9a9;letter-spacing:.08em}
+#microJourneyTitle{font:500 12px system-ui,sans-serif;color:#f0f5ec;letter-spacing:.025em}
+#microJourneyScale{grid-column:2;font:8px ui-monospace,SFMono-Regular,monospace;color:#819e8b;letter-spacing:.06em}
+#microJourneyNext{margin-left:auto;background:#dcebdc!important;color:#132419!important;border-color:#dcebdc!important;font-weight:600!important}
+@media(max-width:820px){
+ .micro-journey-status{margin:7px 0 3px;padding:7px 0 4px;row-gap:3px}
+ #microJourneyTitle{font-size:10px}
+ #microJourneyScale{font-size:7px}
+ .micro-explore-mode{display:flex!important;margin-top:8px!important}
+ #microGuide{display:none!important}
+ #microJourneyNext{min-height:31px!important;padding:0 14px!important;font-size:9px!important}
+ .micro-explorer:not(.expanded) .micro-panel-details{display:none!important}
+ .micro-explorer:not(.expanded) .micro-explore-mode{display:flex!important}
+ .micro-explorer:not(.expanded) #microJourneyNext{display:inline-flex!important;align-items:center}
+}
