@@ -122,7 +122,7 @@ function ping(freq,volume=.08,pan=0,kind='water'){
 }
 function soundZoom(z,delta=0,pan=0){
  const t=performance.now();updateAtmosphere(z);
- if(!enabled||!ctx||ctx.state!=='running||Math.abs(delta)<.001)return;
+ if(!enabled||!ctx||ctx.state!=='running'||Math.abs(delta)<.001)return;
  if(t-lastZoomPing<108)return;lastZoomPing=t;
  const pitch=(delta>0?245:174)*Math.pow(2,zoomPosition*.67);
  ping(pitch,.028+Math.min(.018,Math.abs(delta)*.13),pan,'water');
