@@ -507,3 +507,71 @@
 @media(prefers-reduced-motion:reduce){
  .scale-marker,.zoom-rail button{transition:none!important}
 }
+
+/* MICRO EXPEDITION / camera travel rather than specimen rotation */
+.micro-explorer{
+ position:absolute;left:22px;bottom:195px;z-index:36;
+ width:min(310px,calc(100vw - 44px));padding:13px 15px 12px;
+ border:1px solid rgba(212,235,220,.24);border-radius:16px;
+ background:rgba(6,17,15,.77);color:#e8f3e9;
+ backdrop-filter:blur(19px);-webkit-backdrop-filter:blur(19px);
+ box-shadow:0 16px 55px rgba(0,0,0,.19);
+ transition:opacity .35s,transform .35s;
+ pointer-events:auto;
+}
+.micro-explorer[hidden],.micro-label[hidden]{display:none!important}
+.micro-explorer-heading{
+ display:flex;align-items:center;gap:8px;
+ font:9px/1.2 ui-monospace,SFMono-Regular,Menlo,monospace;
+ color:#e3eee2;letter-spacing:.1em;white-space:nowrap;
+}
+.micro-live-dot{display:inline-block;width:5px;height:5px;flex:none;border-radius:50%;background:#b0dabb;box-shadow:0 0 9px rgba(180,235,194,.35)}
+#microStageName{margin-left:auto;color:#a7bea9;font-size:8px;letter-spacing:.12em}
+.micro-explorer-help{font:9px/1.2 ui-monospace,SFMono-Regular,Menlo,monospace;
+ color:#8da998;margin:11px 0 9px;letter-spacing:.005em}
+.micro-explorer-actions{display:flex;align-items:center;gap:6px}
+.micro-explorer-actions button{
+ height:30px;min-width:30px;padding:0 9px;
+ border:1px solid rgba(197,226,207,.18);border-radius:8px;
+ background:rgba(160,192,172,.055);
+ color:#d8ebdc;font:9px ui-monospace,SFMono-Regular,Menlo,monospace;
+ cursor:pointer;transition:background .18s,border-color .18s}
+.micro-explorer-actions button:hover{border-color:rgba(210,245,222,.46);background:rgba(184,219,194,.14)}
+.micro-explorer-actions button:active{transform:scale(.96)}
+.micro-explorer-actions button:focus-visible{outline:2px solid #c5ebcd;outline-offset:2px}
+#microBackward,#microForward{font-size:15px;width:31px;padding:0}
+#microGlide{margin-left:auto}
+.micro-travel{display:flex;align-items:center;gap:9px;margin-top:11px}
+.micro-travel-track{position:relative;flex:1;height:2px;background:rgba(213,233,218,.18);overflow:hidden;border-radius:6px}
+#microTravel{display:block;height:100%;width:0%;border-radius:6px;background:#c4e4ce;transition:width .17s}
+.micro-travel small{font:8px ui-monospace,SFMono-Regular,Menlo,monospace;white-space:nowrap;color:#9db3a3}
+.micro-label{
+ position:absolute;z-index:42;transform:translate(-50%,-100%);
+ padding:9px 12px;border:1px solid rgba(214,241,224,.35);
+ border-radius:100px;background:rgba(8,21,18,.89);color:#e9f5e8;
+ font:10px/1 ui-monospace,SFMono-Regular,Menlo,monospace;
+ text-transform:uppercase;letter-spacing:.08em;
+ max-width:240px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+ pointer-events:none;box-shadow:0 10px 30px rgba(0,0,0,.30);
+}
+#scene{touch-action:none}
+@media(max-width:820px){
+ .micro-explorer{
+  left:14px;bottom:calc(198px + env(safe-area-inset-bottom));
+  width:min(270px,calc(100vw - 80px));padding:10px 11px;
+  border-radius:12px;background:rgba(7,19,15,.73);
+ }
+ .micro-explorer-heading{font-size:8px;letter-spacing:.045em}
+ .micro-explorer-help{font-size:8px;margin:7px 0}
+ .micro-explorer-actions button{min-height:28px;height:28px;font-size:8px;padding:0 6px}
+ #microBackward,#microForward{font-size:13px;width:29px}
+ .micro-travel{margin-top:8px}
+ .micro-label{font-size:8px;padding:7px 9px;max-width:170px}
+}
+@media(max-width:390px){
+ .micro-explorer{width:220px;bottom:calc(194px + env(safe-area-inset-bottom))}
+ #microGlide{padding:0 4px}
+}
+@media(prefers-reduced-motion:reduce){
+ .micro-explorer,.micro-explorer-actions button,#microTravel{transition:none!important}
+}
