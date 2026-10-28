@@ -94,12 +94,12 @@ function setPhotographicDemo(index=specimenIndex){
   try{
    const mapped=photoToIris(image,sample);
    specimenMode='reference';current.demo=true;makeTexture(mapped);
-   irisMaterial.bumpScale=.012;irisMaterial.roughness=.72;irisMaterial.clearcoat=.10;
+   irisMaterial.bumpScale=0;irisMaterial.roughness=.78;irisMaterial.clearcoat=.055;
    setSpecimenLabel('PHOTO / '+sample.title,true);
    const link=$('specimenCredit');link.href=sample.credit;
    link.textContent='PHOTO: '+sample.creator.toUpperCase()+' · '+sample.license+' ↗';
    $('modeLabel').textContent='MACRO SPECIMEN / REAL PHOTO / 3D SURFACE';
-   $('referenceBtn').innerHTML='<span class="tiny-circle"></span> CHANGE SPECIMEN ↔';
+   
    setNotice(sample.title+' / HIGH-RES SPECIMEN READY');
   }catch(error){console.warn('SPECIMEN_TEXTURE',error);fallbackSpecimen(token);}
  };
@@ -204,13 +204,20 @@ function updateDeepWorld(){
 }
 function makeTexture(source){
  if(texture)texture.dispose();texture=new THREE.CanvasTexture(source);texture.colorSpace=THREE.SRGBColorSpace;texture.anisotropy=Math.min(12,renderer.capabilities.getMaxAnisotropy());texture.needsUpdate=true;
- if(irisMaterial){irisMaterial.map=texture;irisMaterial.bumpMap=current.demo?texture:null;irisMaterial.bumpScale=current.demo ? 0.015 : 0;irisMaterial.roughness=current.demo?.88:.93;irisMaterial.clearcoat=.025;irisMaterial.needsUpdate=true;refreshIrisRelief(source);}
+ if(irisMaterial){
+  irisMaterial.map=texture;
+  // Do not use the pigment/color photo as a high-amplitude height map:
+  // pigment darkness is not a physical measurement of depth.
+  irisMaterial.bumpMap=null;irisMaterial.bumpScale=0;
+  irisMaterial.roughness=.78;irisMaterial.clearcoat=.055;irisMaterial.clearcoatRoughness=.20;
+  irisMaterial.needsUpdate=true;refreshIrisRelief(source);
+ }
 }
 
 let lightIntensity=.38,targetLight=.38,simPupil=.195;
 function updateLightSimulation(){
  lightIntensity=lerp(lightIntensity,targetLight,.035);
- const desired=lerp(.255,.13,lightIntensity);
+ const desired=lerp(.235,.15,lightIntensity);
  simPupil=lerp(simPupil,desired,.045);
  // Mesh geometry resampling alters iris inner opening while retaining outer limbus.
  if(!iris||Math.abs(simPupil-(iris.userData.lastPupil??0))<.0007)return;
@@ -228,8 +235,8 @@ function updateLightSimulation(){
  if(pupil){pupil.scale.setScalar(simPupil/.189)}
  // Pupil edge rings are tagged when built.
  eyeGroup.children.forEach(m=>{if(m.userData.pupilEdge)m.scale.setScalar(simPupil/.195)});
- if(lighting)lighting.intensity=lerp(1.4,2.9,lightIntensity);
- renderer.toneMappingExposure=lerp(1.13,1.38,lightIntensity);
+ if(lighting)lighting.intensity=lerp(2.05,2.75,lightIntensity);
+ renderer.toneMappingExposure=lerp(1.12,1.32,lightIntensity);
  $('lightValue')&&($('lightValue').textContent=Math.round(lightIntensity*100)+'%');
 }
 
@@ -256,22 +263,60 @@ function skinSurface(upper,tx){
  for(let j=0;j<(upper?64:36);j++){let f=.05+j/(upper?69:40)+rand()*.007;if(f>=.98)continue;const p=edgeCurve.getPointAt(f);let x=p.x,outer=x>0?1:-1,length=(upper?.19:.08)*(.65+rand()*.85)*(1-.4*Math.abs(x));const curve=new THREE.CatmullRomCurve3([p.clone(),p.clone().add(new THREE.Vector3(x*.04,upper?length*.43:-length*.37,.065)),p.clone().add(new THREE.Vector3(x*.1+(rand()-.5)*.03,upper?length:-length*.9,.11))]);
  const line=new THREE.Mesh(new THREE.TubeGeometry(curve,6,.0025+rand()*.0025,3,false),lashMat);line.renderOrder=8;eyeGroup.add(line)}
 }
-function makeCornea(){
- const segments=96,rows=25,verts=[],uv=[],idx=[];for(let j=0;j<=rows;j++){let r=.68*j/rows;for(let i=0;i<=segments;i++){let a=i/segments*Math.PI*2;verts.push(r*Math.cos(a),r*Math.sin(a),1.225+.105*(1-(r/.68)**2));uv.push(i/segments,j/rows);if(j<rows&&i<segments){let n=j*(segments+1)+i;idx.push(n,n+1,n+segments+1,n+1,n+segments+2,n+segments+1)}}}
- const geom=new THREE.BufferGeometry();geom.setAttribute('position',new THREE.Float32BufferAttribute(verts,3));geom.setAttribute('uv',new THREE.Float32BufferAttribute(uv,2));geom.setIndex(idx);geom.computeVertexNormals();
- const mat=new THREE.MeshPhysicalMaterial({color:0xe2faf7,transparent:true,opacity:.022,roughness:.025,metalness:0,clearcoat:1,clearcoatRoughness:.012,ior:1.376,depthWrite:false,side:THREE.DoubleSide});
- cornea=new THREE.Mesh(geom,mat);cornea.renderOrder=9;eyeGroup.add(cornea);
- // restrained studio softbox reflected in the wet corneal surface
- const glintGeo=new THREE.CircleGeometry(.081,64),glintMat=new THREE.MeshBasicMaterial({color:0xe8f6e7,transparent:true,opacity:.16,depthWrite:false});
- let glint=new THREE.Mesh(glintGeo,glintMat);glint.scale.set(.68,1.8,1);glint.rotation.z=-.32;glint.position.set(-.24,.23,1.303);glint.renderOrder=10;eyeGroup.add(glint);
- const tiny=new THREE.Mesh(new THREE.CircleGeometry(.021,32),new THREE.MeshBasicMaterial({color:0xffffff,transparent:true,opacity:.55,depthWrite:false}));tiny.position.set(.23,-.13,1.296);tiny.renderOrder=10;eyeGroup.add(tiny);
- const softbox=new THREE.Mesh(new THREE.PlaneGeometry(.20,.33),new THREE.MeshBasicMaterial({color:0xe5faf8,transparent:true,opacity:.12,depthWrite:false,side:THREE.DoubleSide}));
- softbox.rotation.z=-.35;softbox.position.set(.33,.28,1.302);softbox.renderOrder=10;eyeGroup.add(softbox);
- const glimmer=new THREE.Mesh(new THREE.PlaneGeometry(.07,.26),new THREE.MeshBasicMaterial({color:0xffffff,transparent:true,opacity:.10,depthWrite:false,side:THREE.DoubleSide}));
- glimmer.rotation.z=.28;glimmer.position.set(.47,.05,1.289);glimmer.renderOrder=10;eyeGroup.add(glimmer);
-
+function makeCornealReflectionTexture(){
+ const size=768,c=document.createElement('canvas');c.width=c.height=size;
+ const ctx=c.getContext('2d'),mid=size/2;
+ // Reflected photographic studio light panels, feathered and gently curved;
+ // projected onto the corneal dome rather than floating in front of the eye.
+ function oval(x,y,rx,ry,rotation,alpha){
+  ctx.save();ctx.translate(x,y);ctx.rotate(rotation);ctx.scale(rx,ry);
+  const g=ctx.createRadialGradient(0,0,.05,0,0,1);
+  g.addColorStop(0,'rgba(244,252,250,'+alpha+')');
+  g.addColorStop(.60,'rgba(239,251,250,'+(alpha*.70)+')');
+  g.addColorStop(.86,'rgba(237,250,249,'+(alpha*.18)+')');
+  g.addColorStop(1,'rgba(236,250,249,0)');
+  ctx.fillStyle=g;ctx.beginPath();ctx.arc(0,0,1,0,Math.PI*2);ctx.fill();ctx.restore();
+ }
+ oval(mid-155,mid-110,65,123,-.38,.53);
+ oval(mid-120,mid-123,28,61,-.38,.47);
+ oval(mid+173,mid+55,18,38,.23,.23);
+ oval(mid-207,mid+158,8,11,0,.50);
+ const tex=new THREE.CanvasTexture(c);tex.colorSpace=THREE.SRGBColorSpace;tex.needsUpdate=true;return tex;
 }
-
+function makeCornea(){
+ const segments=160,rows=42,verts=[],uv=[],idx=[];
+ for(let j=0;j<=rows;j++){
+  const r=.674*j/rows;
+  for(let i=0;i<=segments;i++){
+   const a=i/segments*Math.PI*2,xx=r*Math.cos(a),yy=r*Math.sin(a);
+   // Convex anterior cornea with its highlights following the physical dome.
+   const z=1.225+.108*(1-Math.pow(r/.674,2));
+   verts.push(xx,yy,z+.0008);
+   uv.push(.5+xx/1.36,.5-yy/1.36);
+   if(j<rows&&i<segments){
+    const n=j*(segments+1)+i;idx.push(n,n+1,n+segments+1,n+1,n+segments+2,n+segments+1);
+   }
+  }
+ }
+ const geom=new THREE.BufferGeometry();
+ geom.setAttribute('position',new THREE.Float32BufferAttribute(verts,3));
+ geom.setAttribute('uv',new THREE.Float32BufferAttribute(uv,2));
+ geom.setIndex(idx);geom.computeVertexNormals();
+ const lens=new THREE.MeshPhysicalMaterial({
+  color:0xe8f9f7,transparent:true,opacity:.043,roughness:.025,
+  clearcoat:1,clearcoatRoughness:.008,ior:1.376,depthWrite:false,
+  metalness:0,side:THREE.DoubleSide
+ });
+ cornea=new THREE.Mesh(geom,lens);cornea.renderOrder=9;eyeGroup.add(cornea);
+ const reflection=new THREE.Mesh(geom.clone(),new THREE.MeshBasicMaterial({
+  map:makeCornealReflectionTexture(),transparent:true,opacity:.56,
+  depthWrite:false,side:THREE.DoubleSide,blending:THREE.NormalBlending
+ }));
+ const a=reflection.geometry.attributes.position;
+ for(let i=0;i<a.count;i++)a.setZ(i,a.getZ(i)+.002);
+ a.needsUpdate=true;reflection.renderOrder=10;
+ reflection.userData.studioReflection=true;eyeGroup.add(reflection);
+}
 function makePosteriorAnatomy(){
  // Anatomical exploration (educational reconstruction, not a measured scan).
  const material=new THREE.MeshStandardMaterial({color:0x8e493b,roughness:.84,side:THREE.DoubleSide});
@@ -626,7 +671,7 @@ function connectUi(){
  $('resetBtn').onclick=()=>{stopDiscoveryTour();reset()};$('exploreBtn').onclick=()=>{reset();setActive('exploreBtn')};
  $('anatomyBtn').onclick=()=>{current.anatomy=!current.anatomy;$('anatomyBtn').classList.toggle('active',current.anatomy);if(current.fundus){$('annotate').hidden=true;return;}if(!current.demo){$('annotate').hidden=!current.anatomy;if(current.anatomy)setNotice('MANUAL ANNOTATIONS ONLY — SELECT PLACE')}else if(current.anatomy)setZoom(.48)};
  $('rearBtn').onclick=()=>toggleRear();
- $('referenceBtn')?.addEventListener('click',()=>{if(!current.demo){setNotice('PERSONAL PHOTO ACTIVE · RESET BEFORE DEMO SWITCH');return;}setPhotographicDemo(specimenIndex+1)});
+ 
   $('uploadBtn').onclick=()=>openDialog('uploadDialog');$('uploadClose').onclick=()=>closeDialog('uploadDialog');$('aboutBtn').onclick=()=>openDialog('aboutDialog');$('aboutClose').onclick=()=>closeDialog('aboutDialog');
  $('infoClose').onclick=()=>{$('infoPanel').hidden=true;current.selected=null;current.selection=null;clearSelection()};$('approachBtn').onclick=()=>{if(current.selected)approach(current.selected)};
  for(const id of ['uploadDialog','aboutDialog'])$(id).addEventListener('click',e=>{if(e.target===$(id))closeDialog(id)});
