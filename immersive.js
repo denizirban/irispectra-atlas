@@ -732,6 +732,35 @@ function pointerSetup(){
  canvas.addEventListener('pointerleave',()=>{eyeGazeX=0;eyeGazeY=0});
  canvas.tabIndex=0;
 }
+let tourActive=false,tourTimers=[];
+function stopDiscoveryTour(){
+ tourTimers.forEach(clearTimeout);tourTimers=[];tourActive=false;
+ const btn=$('tourBtn');
+ if(btn){btn.setAttribute('aria-pressed','false');btn.innerHTML='<span class="tour-dot"></span> START DISCOVERY';}
+ if($('tourCaption'))$('tourCaption').hidden=true;
+}
+function discoveryStep(ms,n,label,fn){
+ tourTimers.push(setTimeout(()=>{if(!tourActive)return;
+  $('tourCount').textContent=String(n).padStart(2,'0')+' / 05';
+  $('tourText').textContent=label;fn();
+ },ms));
+}
+function startDiscoveryTour(){
+ stopDiscoveryTour();reset();tourActive=true;
+ $('tourBtn').setAttribute('aria-pressed','true');
+ $('tourBtn').innerHTML='<span class="tour-dot"></span> STOP TOUR';
+ $('tourCaption').hidden=false;
+ discoveryStep(40,1,'A living three-dimensional eye',()=>setZoom(.20));
+ discoveryStep(1600,2,'Find an iris crypt-like opening',()=>{
+  const spec={kind:'crypt',radius:.43,angle:2.38};
+  current.selected=pointAt(spec.radius,spec.angle);current.focusTarget.copy(current.selected);
+  deepRoute='iris';setIrisSelection(spec,1);setZoom(.55);
+ });
+ discoveryStep(4250,3,'Travel into the iris stroma',()=>setZoom(.77));
+ discoveryStep(6900,4,'Meet the cells within',()=>setZoom(.88));
+ discoveryStep(9400,5,'See the collagen molecular motif',()=>setZoom(.975));
+ discoveryStep(12900,5,'Continue exploring',()=>{stopDiscoveryTour();setZoom(.56)});
+}
 function connectUi(){
  $('tourBtn')?.addEventListener('click',()=>tourActive?stopDiscoveryTour():startDiscoveryTour());
  $('tourSkip')?.addEventListener('click',stopDiscoveryTour);
