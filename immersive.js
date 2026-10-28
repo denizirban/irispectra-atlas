@@ -1023,6 +1023,7 @@ function updateMicroExplorerHUD(active,now){
  $('microJourneyTitle').textContent=names[data.stage]||'MICRO EXPEDITION';
  $('microJourneyScale').textContent=data.stage>=5?'SCHEMATIC MOLECULAR MODEL':'ILLUSTRATIVE BIOLOGY';
  $('microJourneyNext').textContent=data.stage>=6?'RETURN TO IRIS ↗':'GO DEEPER →';
+ $('microMobileNext').textContent=data.stage>=6?'RETURN TO IRIS ↗':'GO DEEPER →';
  const nodeKey=activeBioRoute+':'+data.stage+':'+String(bioGuided);
  if(nodeKey!==lastMicroNodes){
   lastMicroNodes=nodeKey;
@@ -1058,7 +1059,11 @@ function connectMicroExplorer(){
   updateMicroExplorerHUD(microNav?.isActive(),performance.now());
   if(bioGuided){const first=nodesAt(activeBioRoute,selectionStage())[0];if(first)focusMicroRole(first.role);}
  };
- $('microJourneyNext').onclick=()=>{
+ $('microMobileNext').onclick=()=>{
+  stopDiscoveryTour();const stage=selectionStage();
+  setZoom(stage>=6?BIO_TARGETS[1]:BIO_TARGETS[stage+1]);
+ };
+  $('microJourneyNext').onclick=()=>{
   stopDiscoveryTour();const stage=selectionStage();
   setZoom(stage>=6?BIO_TARGETS[1]:BIO_TARGETS[stage+1]);
  };
