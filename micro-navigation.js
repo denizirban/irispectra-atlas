@@ -39,7 +39,7 @@ export function createMicroNavigator(T, camera) {
  function dolly(amount){
   if(!active)return null;
   drift=false;lastGesture=performance.now();
-  const delta=cap(amount,-1.8,1.8)*.006;
+  const delta=cap(amount,-220,220)*.006;
   const proposed=desired.z-delta;
   // Deliberately transfer between depth scales only after reaching the edge
   // of a traversable zone. Standard +/- and the timeline always remain usable.
