@@ -38,6 +38,17 @@
   <div id="tourCaption" class="tour-caption" hidden aria-live="polite"><span id="tourCount">01 / 05</span><strong id="tourText">Explore the visible eye</strong><button type="button" id="tourSkip">EXIT</button></div><div id="depthHint" class="depth-hint" aria-live="polite"><span id="depthTitle">WHOLE EYE</span><small id="depthExplainer">SCROLL OR PINCH TO EXPLORE</small></div>
   <section class="micro-explorer" id="microExplorer" aria-label="Microscopic 3D navigation" hidden>
     <div class="micro-explorer-heading"><span class="micro-live-dot"></span> MICRO EXPEDITION <span id="microStageName">STROMA</span></div>
+    <div class="micro-route-row" role="group" aria-label="Choose a biological discovery path">
+      <button type="button" data-bio-route="crypt" aria-pressed="true" title="Crypt to collagen">CRYPT</button>
+      <button type="button" data-bio-route="pigment" aria-pressed="false" title="Pigment to melanin">PIGMENT</button>
+      <button type="button" data-bio-route="muscle" aria-pressed="false" title="Pupil to contractile proteins">PUPIL</button>
+      <button type="button" data-bio-route="neural" aria-pressed="false" title="Retina to neural signaling">NEURAL</button>
+    </div>
+    <p class="micro-chapter" id="microChapter">Explore the iris connective tissue in three dimensions.</p>
+    <div class="micro-explore-mode">
+      <button type="button" id="microGuide" aria-pressed="false">GUIDED TOUR</button>
+      <button type="button" id="microNext" hidden>NEXT STRUCTURE →</button>
+    </div>
     <p class="micro-explorer-help">DRAG TO LOOK · SCROLL TO TRAVEL</p>
     <div class="micro-explorer-actions">
       <button type="button" id="microBack" aria-label="Return to previous magnification scale">← BACK</button>
@@ -53,7 +64,9 @@
     <button type="button" class="scale-marker" data-scale="1" aria-label="Zoom to iris surface">SURFACE</button>
     <button type="button" class="scale-marker" data-scale="2" aria-label="Explore tissue layer">TISSUE</button>
     <button type="button" class="scale-marker" data-scale="3" aria-label="Explore cellular layer">CELL</button>
-    <button type="button" class="scale-marker" data-scale="4" aria-label="Explore molecular layer">MOLECULE</button>
+    <button type="button" class="scale-marker" data-scale="4" aria-label="Explore inside a cell">ORGANELLE</button>
+    <button type="button" class="scale-marker" data-scale="5" aria-label="Explore proteins and molecules">MOLECULE</button>
+    <button type="button" class="scale-marker" data-scale="6" aria-label="Explore illustrative atomic chemistry">ATOMIC</button>
     <span class="scale-progress"><i id="scaleProgress"></i></span>
   </div>
   <div id="hotspots" class="hotspots" aria-label="Anatomy hotspots"></div><button type="button" id="morphToggle" class="morph-trigger" aria-expanded="false" aria-controls="morphChart">IRIS MAP <span>◎</span></button>
