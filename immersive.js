@@ -1039,6 +1039,11 @@ function updateMicroExplorerHUD(active,now){
  $('microGuide').textContent=bioGuided?'FREE EXPLORE':'GUIDED TOUR';
 }
 function connectMicroExplorer(){
+ $('microPanelToggle')?.addEventListener('click',()=>{
+  const open=$('microExplorer').classList.toggle('expanded');
+  $('microPanelToggle').setAttribute('aria-expanded',String(open));
+  $('microPanelToggle').textContent=open?'CLOSE −':'DETAILS +';
+ });
  document.querySelectorAll('[data-bio-route]').forEach(button=>{
   button.addEventListener('click',()=>selectBioRoute(button.dataset.bioRoute));
  });
