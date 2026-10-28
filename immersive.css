@@ -637,3 +637,25 @@
 .micro-selected button{margin-top:10px;padding:7px 10px;border:1px solid rgba(219,239,220,.34);border-radius:7px;background:#dfead8;color:#17291b;font:9px ui-monospace,SFMono-Regular,monospace;letter-spacing:.06em;cursor:pointer}
 @media(max-width:820px){.micro-explorer{max-height:49svh}.micro-node-list button{font-size:7px;padding:6px 7px}.micro-selected{padding:8px}.micro-selected strong{font-size:11px}.micro-selected p{font-size:10px}}
 @media(prefers-reduced-motion:reduce){.micro-node-list button{transition:none}}
+
+/* Mobile: preserve the microscopy scene as the main content, not a text overlay. */
+.micro-panel-toggle{display:none;border:1px solid rgba(210,230,217,.2);background:transparent;color:#e1ece2;border-radius:6px;font:8px ui-monospace,SFMono-Regular,monospace;padding:6px 8px;cursor:pointer}
+@media(max-width:820px){
+ .experience:has(.micro-explorer:not([hidden])) .side.left{display:none!important}
+ .experience:has(.micro-explorer:not([hidden])) .side.right #textureStatus{display:none!important}
+ .micro-explorer{top:78px!important;left:12px!important;right:12px!important;bottom:auto!important;width:auto!important;max-height:calc(100svh - 260px)!important;overflow-y:auto!important;padding:10px 12px!important;border-radius:13px!important;background:rgba(5,17,13,.84)!important}
+ .micro-panel-toggle{display:inline-flex;flex:none;margin-left:7px}
+ #microStageName{font-size:7px!important;margin-left:auto}
+ .micro-route-row{margin-top:8px!important}
+ .micro-route-row button{min-height:32px!important;font-size:8px!important}
+ .micro-panel-details{display:none}
+ .micro-explorer.expanded .micro-panel-details{display:block}
+ .micro-explorer.expanded{max-height:min(52svh,430px)!important}
+ .scale-journey{bottom:calc(122px + env(safe-area-inset-bottom))!important}
+ .micro-explorer:not(.expanded){box-shadow:0 9px 28px rgba(0,0,0,.22)!important}
+ .micro-explorer-heading{gap:5px!important}
+}
+@media(max-width:390px){
+ .micro-explorer{top:69px!important;left:9px!important;right:9px!important}
+ .micro-route-row button{font-size:7px!important;padding:7px 2px!important}
+}
