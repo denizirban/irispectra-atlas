@@ -2,7 +2,17 @@
 // Connected to anatomical routes: iris stroma, scleral collagen, retinal laminae,
 // vessel endothelial lining, and optic nerve axons. Original procedural geometry.
 import {addMicroAtmosphere} from './micro-atmosphere.js';
+import {BIO_ROUTES,populateBioWorld} from "./micro-biology.js";
 export function populateMicroScene(T,root,route,stage){
+ if(BIO_ROUTES[route]){
+  // Route-specific worlds are built independently to avoid a generic iris
+  // model appearing behind every scientific pathway.
+  populateBioWorld(T,root,route,stage);
+  addMicroAtmosphere(T,root,route==='neural'?'retina':'iris',stage);
+  root.userData.anatomyRoute=route;
+  root.userData.scale=stage;
+  return root.children;
+ }
  const rand=(i,s=1)=>{const a=Math.sin(i*127.13+s*19.71)*43758.5453;return a-Math.floor(a)};
  const isIris=route==='iris',isSclera=route==='sclera';
  const materials={
