@@ -3,6 +3,7 @@ import {createFundusStage} from "./fundus.js";
 import {MORPHOLOGY,polarRegion} from "./morphology-data.js";
 import {zoneForEyePoint} from "./chart-zones.js";
 import {populateMicroScene} from "./micro-models.js";
+import {BIO_ROUTES,BIO_STAGES,BIO_TARGETS,bioInfo} from "./micro-biology.js";
 import {animateMicroAtmosphere} from "./micro-atmosphere.js";
 import {createMicroNavigator} from "./micro-navigation.js";
 import {getDepthInfo,ATLAS_DEPTH,MORPH_DETAILS} from "./depth-knowledge.js";
@@ -150,6 +151,7 @@ const DEEP_ROUTES={
  nerve:['OPTIC DISC','RETINAL AXON BUNDLES','LAMINA CRIBROSA','GANGLION AXONS / GLIA','AXONAL TRANSPORT']
 };
 let deepRoute='iris',deepStage=-1,deepGroup=null;
+let activeBioRoute='crypt',bioGuided=false;
 function buildDeepWorld(){
  deepGroup=new THREE.Group();scene.add(deepGroup);deepGroup.visible=false;
  const m=(col)=>new THREE.MeshStandardMaterial({color:col,roughness:.7,side:THREE.DoubleSide});
@@ -199,7 +201,8 @@ function updateDeepWorld(){
  lastMicroFrame=now;
  const stage=selectionStage(),zoom=current.zoom;
  const deep=stage>=2&&!current.rear;
- const route=current.fundus?(deepRoute==='iris'?'retina':deepRoute):deepRoute;
+ const baseRoute=current.fundus?(deepRoute==='iris'?'retina':deepRoute):deepRoute;
+ const route=activeBioRoute;
  const targetBlend=deep?smooth(.635,.79,zoom):0;
  const follow=1-Math.exp(-10*dt);
  microBlend=lerp(microBlend,targetBlend,follow);
@@ -238,7 +241,9 @@ function updateDeepWorld(){
  }
  eyeGroup.visible=!current.fundus;
  fundusStage.group.visible=!!current.fundus;
- const d=$('depthExplainer');if(d)d.textContent=(ATLAS_DEPTH[route]||ATLAS_DEPTH.iris)[stage].title;
+ const d=$('depthExplainer');
+ if(d)d.textContent=stage>=2?bioInfo(activeBioRoute,stage).title:
+  (ATLAS_DEPTH[baseRoute]||ATLAS_DEPTH.iris)[Math.min(stage,4)].title;
 }
 function makeTexture(source){
  if(texture)texture.dispose();texture=new THREE.CanvasTexture(source);texture.colorSpace=THREE.SRGBColorSpace;texture.anisotropy=Math.min(12,renderer.capabilities.getMaxAnisotropy());texture.needsUpdate=true;
@@ -523,10 +528,11 @@ function renderCamera(){
  }
 }
 
-const SCALE_NAMES=['WHOLE EYE','SURFACE','TISSUE','CELLULAR','MOLECULAR'];
+const SCALE_NAMES=BIO_STAGES;
 let lastDepth=-1;
 function selectionStage(){
- const z=current.zoom;return z<.25?0:z<.66?1:z<.84?2:z<.94?3:4;
+ const z=current.zoom;
+ return z<.25?0:z<.66?1:z<.79?2:z<.885?3:z<.945?4:z<.98?5:6;
 }
 function updatePassiveDepth(){
  if(current.rear)return;
@@ -569,7 +575,7 @@ function setZoom(value){
  current.targetZoom=clamp(value,0,1);
  // Even an uninterrupted scroll without an earlier hotspot must enter the real micro-scene.
  if(current.targetZoom>=.66&&!current.selected&&!current.rear&&!current.fundus){
-  const feature={kind:'crypt',radius:.43,angle:2.38};
+  const feature=BIO_ROUTES[activeBioRoute].anchor;
   current.selected=pointAt(feature.radius,feature.angle);
   current.focusTarget.copy(current.selected);
   deepRoute='iris';setIrisSelection(feature,1);
@@ -647,10 +653,14 @@ function updateSelectionCard(stage=selectionStage()){
   const biology=$('microFacts');
   if(biology)biology.open=!window.matchMedia('(max-width: 820px)').matches;
  }
- const d=MORPHOLOGY[sel.kind],layer=getDepthInfo(deepRoute,stage,sel.kind);
+ const d=MORPHOLOGY[sel.kind],layer=stage>=2?
+  {...bioInfo(activeBioRoute,stage),kicker:BIO_STAGES[stage]}:
+  getDepthInfo(deepRoute,stage,sel.kind);
  $('infoIndex').textContent=sel.origin==='map'?'MORPHOLOGY / '+sel.side:sel.origin==='fundus'?'POSTERIOR EYE':'SELECTED STRUCTURE';
  $('infoHeading').textContent=stage>=2?(sel.microRole||layer.title):(sel.zone||d?.name||layer.title);
- $('infoZone').textContent=sel.origin==='fundus'?sel.zone:(sel.anatomicalZone||'Iris surface');
+ $('infoZone').textContent=stage>=2?
+  BIO_ROUTES[activeBioRoute].name:
+  (sel.origin==='fundus'?sel.zone:(sel.anatomicalZone||'Iris surface'));
  $('infoStage').textContent=layer.kicker+' · '+layer.title;
  classifySelection();
  $('infoBody').textContent=stage>=2?
@@ -789,8 +799,8 @@ function pointerSetup(){
   const dy=e.deltaY*(e.deltaMode===1?12:e.deltaMode===2?innerHeight:1);
   if(microNav?.isActive()&&current.zoom>=.66&&!e.shiftKey){
    const edge=microNav.dolly(-dy*.85);
-   if(edge==='deeper')setZoom(selectionStage()===2?.885:.975);
-   else if(edge==='shallower')setZoom(selectionStage()===4?.885:.76);
+   if(edge==='deeper')setZoom(BIO_TARGETS[Math.min(6,selectionStage()+1)]);
+   else if(edge==='shallower')setZoom(BIO_TARGETS[Math.max(2,selectionStage()-1)]);
    else if(edge==='surface')setZoom(.49);
    else window.dispatchEvent(new CustomEvent('irispectra-sound',{detail:{
     type:'zoom',zoom:current.zoom,delta:-dy*.00021
@@ -898,6 +908,28 @@ function startDiscoveryTour(){
  discoveryStep(12900,5,'Continue exploring',()=>{stopDiscoveryTour();setZoom(.56)});
 }
 
+function selectBioRoute(route){
+ if(!BIO_ROUTES[route])return;
+ activeBioRoute=route;
+ if(route==='neural')deepRoute='retina';
+ else deepRoute='iris';
+ // This changes a representative route, not the original photographed specimen.
+ const a=BIO_ROUTES[route].anchor;
+ if(!current.fundus){
+  current.selected=pointAt(a.radius,a.angle);
+  current.focusTarget.copy(current.selected);
+  setIrisSelection(a,0,'eye');
+ }else{
+  current.selection={kind:'retina',origin:'fundus',
+   zone:'Neural retina',anatomicalZone:'Posterior eye'};
+ }
+ $('infoPanel').hidden=true;
+ microFrameHud=0;
+ if(current.targetZoom<.66)setZoom(BIO_TARGETS[2]);
+ window.dispatchEvent(new CustomEvent('irispectra-sound',{
+  detail:{type:'select',kind:route,x:.5}
+ }));
+}
 function showMicroLabel(role,x,y){
  const el=$('microLabel');if(!el)return;
  el.textContent=role;el.style.left=clamp(x,75,innerWidth-75)+'px';
@@ -917,10 +949,30 @@ function updateMicroExplorerHUD(active,now){
  $('microTravel').style.width=Math.round(data.progress*100)+'%';
  $('microDistance').textContent=Math.round(data.progress*100)+'% DEPTH';
  $('microGlide').textContent=data.glide?'DRIFT ON':'DRIFT OFF';
- $('microStageName').textContent=['EYE','SURFACE','STROMA','CELLULAR','MOLECULAR'][data.stage]||'MICRO';
+ $('microStageName').textContent=BIO_STAGES[data.stage]||'MICRO';
+ $('microChapter').textContent=bioInfo(activeBioRoute,Math.max(2,data.stage)).short;
+ document.querySelectorAll('[data-bio-route]').forEach(button=>{
+  button.setAttribute('aria-pressed',String(button.dataset.bioRoute===activeBioRoute));
+ });
+ $('microNext').hidden=!bioGuided||data.stage>=6;
+ $('microGuide').setAttribute('aria-pressed',String(bioGuided));
+ $('microGuide').textContent=bioGuided?'FREE EXPLORE':'GUIDED TOUR';
 }
 function connectMicroExplorer(){
- const stepBack=()=>setZoom(selectionStage()>=4?.885:selectionStage()===3?.76:.49);
+ document.querySelectorAll('[data-bio-route]').forEach(button=>{
+  button.addEventListener('click',()=>selectBioRoute(button.dataset.bioRoute));
+ });
+ $('microGuide').onclick=()=>{
+  bioGuided=!bioGuided;
+  microFrameHud=0;
+  updateMicroExplorerHUD(microNav?.isActive(),performance.now());
+ };
+ $('microNext').onclick=()=>{
+  stopDiscoveryTour();
+  const step=Math.min(6,selectionStage()+1);
+  setZoom(BIO_TARGETS[step]);
+ };
+ const stepBack=()=>setZoom(BIO_TARGETS[Math.max(1,selectionStage()-1)]);
  $('microBack').onclick=stepBack;
  $('microGlide').onclick=()=>{microNav?.toggleGlide()};
  const bind=(id,direction)=>{
@@ -952,19 +1004,19 @@ function connectUi(){
  connectMicroExplorer();
  // Each scale is a real destination; selecting deep tissue from the overview
  // anchors the camera to a representative iris feature automatically.
- const destinations=[.07,.49,.76,.885,.975];
+ const destinations=BIO_TARGETS;
  const markers=[...document.querySelectorAll('#scaleJourney .scale-marker')];
  for(const marker of markers){
   marker.addEventListener('click',()=>{
    stopDiscoveryTour();
    const i=Number(marker.dataset.scale);
    if(i>=2&&!current.selected&&!current.fundus&&!current.rear){
-    const feature={kind:'crypt',radius:.42,angle:2.38};
+    const feature=BIO_ROUTES[activeBioRoute].anchor;
     current.selected=pointAt(feature.radius,feature.angle);
     current.focusTarget.copy(current.selected);deepRoute='iris';
     setIrisSelection(feature,0);
    }
-   setZoom(destinations[Math.min(4,Math.max(0,i))]);
+   setZoom(destinations[Math.min(6,Math.max(0,i))]);
    if(i===0){
     current.selected=null;current.selection=null;$('infoPanel').hidden=true;
     current.focusTarget.set(0,0,0);clearSelection();
