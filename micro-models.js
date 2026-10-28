@@ -1,6 +1,7 @@
 // Irispectra Microworld — 3D educational illustrations, not optical reconstructions.
 // Connected to anatomical routes: iris stroma, scleral collagen, retinal laminae,
 // vessel endothelial lining, and optic nerve axons. Original procedural geometry.
+import {addMicroAtmosphere} from './micro-atmosphere.js';
 export function populateMicroScene(T,root,route,stage){
  const rand=(i,s=1)=>{const a=Math.sin(i*127.13+s*19.71)*43758.5453;return a-Math.floor(a)};
  const isIris=route==='iris',isSclera=route==='sclera';
@@ -86,7 +87,7 @@ export function populateMicroScene(T,root,route,stage){
   ellipse(x,y,z,[.70*s,.24*s,.22*s],materials.cytoplasm);
   nucleus(x+.03*s,y,z+.145*s,.18*s);
   const membrane=ellipse(x,y,z,[.74*s,.29*s,.24*s],materials.cellMembrane);
-  membrane.userData.role='cell membrane';
+  membrane.userData.role='fibroblast membrane';
   for(let k=0;k<6;k++){
    const a=k*2*Math.PI/6;
    dendrite(x,y,z,a,1.20*s,materials.cytoplasm,.020*s);
@@ -94,7 +95,8 @@ export function populateMicroScene(T,root,route,stage){
   return membrane;
  }
  function melanocyte(x,y,z,s=1){
-  ellipse(x,y,z,[.35*s,.31*s,.23*s],materials.melanocyte);
+  const body=ellipse(x,y,z,[.35*s,.31*s,.23*s],materials.melanocyte);
+  body.userData.role='melanocyte';
   nucleus(x-.035*s,y,z+.19*s,.17*s);
   for(let k=0;k<9;k++){
    const a=k*2*Math.PI/9+.2;
@@ -114,7 +116,8 @@ export function populateMicroScene(T,root,route,stage){
     const t=j/110,ang=t*Math.PI*13+p2;
     pts.push([.50*Math.cos(ang),(t-.5)*5.2,.50*Math.sin(ang)]);
    }
-   polyline(pts,.058,chain===0?materials.collagenLight:materials.collagen,180);
+   const helix=polyline(pts,.058,chain===0?materials.collagenLight:materials.collagen,180);
+   helix.userData.role='collagen triple helix';
    grains(48,chain===0?materials.collagenLight:materials.collagen,i=>{
     const t=i/47,ang=t*Math.PI*13+p2;
     return [.50*Math.cos(ang),(t-.5)*5.2,.50*Math.sin(ang),.075];
@@ -164,6 +167,7 @@ export function populateMicroScene(T,root,route,stage){
  }
  function vascularRing(){
   const wall=mesh(new T.TorusGeometry(1.66,.37,18,86),materials.vessel,0,0,0);
+  wall.userData.role='retinal vessel wall';
   wall.rotation.x=.19;
   const hole=mesh(new T.CircleGeometry(1.30,88),materials.halo,0,0,-.23);
   hole.userData.role='vessel lumen';
@@ -235,6 +239,7 @@ export function populateMicroScene(T,root,route,stage){
    });
   }
  }
+ addMicroAtmosphere(T,root,route,stage);
  root.userData.anatomyRoute=route;
  root.userData.scale=stage;
  return root.children;
