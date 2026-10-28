@@ -3,6 +3,7 @@ import {createFundusStage} from "./fundus.js";
 import {MORPHOLOGY,polarRegion} from "./morphology-data.js";
 import {zoneForEyePoint} from "./chart-zones.js";
 import {populateMicroScene} from "./micro-models.js";
+import {getDepthInfo,ATLAS_DEPTH,MORPH_DETAILS} from "./depth-knowledge.js";
 import {SPECIMENS,makeAnnularSpecimen} from "./specimen-pipeline.js";
 const $=x=>document.getElementById(x),canvas=$('scene'),experience=$('experience');
 const annotations={
@@ -400,45 +401,64 @@ function makeScene(){
  $('loading').classList.add('hidden');animate();
 }
 function resize(){const w=innerWidth,h=innerHeight;if(!renderer)return;renderer.setSize(w,h,false);camera.aspect=w/h;camera.updateProjectionMatrix();}
+let cameraLastTime=0,zoomSpringVelocity=0;
+function stepCameraZoom(dt){
+ // Critically-damped second-order motion, frame-rate independent and reversible.
+ const omega=12.5,delta=current.zoom-current.targetZoom;
+ const t=(zoomSpringVelocity+omega*delta)*dt,k=Math.exp(-omega*dt);
+ current.zoom=current.targetZoom+(delta+t)*k;
+ zoomSpringVelocity=(zoomSpringVelocity-omega*t)*k;
+ if(Math.abs(current.zoom-current.targetZoom)<.00004&&Math.abs(zoomSpringVelocity)<.0002){
+  current.zoom=current.targetZoom;zoomSpringVelocity=0;
+ }
+}
 function renderCamera(){
+ const now=performance.now(),dt=cameraLastTime?Math.min(.052,(now-cameraLastTime)/1000):1/60;
+ cameraLastTime=now;stepCameraZoom(dt);
+ const smoothing=1-Math.exp(-9*dt);
  if(current.fundus){
-  current.zoom=lerp(current.zoom,current.targetZoom,.08);
-  camera.position.lerp(new THREE.Vector3(0,0,.17-.66*current.zoom),.075);
+  camera.position.lerp(new THREE.Vector3(0,0,.17-.66*current.zoom),smoothing);
   const t=current.selected?current.fundusTarget:new THREE.Vector3(Math.sin(current.targetYaw)*.59,Math.sin(current.targetPitch)*.43,-1.115);
-  current.fundusLook.lerp(t,.08);camera.lookAt(current.fundusLook);camera.updateMatrixWorld();
-  $('zoomDisplay').textContent='RETINA / '+(1+current.zoom*2.4).toFixed(1)+'×';
+  current.fundusLook.lerp(t,smoothing);camera.lookAt(current.fundusLook);camera.updateMatrixWorld();
+  $('zoomDisplay').textContent=(1+current.zoom*2.4).toFixed(1)+'×';
   $('zoomRange').value=Math.round(current.targetZoom*100);return;
  }
- current.zoom=lerp(current.zoom,current.targetZoom,.08);current.yaw=lerp(current.yaw,current.targetYaw,.07);current.pitch=lerp(current.pitch,current.targetPitch,.07);current.focus.lerp(current.focusTarget,.08);
- const d=Math.exp(lerp(Math.log(5.9),Math.log(.36),current.zoom));
- const nX=Math.sin(current.yaw)*Math.cos(current.pitch),nY=Math.sin(current.pitch),nZ=Math.cos(current.yaw)*Math.cos(current.pitch)*(current.rear?-1:1);
- camera.position.set(current.focus.x+d*nX,current.focus.y+d*nY,current.focus.z+d*nZ);camera.lookAt(current.focus);camera.updateMatrixWorld();
- $('zoomDisplay').textContent='MAG / '+(4.7/d).toFixed(1)+'×';
+ current.yaw=lerp(current.yaw,current.targetYaw,smoothing);
+ current.pitch=lerp(current.pitch,current.targetPitch,smoothing);
+ current.focus.lerp(current.focusTarget,smoothing);
+ // Logarithmic zoom covers large distances without a sudden speed change.
+ const distance=Math.exp(lerp(Math.log(5.9),Math.log(.36),current.zoom));
+ const nX=Math.sin(current.yaw)*Math.cos(current.pitch),nY=Math.sin(current.pitch),
+ nZ=Math.cos(current.yaw)*Math.cos(current.pitch)*(current.rear?-1:1);
+ camera.position.set(current.focus.x+distance*nX,current.focus.y+distance*nY,current.focus.z+distance*nZ);
+ camera.lookAt(current.focus);camera.updateMatrixWorld();
+ $('zoomDisplay').textContent=(4.7/distance).toFixed(1)+'×';
  $('zoomRange').value=Math.round(current.targetZoom*100);
  if(!current.selected&&current.targetZoom<.64&&!current.rear){
- let dFocus=smooth(.16,.63,current.targetZoom);
- current.focusTarget.set(0,0,lerp(0,1.13,dFocus));
+  const f=smooth(.16,.63,current.targetZoom);
+  current.focusTarget.set(0,0,lerp(0,1.13,f));
  }
 }
 
-const ZOOM_DEPTH=[
- ['WHOLE EYE','MACRO / CORNEA · IRIS · SCLERA'],
- ['IRIS SURFACE','PIGMENT · RADIAL STROMAL TEXTURE'],
- ['CRYPT MORPHOLOGY','CRYPTS OF FUCHS · COLLARETTE · FURROWS'],
- ['STROMA','EDUCATIONAL TISSUE RECONSTRUCTION'],
- ['CELLULAR SCALE','MELANOCYTES · FIBROBLASTS · COLLAGEN'],
- ['MOLECULAR CONTEXT','MELANIN · COLLAGEN · NEUROTRANSMISSION']
-];
+const SCALE_NAMES=['WHOLE EYE','SURFACE','TISSUE','CELLULAR','MOLECULAR'];
 let lastDepth=-1;
+function selectionStage(){
+ const z=current.zoom;return z<.25?0:z<.66?1:z<.84?2:z<.94?3:4;
+}
 function updatePassiveDepth(){
- if(current.rear||current.fundus)return;
- const z=current.zoom,stage=z<.2?0:z<.49?1:z<.71?2:z<.84?3:z<.94?4:5;
- if(stage===lastDepth)return;lastDepth=stage;
- $('depthTitle').textContent=ZOOM_DEPTH[stage][0];
- $('depthExplainer').textContent=ZOOM_DEPTH[stage][1]+(stage>=3?' / CONCEPTUAL NOT MEASURED':'');
- $('depthHint').classList.toggle('micro',stage>=3);
- // The depth map follows zoom passively; never invokes a scene-changing menu.
- window.IrispectraScience?.indicate?.(stage===0?0:stage===1||stage===2?1:stage);
+ if(current.rear)return;
+ const stage=selectionStage();
+ if(stage!==lastDepth){
+  lastDepth=stage;
+  $('depthTitle').textContent=current.fundus&&stage===0?'RETINA':SCALE_NAMES[stage];
+  $('depthHint').classList.toggle('micro',stage>=2);
+  document.querySelectorAll('.scale-marker').forEach((node,i)=>{
+   node.classList.toggle('active',i===stage);node.classList.toggle('passed',i<stage);
+  });
+  if(current.selection)updateSelectionCard(stage);
+  window.IrispectraScience?.indicate?.(stage===0?0:stage===1?1:stage+1);
+ }
+ $('scaleProgress').style.width=(clamp(current.zoom,0,1)*100).toFixed(1)+'%';
 }
 
 function animate(){
@@ -517,18 +537,29 @@ function classifySelection(){
 }
 function updateSelectionCard(stage=selectionStage()){
  const sel=current.selection;if(!sel)return;
- const d=MORPHOLOGY[sel.kind];
- const stageName=(DEEP_INFO[deepRoute]||DEEP_INFO.iris)[Math.min(stage,4)];
- $('infoIndex').textContent=sel.origin==='map'?'ANDREWS POSITION / '+sel.side:sel.origin==='fundus'?'POSTERIOR EYE':'IRIS MORPHOLOGY';
- $('infoHeading').textContent=sel.zone||d?.name||'Selected structure';
- $('infoZone').textContent=sel.anatomicalZone||'Iris surface';
- $('infoStage').textContent=stageName;
+ const d=MORPHOLOGY[sel.kind],layer=getDepthInfo(deepRoute,stage,sel.kind);
+ $('infoIndex').textContent=sel.origin==='map'?'MORPHOLOGY / '+sel.side:sel.origin==='fundus'?'POSTERIOR EYE':'SELECTED STRUCTURE';
+ $('infoHeading').textContent=stage>=2?layer.title:(sel.zone||d?.name||layer.title);
+ $('infoZone').textContent=sel.origin==='fundus'?sel.zone:(sel.anatomicalZone||'Iris surface');
+ $('infoStage').textContent=layer.kicker+' · '+layer.title;
  classifySelection();
- $('infoBody').textContent=stage>=2?stageName+'. '+(sel.pattern?sel.pattern+' appearance. ':''):' '+(sel.pattern?sel.pattern+' — ':'')+(d?.note||sel.description||'Selected anatomical surface.');
- $('infoSource').textContent=stage>=2?'3D educational layer':sel.origin==='map'?'Andrews chart · 2011':d?'Andrews morphology · 2008':'3D anatomical model';
+ $('infoBody').textContent=stage>=2?layer.short:(MORPH_DETAILS[sel.kind]?.short||d?.note||sel.description||layer.short);
+ const list=$('microFactList');list.replaceChildren();
+ const entries=stage<=1&&MORPH_DETAILS[sel.kind]?
+  [...layer.facts,['Observed features',MORPH_DETAILS[sel.kind].features.join(' · ')]]:layer.facts;
+ for(const [name,value] of entries){
+  const row=document.createElement('div');row.className='fact-entry';
+  const label=document.createElement('span');label.textContent=name;
+  const detail=document.createElement('strong');detail.textContent=value;
+  row.append(label,detail);list.appendChild(row);
+ }
+ $('infoSource').textContent=stage>=2?'Representative educational anatomy':
+  sel.origin==='map'?'Andrews positional chart (2011)':
+  d?'Morphology terminology: Andrews (2008)':'Anatomical teaching model';
  $('infoDisclosure').hidden=true;
  $('infoPanel').hidden=false;
 }
+
 function setIrisSelection(spec,index=-1,origin='eye',zoneOverride=null){
  const kind=spec.kind&&MORPHOLOGY[spec.kind]?spec.kind:'radial';
  const radius=spec.radius??.42,angle=spec.angle??Math.PI/2;
@@ -567,6 +598,7 @@ function clearSelection(){domPins.forEach(({el})=>el.classList.remove('current')
 function showPin(spec,index,el){
  current.selected=current.fundus?fundusStage.at(spec.u,spec.v):pointAt(spec.radius,spec.angle);
  if(current.fundus){current.fundusTarget.copy(current.selected);
+  deepRoute=spec.kind==='fundusVessels'?'vessel':spec.kind==='fundusDisc'?'nerve':'retina';
   current.selection={kind:'retina',zone:annotations[spec.kind]?.[0]||'Retinal structure',
    origin:'fundus',description:annotations[spec.kind]?.[1]||'Posterior eye anatomy',
    anatomicalZone:'Retina',pattern:''};
