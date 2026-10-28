@@ -560,8 +560,15 @@ function classifySelection(){
  picker.value=sel.pattern||'';
  $('infoPattern').textContent=sel.pattern||(d?.name||sel.kind);
 }
+let lastBiologySelection=null;
 function updateSelectionCard(stage=selectionStage()){
  const sel=current.selection;if(!sel)return;
+ // New selection automatically exposes its full science content; subsequent zoom
+ // updates replace only the facts, preserving whether the user expanded/collapsed it.
+ if(sel!==lastBiologySelection){
+  lastBiologySelection=sel;
+  const biology=$('microFacts');if(biology)biology.open=true;
+ }
  const d=MORPHOLOGY[sel.kind],layer=getDepthInfo(deepRoute,stage,sel.kind);
  $('infoIndex').textContent=sel.origin==='map'?'MORPHOLOGY / '+sel.side:sel.origin==='fundus'?'POSTERIOR EYE':'SELECTED STRUCTURE';
  $('infoHeading').textContent=stage>=2?layer.title:(sel.zone||d?.name||layer.title);
