@@ -477,7 +477,11 @@ function updatePassiveDepth(){
  if(current.rear)return;
  const stage=selectionStage();
  if(stage!==lastDepth){
+  const previousDepth=lastDepth;
   lastDepth=stage;
+  window.dispatchEvent(new CustomEvent('irispectra-sound',{detail:{
+   type:'stage',stage,previous:previousDepth
+  }}));
   $('depthTitle').textContent=current.fundus&&stage===0?'RETINA':SCALE_NAMES[stage];
   $('depthHint').classList.toggle('micro',stage>=2);
   document.querySelectorAll('.scale-marker').forEach((node,i)=>{
@@ -501,10 +505,17 @@ function animate(){
  updateDots();renderer.render(scene,camera);
 }
 function setZoom(value){
+ const previousZoom=current.targetZoom;
  // Zoom is reversible and never silently changes anatomical scenes.
  if(current.fundus&&value<=0){exitFundus();return;}
  if(current.fundusTransition&&value<current.targetZoom){clearTimeout(fundusTimer);current.fundusTransition=false;$('enterBtn').disabled=false;}
- current.targetZoom=clamp(value,0,1);if(current.fundus)return;
+ current.targetZoom=clamp(value,0,1);
+ if(Math.abs(current.targetZoom-previousZoom)>.0008){
+  window.dispatchEvent(new CustomEvent('irispectra-sound',{detail:{
+   type:'zoom',zoom:current.targetZoom,delta:current.targetZoom-previousZoom,x:.5
+  }}));
+ }
+ if(current.fundus)return;
  // Continuous central zoom switches to an anatomically separate posterior scene only at the threshold.
  if(value>=.995&&!current.selected&&!current.rear&&!current.fundusTransition){enterFundus();return;}if(current.targetZoom<.24){current.selected=null;current.focusTarget.set(0,0,current.targetZoom<.2?0:1.13);current.selection=null;$('infoPanel').hidden=true;clearSelection()}if(current.rear)return;if(current.targetZoom>.62){$('sceneNumber').textContent='02 / THE IRIS';$('sceneTitle').innerHTML='LOOK<br>CLOSER.';$('sceneNote').textContent='Every fiber tells a story of structure.'}else{$('sceneNumber').textContent='01 / THE HUMAN EYE';$('sceneTitle').innerHTML='THE WORLD<br>WITHIN.';$('sceneNote').textContent='A closer look at what makes every iris unique.'}}
 function enterFundus(){
@@ -596,6 +607,9 @@ function updateSelectionCard(stage=selectionStage()){
 }
 
 function setIrisSelection(spec,index=-1,origin='eye',zoneOverride=null){
+ window.dispatchEvent(new CustomEvent('irispectra-sound',{detail:{
+  type:'select',kind:spec.kind||'iris',x:(1+Math.cos(spec.angle??0))/2
+ }}));
  const kind=spec.kind&&MORPHOLOGY[spec.kind]?spec.kind:'radial';
  const radius=spec.radius??.42,angle=spec.angle??Math.PI/2;
  const anatomical=polarRegion(radius,angle);
@@ -631,6 +645,9 @@ function drawDots(){
 }
 function clearSelection(){domPins.forEach(({el})=>el.classList.remove('current'))}
 function showPin(spec,index,el){
+ window.dispatchEvent(new CustomEvent('irispectra-sound',{detail:{
+  type:'select',kind:spec.kind||'iris',x:(1+Math.cos(spec.angle??0))/2
+ }}));
  current.selected=current.fundus?fundusStage.at(spec.u,spec.v):pointAt(spec.radius,spec.angle);
  if(current.fundus){current.fundusTarget.copy(current.selected);
   deepRoute=spec.kind==='fundusVessels'?'vessel':spec.kind==='fundusDisc'?'nerve':'retina';
@@ -648,6 +665,9 @@ function updateDots(){for(const {el,spec} of domPins){if(!current.anatomy){el.cl
 function rayPin(x,y){if(current.fundus)return false;const v=new THREE.Vector2(x/innerWidth*2-1,-(y/innerHeight*2-1)),ray=new THREE.Raycaster();ray.setFromCamera(v,camera);const hits=ray.intersectObject(iris);if(!hits.length)return false;const p=hits[0].point,r=Math.hypot(p.x,p.y),a=Math.atan2(p.y,p.x);current.pinList.push({kind:current.pinKind,radius:r,angle:a});current.place=false;$('placeAnnotation').classList.remove('armed');drawDots();setNotice('MANUAL ANNOTATION PLACED');return true}
 function selectByTap(x,y,{preserveZoom=false}={}){
  if(current.place||current.rear||current.fundusTransition)return false;
+ // A click at a meaningful surface makes a soft glass selection sound.
+ // If a marker already emits a cue, event throttling avoids doubling it.
+ const soundX=Math.max(0,Math.min(1,x/innerWidth));
  const v=new THREE.Vector2(x/innerWidth*2-1,-(y/innerHeight*2-1)),ray=new THREE.Raycaster();
  ray.setFromCamera(v,camera);
  if(deepGroup?.visible){
@@ -672,6 +692,9 @@ function selectByTap(x,y,{preserveZoom=false}={}){
   else setIrisSelection({kind:onPupil?'pupil':'radial',radius,angle});
   if(!onSclera)window.IrispectraMorphology?.focus?.({kind:onPupil?'pupil':'radial',radius,angle});
  }
+ window.dispatchEvent(new CustomEvent('irispectra-sound',{detail:{
+  type:'select',kind:current.selection?.kind||'surface',x:soundX
+ }}));
  updateSelectionCard();
  if(!preserveZoom)setZoom(Math.max(current.targetZoom,.46));
  return true;
@@ -720,6 +743,9 @@ function pointerSetup(){
   // Orbit when dragging, focus on the selected region when scrolling.
   current.targetYaw=clamp(current.targetYaw+(e.clientX-old.x)*.004,-.48,.48);
   current.targetPitch=clamp(current.targetPitch-(e.clientY-old.y)*.003,-.29,.29);
+  window.dispatchEvent(new CustomEvent('irispectra-sound',{detail:{
+   type:'move',amount:Math.hypot(e.clientX-old.x,e.clientY-old.y),x:e.clientX/innerWidth
+  }}));
  });
  const release=e=>{
   const p=pointers.get(e.pointerId);
