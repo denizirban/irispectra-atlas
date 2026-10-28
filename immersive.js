@@ -684,6 +684,9 @@ function updateSelectionCard(stage=selectionStage()){
 }
 
 function setIrisSelection(spec,index=-1,origin='eye',zoneOverride=null){
+ if(spec.kind==='pupil')activeBioRoute='muscle';
+ else if(spec.kind==='crypt'||spec.kind==='collarette')activeBioRoute='crypt';
+ else if(spec.kind==='radial'||spec.kind==='pigment')activeBioRoute='pigment';
  window.dispatchEvent(new CustomEvent('irispectra-sound',{detail:{
   type:'select',kind:spec.kind||'iris',x:(1+Math.cos(spec.angle??0))/2
  }}));
@@ -727,6 +730,7 @@ function showPin(spec,index,el){
  }}));
  current.selected=current.fundus?fundusStage.at(spec.u,spec.v):pointAt(spec.radius,spec.angle);
  if(current.fundus){current.fundusTarget.copy(current.selected);
+  activeBioRoute='neural';
   deepRoute=spec.kind==='fundusVessels'?'vessel':spec.kind==='fundusDisc'?'nerve':'retina';
   current.selection={kind:'retina',zone:annotations[spec.kind]?.[0]||'Retinal structure',
    origin:'fundus',description:annotations[spec.kind]?.[1]||'Posterior eye anatomy',
@@ -918,7 +922,10 @@ function selectBioRoute(route){
  if(!current.fundus){
   current.selected=pointAt(a.radius,a.angle);
   current.focusTarget.copy(current.selected);
-  setIrisSelection(a,0,'eye');
+  if(route==='neural'){
+   current.selection={kind:'retina',origin:'micro',zone:'Neural retina',
+    anatomicalZone:'Posterior ocular anatomy',pattern:''};
+  }else setIrisSelection(a,0,'eye');
  }else{
   current.selection={kind:'retina',origin:'fundus',
    zone:'Neural retina',anatomicalZone:'Posterior eye'};
