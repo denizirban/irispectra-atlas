@@ -37,11 +37,11 @@
   </div>
   <div id="tourCaption" class="tour-caption" hidden aria-live="polite"><span id="tourCount">01 / 05</span><strong id="tourText">Explore the visible eye</strong><button type="button" id="tourSkip">EXIT</button></div><div id="depthHint" class="depth-hint" aria-live="polite"><span id="depthTitle">WHOLE EYE</span><small id="depthExplainer">SCROLL OR PINCH TO EXPLORE</small></div>
   <div class="scale-journey" id="scaleJourney" aria-label="Anatomical magnification depth">
-    <span class="scale-marker active" data-scale="0">EYE</span>
-    <span class="scale-marker" data-scale="1">SURFACE</span>
-    <span class="scale-marker" data-scale="2">TISSUE</span>
-    <span class="scale-marker" data-scale="3">CELL</span>
-    <span class="scale-marker" data-scale="4">MOLECULE</span>
+    <button type="button" class="scale-marker active" data-scale="0" aria-label="Zoom out to whole eye">EYE</button>
+    <button type="button" class="scale-marker" data-scale="1" aria-label="Zoom to iris surface">SURFACE</button>
+    <button type="button" class="scale-marker" data-scale="2" aria-label="Explore tissue layer">TISSUE</button>
+    <button type="button" class="scale-marker" data-scale="3" aria-label="Explore cellular layer">CELL</button>
+    <button type="button" class="scale-marker" data-scale="4" aria-label="Explore molecular layer">MOLECULE</button>
     <span class="scale-progress"><i id="scaleProgress"></i></span>
   </div>
   <div id="hotspots" class="hotspots" aria-label="Anatomy hotspots"></div><button type="button" id="morphToggle" class="morph-trigger" aria-expanded="false" aria-controls="morphChart">IRIS MAP <span>◎</span></button>
