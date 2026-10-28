@@ -189,10 +189,10 @@ export function populateBioWorld(T,group,route,stage){
    const px=x+(rand(i,31)-.5)*3.1,py=y+(rand(i,32)-.5)*2.7;
    const channel=add(new T.CylinderGeometry(.088,.11,.48,12,1),mats.green,
      px,py,z,'Transmembrane protein');
-   channel.rotation.x=Math.PI/2;channel.userData.depthBand='membrane';
+   channel.rotation.x=Math.PI/2;channel.material=channel.material.clone();channel.userData.depthBand='membrane';
    const pore=add(new T.CylinderGeometry(.029,.029,.49,9,1),mats.dark,
      px,py,z,'Membrane protein channel pore');
-   pore.rotation.x=Math.PI/2;pore.userData.depthBand='membrane';
+   pore.rotation.x=Math.PI/2;pore.material=pore.material.clone();pore.userData.depthBand='membrane';
   }
  };
  const cellBody=(x,y,z,role,scale=[.76,.43,.34])=>{
