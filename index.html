@@ -108,7 +108,7 @@
   <div class="bottom">
     <div class="bottom-left"><span class="fine-dot"></span><span id="modeLabel">INTERACTIVE 3D / SYNTHETIC DEMO</span></div>
     <div class="bottom-center"><a id="specimenCredit" hidden href="https://commons.wikimedia.org/wiki/File:Iris_of_the_Human_Eye.jpg" target="_blank" rel="noopener noreferrer">PHOTO CREDIT ↗</a></div>
-    <div class="bottom-actions"><button type="button" id="resetBtn" class="subtle-button">RESET <span>↺</span></button><button type="button" id="enterBtn" class="accent-button">ENTER IRIS <span>↗</span></button></div>
+    <div class="bottom-actions"><button type="button" id="mobileUploadBtn" class="mobile-upload" aria-label="Upload your iris photo">YOUR IRIS ↗</button><button type="button" id="resetBtn" class="subtle-button">RESET <span>↺</span></button><button type="button" id="enterBtn" class="accent-button">ENTER IRIS <span>↗</span></button></div>
   </div>
   <p class="release-disclaimer">3D educational atlas · Andrews topography is a historical reference, not a clinical map. <span>Photography and modeled depth are distinct.</span></p><div class="loading" id="loading"><span class="loading-symbol"></span><span id="loadingText">BUILDING OPTICAL SCENE</span></div>
   <div id="toast" class="toast" role="status"></div>
@@ -129,6 +129,13 @@
         <button class="apply-button" type="button" id="applyUpload">APPLY TO 3D EYE <span>↗</span></button>
       </div>
       <small>PHOTO-BASED COLOR AND PATTERN. DEPTH IS AN ARTISTIC SIMULATION, NOT A MEASUREMENT OF YOUR IRIS.</small>
+      <div class="atlas-send-photo">
+        <label for="atlasSenderEmail">OPTIONAL · EMAIL YOUR PHOTO TO THE RESEARCH TEAM</label>
+        <input id="atlasSenderEmail" type="email" autocomplete="email" maxlength="254" placeholder="Your email" aria-label="Your email for iris photograph submission">
+        <label class="atlas-photo-consent"><input id="atlasPhotoConsent" type="checkbox"> I agree to send this eye photograph and my email address to IRISPECTRA by email for research contact. This is not a medical assessment.</label>
+        <button type="button" id="atlasPhotoSend" disabled>SEND PHOTO ↗</button>
+        <p id="atlasPhotoStatus" role="status" aria-live="polite">The photo stays on your device unless you choose to send it.</p>
+      </div>
     </section>
   </div>
   <div class="annotate" id="annotate" hidden><label for="annotationType">MANUAL ANNOTATION</label><select id="annotationType"><option value="crypt">CRYPT-LIKE REGION</option><option value="collarette">COLLARETTE</option><option value="furrow">CONTRACTION FURROW</option><option value="radial">RADIAL TEXTURE</option><option value="limbal">LIMBAL BOUNDARY</option></select><button id="placeAnnotation" type="button">+ PLACE</button><button id="clearAnnotations" type="button">CLEAR</button></div>
