@@ -485,7 +485,7 @@ function resize(){
 let cameraLastTime=0,zoomSpringVelocity=0;
 function stepCameraZoom(dt){
  // Critically-damped second-order motion, frame-rate independent and reversible.
- const omega=12.5,delta=current.zoom-current.targetZoom;
+ const omega=15.5,delta=current.zoom-current.targetZoom;
  const t=(zoomSpringVelocity+omega*delta)*dt,k=Math.exp(-omega*dt);
  current.zoom=current.targetZoom+(delta+t)*k;
  zoomSpringVelocity=(zoomSpringVelocity-omega*t)*k;
@@ -925,9 +925,9 @@ function connectMicroExplorer(){
  $('microGlide').onclick=()=>{microNav?.toggleGlide()};
  const bind=(id,direction)=>{
   const btn=$(id);if(!btn)return;
-  let raf=null,last=0,pressed=false;
+  let raf=null,last=0,pressed=false,pointerTriggered=false;
   btn.addEventListener('pointerdown',e=>{
-   e.preventDefault();pressed=true;btn.setPointerCapture?.(e.pointerId);
+   e.preventDefault();pressed=true;pointerTriggered=true;btn.setPointerCapture?.(e.pointerId);
    microNav?.dolly(direction*190);
    last=performance.now();
    const tick=t=>{
@@ -939,7 +939,11 @@ function connectMicroExplorer(){
   });
   const stop=()=>{pressed=false;if(raf!==null)cancelAnimationFrame(raf);raf=null};
   for(const name of ['pointerup','pointercancel','lostpointercapture'])btn.addEventListener(name,stop);
-  btn.addEventListener('click',()=>{if(!pressed)microNav?.dolly(direction*180)});
+  btn.addEventListener('click',()=>{
+   // A pointer tap already moved on pointerdown; click is only for keyboard activation.
+   if(pointerTriggered){pointerTriggered=false;return;}
+   microNav?.dolly(direction*190);
+  });
  };
  bind('microForward',1);bind('microBackward',-1);
 }
