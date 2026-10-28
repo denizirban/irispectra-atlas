@@ -24,7 +24,7 @@ const lerp=(a,b,t)=>a+(b-a)*t;
 function seeded(seed){return()=>{seed=(seed*1664525+1013904223)>>>0;return seed/4294967296}};
 const rand=seeded(9348);
 let renderer,scene,camera,eyeGroup,iris,irisMaterial,eyeWhite,cornea,pupil,lighting,texture=null,retina,opticNerve,retinalVessels,fundusStage,fundusTimer;
-const current={zoom:.10,targetZoom:.10,yaw:0,targetYaw:0,pitch:0,targetPitch:0,focus:new THREE.Vector3(),focusTarget:new THREE.Vector3(),demo:true,anatomy:false,place:false,pinKind:'crypt',pinList:[],selected:null,selection:null,animate:true,irisPalette:0,rear:false};
+const current={zoom:.07,targetZoom:.07,yaw:0,targetYaw:0,pitch:0,targetPitch:0,focus:new THREE.Vector3(),focusTarget:new THREE.Vector3(),demo:true,anatomy:false,place:false,pinKind:'crypt',pinList:[],selected:null,selection:null,animate:true,irisPalette:0,rear:false};
 current.fundus=false;current.fundusTransition=false;current.fundusLook=new THREE.Vector3(0,0,-1.115);current.fundusTarget=new THREE.Vector3(0,0,-1.115);
 let uploadImage=null, uploadUrl=null, toastTimer, pointers=new Map(),moveTotal=0,eyeGazeX=0,eyeGazeY=0;
 const initPins=[
@@ -453,7 +453,9 @@ function renderCamera(){
  current.pitch=lerp(current.pitch,current.targetPitch,smoothing);
  current.focus.lerp(current.focusTarget,smoothing);
  // Logarithmic zoom covers large distances without a sudden speed change.
- const distance=Math.exp(lerp(Math.log(5.9),Math.log(.36),current.zoom));
+ const mobileView=window.matchMedia('(max-width: 820px)').matches;
+ const baseDistance=mobileView?8.8:5.9;
+ const distance=Math.exp(lerp(Math.log(baseDistance),Math.log(.36),current.zoom));
  const nX=Math.sin(current.yaw)*Math.cos(current.pitch),nY=Math.sin(current.pitch),
  nZ=Math.cos(current.yaw)*Math.cos(current.pitch)*(current.rear?-1:1);
  camera.position.set(current.focus.x+distance*nX,current.focus.y+distance*nY,current.focus.z+distance*nZ);
@@ -535,7 +537,7 @@ function exitFundus(){
 }
 function reset(){
  clearTimeout(fundusTimer);current.fundusTransition=false;$('enterBtn').disabled=false;
- if(current.fundus)exitFundus();if(current.rear)toggleRear();current.selected=null;current.selection=null;current.focusTarget.set(0,0,0);current.focus.set(0,0,0);current.zoom=.10;current.targetZoom=.10;current.targetYaw=0;current.targetPitch=0;setZoom(.10);$('infoPanel').hidden=true;clearSelection()}
+ if(current.fundus)exitFundus();if(current.rear)toggleRear();current.selected=null;current.selection=null;current.focusTarget.set(0,0,0);current.focus.set(0,0,0);current.zoom=.07;current.targetZoom=.07;current.targetYaw=0;current.targetPitch=0;setZoom(.07);$('infoPanel').hidden=true;clearSelection()}
 function approach(p){current.selected=p;if(current.fundus&&deepRoute==='iris')deepRoute='retina';if(current.fundus)current.fundusTarget.copy(p);else current.focusTarget.copy(p);setZoom(.84);updateSelectionCard();}
 let domPins=[];
 const DEEP_INFO={
@@ -567,7 +569,8 @@ function updateSelectionCard(stage=selectionStage()){
  // updates replace only the facts, preserving whether the user expanded/collapsed it.
  if(sel!==lastBiologySelection){
   lastBiologySelection=sel;
-  const biology=$('microFacts');if(biology)biology.open=true;
+  const biology=$('microFacts');
+  if(biology)biology.open=!window.matchMedia('(max-width: 820px)').matches;
  }
  const d=MORPHOLOGY[sel.kind],layer=getDepthInfo(deepRoute,stage,sel.kind);
  $('infoIndex').textContent=sel.origin==='map'?'MORPHOLOGY / '+sel.side:sel.origin==='fundus'?'POSTERIOR EYE':'SELECTED STRUCTURE';
