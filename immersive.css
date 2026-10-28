@@ -748,3 +748,11 @@
  .micro-explorer.mobile-dismissed{display:none!important}
  .micro-panel-reopen:not([hidden]){display:block;position:absolute;z-index:39;top:138px;left:17px;padding:9px 12px;border:1px solid rgba(213,237,220,.5);border-radius:22px;background:rgba(7,19,15,.83);backdrop-filter:blur(12px);color:#e4efe5;font:10px ui-monospace,SFMono-Regular,monospace;letter-spacing:.07em;pointer-events:auto}
 }
+
+/* Mobile panel dismiss: position at right edge, beyond the IRIS MAP overlay. */
+@media(max-width:820px){
+ #microExplorer .micro-explorer-heading{gap:6px!important;min-height:38px;padding-right:0}
+ #microExplorer #microPanelDismiss{display:grid!important;position:relative!important;z-index:50!important;flex:0 0 34px!important;margin:0 0 0 5px!important;width:34px!important;height:34px!important;border:1px solid rgba(220,241,227,.65)!important;border-radius:10px!important;background:#dfece0!important;color:#12241a!important;font:25px/1 system-ui!important;pointer-events:auto!important}
+ #microExplorer #microPanelToggle{margin-left:auto!important}
+ #microPanelReopen:not([hidden]){top:185px!important;left:auto!important;right:17px!important;z-index:45!important}
+}
