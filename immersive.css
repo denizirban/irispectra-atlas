@@ -737,3 +737,6 @@
 }
 @media(max-width:370px){.plr-lab{width:178px}.plr-header{letter-spacing:0}}
 @media(prefers-reduced-motion:reduce){.plr-pupil{transition:none}}
+
+/* Microscopy-first interface: remove simulated PLR light card. */
+.light-control,.plr-lab{display:none!important}
