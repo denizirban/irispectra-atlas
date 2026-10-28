@@ -36,6 +36,18 @@
     </div>
   </div>
   <div id="tourCaption" class="tour-caption" hidden aria-live="polite"><span id="tourCount">01 / 05</span><strong id="tourText">Explore the visible eye</strong><button type="button" id="tourSkip">EXIT</button></div><div id="depthHint" class="depth-hint" aria-live="polite"><span id="depthTitle">WHOLE EYE</span><small id="depthExplainer">SCROLL OR PINCH TO EXPLORE</small></div>
+  <section class="micro-explorer" id="microExplorer" aria-label="Microscopic 3D navigation" hidden>
+    <div class="micro-explorer-heading"><span class="micro-live-dot"></span> MICRO EXPEDITION <span id="microStageName">STROMA</span></div>
+    <p class="micro-explorer-help">DRAG TO LOOK · SCROLL TO TRAVEL</p>
+    <div class="micro-explorer-actions">
+      <button type="button" id="microBack" aria-label="Return to previous magnification scale">← BACK</button>
+      <button type="button" id="microBackward" aria-label="Move backwards through the microscopic world">−</button>
+      <button type="button" id="microForward" aria-label="Move forward through the microscopic world">+</button>
+      <button type="button" id="microGlide" aria-label="Toggle slow ambient drifting">DRIFT ON</button>
+    </div>
+    <div class="micro-travel"><span class="micro-travel-track"><i id="microTravel"></i></span><small id="microDistance">0% DEPTH</small></div>
+  </section>
+  <div id="microLabel" class="micro-label" hidden role="status"></div>
   <div class="scale-journey" id="scaleJourney" aria-label="Anatomical magnification depth">
     <button type="button" class="scale-marker active" data-scale="0" aria-label="Zoom out to whole eye">EYE</button>
     <button type="button" class="scale-marker" data-scale="1" aria-label="Zoom to iris surface">SURFACE</button>
