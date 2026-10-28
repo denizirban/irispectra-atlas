@@ -66,7 +66,7 @@ export function addMicroAtmosphere(T,group,route,stage){
  batch.instanceMatrix.needsUpdate=true;
  batch.userData.role=stage===4?'matrix-associated motif':
    iris||sclera?'stromal collagen fiber':'microscopic extracellular structure';
- root.add(batch);
+ group.add(batch);
  // A few ultra-light granule clusters are placed *within* the tissue volume.
  if(stage===3||stage===4){
   const n=mobile?55:130;
@@ -85,7 +85,7 @@ export function addMicroAtmosphere(T,group,route,stage){
    dummy.updateMatrix();flecks.setMatrixAt(i,dummy.matrix);
   }
   flecks.instanceMatrix.needsUpdate=true;
-  flecks.userData.decorative=true;root.add(flecks);
+  flecks.userData.decorative=true;group.add(flecks);
  }
  // Surface raking light on fibers or membranes, adjusted to the chosen route.
  const fill=new T.PointLight(hue,stage===2?1.6:2.3,9,2);
