@@ -13,11 +13,12 @@ export function addMicroAtmosphere(T,group,route,stage){
  const tex=new T.CanvasTexture(aura);
  const halo=new T.Mesh(new T.PlaneGeometry(8.8,8.8),new T.MeshBasicMaterial({map:tex,transparent:true,opacity:.85,depthWrite:false,blending:T.AdditiveBlending,side:T.DoubleSide}));
  halo.position.z=-1.55;halo.userData.role='ambient illumination';halo.userData.decorative=true;group.add(halo);
- const count=stage===2?120:stage===3?160:205;
+ const mobile=window.matchMedia('(max-width: 820px)').matches;
+ const count=mobile?95:stage===2?210:stage===3?250:280;
  const xyz=new Float32Array(count*3),cols=new Float32Array(count*3),sizes=new Float32Array(count);
  for(let i=0;i<count;i++){
   const a=i*2.399963229728653,rad=Math.sqrt((i+.5)/count)*4.1;
-  const z=-1.5+Math.sin(i*19.217)*1.52;
+  const z=-2.9+((i*37)%113)/113*5.75;
   xyz[3*i]=Math.cos(a)*rad;
   xyz[3*i+1]=Math.sin(a)*rad*.75;
   xyz[3*i+2]=z;
@@ -32,11 +33,59 @@ export function addMicroAtmosphere(T,group,route,stage){
  particles.userData.decorative=true;particles.userData.role='floating micro-particles';group.add(particles);
  // Two highly subdued depth rings give a little spatial parallax at micro scale.
  for(let i=0;i<2;i++){
-  const radius=3.25+i*.56;
+  const radius=3.45+i*.79;
   const ring=new T.Mesh(new T.TorusGeometry(radius,.005,4,80),
    new T.MeshBasicMaterial({color:hue,transparent:true,opacity:i===0?.12:.055,depthWrite:false,blending:T.AdditiveBlending}));
-  ring.position.z=-1.25-i*.5;ring.rotation.x=(i?-.2:.21);
+  ring.position.z=-3.0-i*.6;ring.rotation.x=(i?-.2:.21);
   ring.userData.decorative=true;ring.userData.role='depth reference ring';group.add(ring);
+ }
+ // Dispersed filaments at several depths create real motion parallax as the
+ // camera passes through an anatomical environment. This is illustrative
+ // connective/neural structure, not patient-specific reconstruction.
+ const strands=mobile?(stage===4?30:60):(stage===4?55:155);
+ const filamentMaterial=new T.MeshStandardMaterial({
+  color:iris?0xb7b19b:sclera?0xe0d5bc:retina?0x83a6a5:route==='vessel'?0xb2828d:0xa4b9bf,
+  roughness:.72,transparent:true,opacity:.22,depthWrite:false,
+  side:T.DoubleSide
+ });
+ const unit=new T.CylinderGeometry(.012,.022,1.0,5,3);
+ const batch=new T.InstancedMesh(unit,filamentMaterial,strands);
+ const dummy=new T.Object3D();
+ const rand=(i,salt)=>{const n=Math.sin(i*127.17+salt*91.4)*43758.5453;return n-Math.floor(n)};
+ for(let i=0;i<strands;i++){
+  const ring=(i+.5)/strands;
+  const a=i*2.39996;
+  const r=1.12+3.3*Math.sqrt(ring);
+  const z=-3.6+rand(i,6)*6.1;
+  dummy.position.set(Math.cos(a)*r,Math.sin(a)*r*.80,z);
+  dummy.rotation.set(rand(i,2)*.7-.35,rand(i,3)*1.6-.8,rand(i,4)*1.5-.75);
+  const size=.5+rand(i,5)*1.65;
+  dummy.scale.set(.45+rand(i,7)*.8,size,.65);
+  dummy.updateMatrix();batch.setMatrixAt(i,dummy.matrix);
+ }
+ batch.instanceMatrix.needsUpdate=true;
+ batch.userData.role=stage===4?'matrix-associated motif':
+   iris||sclera?'stromal collagen fiber':'microscopic extracellular structure';
+ root.add(batch);
+ // A few ultra-light granule clusters are placed *within* the tissue volume.
+ if(stage===3||stage===4){
+  const n=mobile?55:130;
+  const geo=new T.SphereGeometry(.028,6,5);
+  const mat=new T.MeshPhysicalMaterial({
+   color:iris?0xceb58c:0xd5dee0,roughness:.48,transparent:true,opacity:.52,depthWrite:false
+  });
+  const flecks=new T.InstancedMesh(geo,mat,n);
+  for(let i=0;i<n;i++){
+   const a=i*2.399963,rr=1.3+2.7*Math.sqrt((i+.5)/n);
+   dummy.position.set(Math.cos(a)*rr,Math.sin(a)*rr*.85,
+     -2.6+rand(i,9)*5.0);
+   const size=.45+rand(i,8)*2.0;
+   dummy.scale.set(size,size*(.7+rand(i,2)),size*.8);
+   dummy.rotation.set(0,0,0);
+   dummy.updateMatrix();flecks.setMatrixAt(i,dummy.matrix);
+  }
+  flecks.instanceMatrix.needsUpdate=true;
+  flecks.userData.decorative=true;root.add(flecks);
  }
  // Surface raking light on fibers or membranes, adjusted to the chosen route.
  const fill=new T.PointLight(hue,stage===2?1.6:2.3,9,2);
