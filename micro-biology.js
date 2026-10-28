@@ -477,9 +477,9 @@ export function populateBioWorld(T,group,route,stage){
    }
   }
  }
- // An interior chapter: the molecular-scale crypt route becomes a continuous
- // traversable mitochondrial interior before collagen is explored.
- if(stage===5&&route==='crypt')mitoInterior();
+ // The mitochondrial cutaway belongs to the intracellular organelle chapter.
+ // Molecular chapter remains reserved for collagen chemistry.
+ if(stage===4&&route==='crypt')mitoInterior();
  // MOLECULAR 5 — illustrative molecular shape and biochemical context.
  if(stage===5){
   if(route==='crypt'){collagen();
