@@ -575,3 +575,47 @@
 @media(prefers-reduced-motion:reduce){
  .micro-explorer,.micro-explorer-actions button,#microTravel{transition:none!important}
 }
+
+/* Route-based cinematic science navigation */
+.micro-explorer{width:min(344px,calc(100vw - 44px));bottom:184px;max-height:min(440px,65vh);overflow-y:auto;scrollbar-width:none}
+.micro-explorer::-webkit-scrollbar{display:none}
+.micro-route-row{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:4px;margin-top:12px}
+.micro-route-row button{
+ min-width:0;min-height:27px;padding:6px 3px;
+ border-radius:6px;border:1px solid rgba(210,231,215,.14);
+ background:rgba(180,209,188,.06);color:#a9b9ad;
+ text-align:center;cursor:pointer;letter-spacing:.03em;
+ font:8px/1 ui-monospace,SFMono-Regular,Menlo,monospace;
+ transition:color .15s,border-color .15s,background .15s
+}
+.micro-route-row button[aria-pressed="true"]{background:rgba(205,226,206,.19);border-color:rgba(215,239,223,.50);color:#f3f8f0}
+.micro-route-row button:hover{color:#f2f9f2}
+.micro-route-row button:focus-visible,.micro-explore-mode button:focus-visible{outline:2px solid #d2e9d2;outline-offset:2px}
+.micro-chapter{margin:10px 0 0;font:11px/1.48 system-ui,-apple-system,sans-serif;
+ color:#cbd8cc;letter-spacing:0}
+.micro-explore-mode{display:flex;align-items:center;gap:7px;margin:9px 0 0}
+.micro-explore-mode button{
+ min-height:27px;padding:0 10px;
+ border:1px solid rgba(198,221,206,.23);border-radius:6px;
+ background:rgba(205,228,208,.08);
+ color:#e2eee5;font:9px ui-monospace,SFMono-Regular,Menlo,monospace;
+ letter-spacing:.04em;cursor:pointer
+}
+#microGuide[aria-pressed="true"]{background:rgba(192,232,194,.24);color:#f4fff2}
+#microNext{margin-left:auto;background:#dfead8;color:#15241a}
+.scale-journey .scale-marker{font-size:9px;letter-spacing:.015em;white-space:nowrap}
+.scale-journey{overflow:visible}
+@media(max-width:820px){
+ .micro-explorer{width:min(298px,calc(100vw - 28px));bottom:calc(177px + env(safe-area-inset-bottom));max-height:40svh}
+ .micro-route-row{margin-top:8px;gap:3px}
+ .micro-route-row button{min-height:26px;font-size:7px;padding:5px 2px}
+ .micro-chapter{font-size:10px;margin:7px 0 0}
+ .micro-explore-mode{margin-top:6px}
+ .micro-explore-mode button{font-size:8px;padding:0 7px;min-height:25px}
+ .scale-journey{padding:6px 5px 9px!important}
+ .scale-journey .scale-marker{font-size:7px!important;letter-spacing:-.025em!important;padding:3px 1px;min-height:24px}
+}
+@media(max-width:390px){
+ .micro-explorer{width:min(257px,calc(100vw - 26px));bottom:calc(170px + env(safe-area-inset-bottom))}
+ .scale-journey .scale-marker{font-size:6.5px!important}
+}
