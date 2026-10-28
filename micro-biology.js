@@ -219,6 +219,14 @@ export function populateBioWorld(T,group,route,stage){
   path([[-2.1,-2.1,-.1],[-.7,-1.9,.10],[.8,-1.85,.13],[2.1,-1.7,-.2]],
    .047,mats.line,'Bipolar-cell synaptic connection');
  };
+ const capillary=()=>{
+  const ring=add(new T.TorusGeometry(.44,.095,12,48),mats.pink,1.55,-.82,-.72,'Stromal vascular channel');
+  ring.rotation.x=.35;
+  for(let i=0;i<12;i++){const a=i*Math.PI/6;
+   const e=sphere(1.55+.44*Math.cos(a),-.82+.44*Math.sin(a),-.64,
+    [.13,.075,.09],mats.cell,'Vascular endothelial cell');e.rotation.z=a+Math.PI/2;
+  }
+ };
  const calcium=(n=34)=>{
   const geo=new T.SphereGeometry(.063,7,6),batch=new T.InstancedMesh(geo,mats.gold,n),dummy=new T.Object3D();
   for(let i=0;i<n;i++){
@@ -244,11 +252,13 @@ export function populateBioWorld(T,group,route,stage){
    }
    const inner=membraneRing(.85,.66,mats.dark,'Crypt-like stromal opening');
    inner.scale.set(1.3,.7,1);
+   capillary();
   }else if(route==='pigment'){
    for(let i=0;i<10;i++){
     const a=i*2.399,r=1.0+1.8*Math.sqrt((i+.5)/10);
     cellBody(Math.cos(a)*r,Math.sin(a)*r*.80,.3,'Stromal melanocyte',[.42,.23,.20]);
    }
+   cellBody(-1.35,-1.35,-.15,'Stromal fibroblast',[.53,.22,.19]);
    for(let i=0;i<36;i++){
     const a=i*2.399,r=.9+2*Math.sqrt((i+.5)/36);
     sphere(Math.cos(a)*r,Math.sin(a)*r*.85,.62,[.038,.038,.038],mats.pigment,'Pigment granule');

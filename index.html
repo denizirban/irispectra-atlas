@@ -45,6 +45,15 @@
       <button type="button" data-bio-route="neural" aria-pressed="false" title="Retina to neural signaling">NEURAL</button>
     </div>
     <p class="micro-chapter" id="microChapter">Explore the iris connective tissue in three dimensions.</p>
+    <section class="micro-discoveries" aria-label="Discoverable structures">
+      <div class="micro-discoveries-label">DISCOVER <span>SELECT TO APPROACH</span></div>
+      <div id="microNodes" class="micro-node-list"></div>
+      <article id="microSelected" class="micro-selected" hidden aria-live="polite">
+        <strong id="microSelectedTitle"></strong><p id="microSelectedRole"></p>
+        <small><b>VISIBLE CLUE</b><span id="microSelectedClue"></span></small>
+        <button id="microDeeper" type="button">GO DEEPER ↗</button>
+      </article>
+    </section>
     <div class="micro-explore-mode">
       <button type="button" id="microGuide" aria-pressed="false">GUIDED TOUR</button>
       <button type="button" id="microNext" hidden>NEXT STRUCTURE →</button>

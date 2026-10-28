@@ -6,6 +6,7 @@ import {populateMicroScene} from "./micro-models.js";
 import {BIO_ROUTES,BIO_STAGES,BIO_TARGETS,bioInfo} from "./micro-biology.js";
 import {animateMicroAtmosphere} from "./micro-atmosphere.js";
 import {createMicroNavigator} from "./micro-navigation.js";
+import {nodesAt,describeMicroRole} from "./micro-discovery.js";
 import {getDepthInfo,ATLAS_DEPTH,MORPH_DETAILS} from "./depth-knowledge.js";
 import {SPECIMENS,makeAnnularSpecimen} from "./specimen-pipeline.js";
 const $=x=>document.getElementById(x),canvas=$('scene'),experience=$('experience');
@@ -443,7 +444,7 @@ function makeScene(){
  $('loading').classList.add('hidden');animate();
 }
 let microScene=null,microCamera=null,microBackdrop=null,microBlend=0,microNav=null;
-let microFrameHud=0,microLabelTimeout=null;
+let microFrameHud=0,microLabelTimeout=null,lastMicroNodes='';
 function initializeMicroWorld(){
  microScene=new THREE.Scene();
  microCamera=new THREE.PerspectiveCamera(37,innerWidth/innerHeight,.025,100);
@@ -769,6 +770,7 @@ function selectByTap(x,y,{preserveZoom=false}={}){
   current.selection.microRole=role;
   updateSelectionCard(selectionStage());
   showMicroLabel(role,x,y);
+  showMicroDiscovery(role);
   window.dispatchEvent(new CustomEvent('irispectra-sound',{detail:{type:'select',kind:role,x:soundX}}));
   return true;
  }
@@ -933,11 +935,36 @@ function selectBioRoute(route){
    zone:'Neural retina',anatomicalZone:'Posterior eye'};
  }
  $('infoPanel').hidden=true;
- microFrameHud=0;
+ microFrameHud=0;lastMicroNodes='';
  if(current.targetZoom<.66)setZoom(BIO_TARGETS[2]);
  window.dispatchEvent(new CustomEvent('irispectra-sound',{
   detail:{type:'select',kind:route,x:.5}
  }));
+}
+function showMicroDiscovery(role){
+ const fact=describeMicroRole(role,activeBioRoute,selectionStage());
+ $('microSelectedTitle').textContent=fact.role;
+ $('microSelectedRole').textContent=fact.roleText;
+ $('microSelectedClue').textContent=fact.visible;
+ $('microDeeper').textContent=selectionStage()===6?'RETURN TO IRIS ↗':'GO DEEPER ↗';
+ $('microSelected').hidden=false;
+ $('microNodes').querySelectorAll('button').forEach(b=>
+  b.setAttribute('aria-pressed',String(b.dataset.role===role)));
+}
+function focusMicroRole(role){
+ if(!activeMicro||!microNav)return;
+ let found=null;
+ activeMicro.traverse(node=>{
+  if(found||!node.isMesh)return;
+  const r=String(node.userData.role||'');if(r===role||r.startsWith(role))found=node;
+ });
+ if(found){const point=new THREE.Vector3();found.getWorldPosition(point);microNav.focus(point);}
+ current.selection={kind:activeBioRoute==='neural'?'retina':'radial',
+  zone:BIO_ROUTES[activeBioRoute].name,anatomicalZone:BIO_STAGES[selectionStage()],
+  origin:'micro',microRole:role};
+ updateSelectionCard(selectionStage());showMicroDiscovery(role);
+ showMicroLabel(role,innerWidth*.5,innerHeight*.46);
+ window.dispatchEvent(new CustomEvent('irispectra-sound',{detail:{type:'select',kind:role,x:.5}}));
 }
 function showMicroLabel(role,x,y){
  const el=$('microLabel');if(!el)return;
@@ -959,7 +986,22 @@ function updateMicroExplorerHUD(active,now){
  $('microDistance').textContent=Math.round(data.progress*100)+'% DEPTH';
  $('microGlide').textContent=data.glide?'DRIFT ON':'DRIFT OFF';
  $('microStageName').textContent=BIO_STAGES[data.stage]||'MICRO';
- $('microChapter').textContent=bioInfo(activeBioRoute,Math.max(2,data.stage)).short;
+ const chapter=bioInfo(activeBioRoute,Math.max(2,data.stage));
+ $('microChapter').textContent=(bioGuided?BIO_ROUTES[activeBioRoute].name+' / ':'')+chapter.short;
+ const nodeKey=activeBioRoute+':'+data.stage+':'+String(bioGuided);
+ if(nodeKey!==lastMicroNodes){
+  lastMicroNodes=nodeKey;
+  $('microSelected').hidden=true;
+  const list=$('microNodes');list.replaceChildren();
+  const nodes=nodesAt(activeBioRoute,data.stage);
+  for(const node of nodes){
+   const b=document.createElement('button');b.type='button';
+   b.dataset.role=node.role;b.setAttribute('aria-pressed','false');
+   b.textContent=node.role.toUpperCase();b.title=node.roleText;
+   b.onclick=()=>focusMicroRole(node.role);list.appendChild(b);
+  }
+  if(bioGuided&&nodes.length)showMicroDiscovery(nodes[0].role);
+ }
  document.querySelectorAll('[data-bio-route]').forEach(button=>{
   button.setAttribute('aria-pressed',String(button.dataset.bioRoute===activeBioRoute));
  });
@@ -972,9 +1014,13 @@ function connectMicroExplorer(){
   button.addEventListener('click',()=>selectBioRoute(button.dataset.bioRoute));
  });
  $('microGuide').onclick=()=>{
-  bioGuided=!bioGuided;
-  microFrameHud=0;
+  bioGuided=!bioGuided;lastMicroNodes='';microFrameHud=0;
   updateMicroExplorerHUD(microNav?.isActive(),performance.now());
+  if(bioGuided){const first=nodesAt(activeBioRoute,selectionStage())[0];if(first)focusMicroRole(first.role);}
+ };
+ $('microDeeper').onclick=()=>{
+  stopDiscoveryTour();const stage=selectionStage();
+  setZoom(stage===6?BIO_TARGETS[1]:BIO_TARGETS[stage+1]);
  };
  $('microNext').onclick=()=>{
   stopDiscoveryTour();

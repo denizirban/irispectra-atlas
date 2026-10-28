@@ -1,8 +1,11 @@
 // Subtle microscopy-inspired optical depth. Lightweight WebGL geometry generated
 // for every active layer; no photographic scan / patient-specific representation.
 export function addMicroAtmosphere(T,group,route,stage){
- const iris=route==='iris',sclera=route==='sclera',retina=route==='retina';
- const hue=iris?0xc4d0ab:sclera?0xd8cdb6:retina?0x9cb0b5:route==='vessel'?0xc7a3ac:0xbac4d4;
+ const iris=['iris','crypt','pigment','muscle'].includes(route);
+ const sclera=route==='sclera',retina=route==='retina'||route==='neural';
+ const hue=route==='pigment'?0xc6aa83:route==='muscle'?0xc8a29f:
+  route==='crypt'?0xdac5a5:iris?0xc4d0ab:sclera?0xd8cdb6:
+  retina?0x9cb0b5:route==='vessel'?0xc7a3ac:0xbac4d4;
  const c=new T.Color(hue);
  const aura=document.createElement('canvas');aura.width=aura.height=128;
  const paint=aura.getContext('2d'),g=paint.createRadialGradient(64,64,2,64,64,64);

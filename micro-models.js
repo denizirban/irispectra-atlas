@@ -8,7 +8,7 @@ export function populateMicroScene(T,root,route,stage){
   // Route-specific worlds are built independently to avoid a generic iris
   // model appearing behind every scientific pathway.
   populateBioWorld(T,root,route,stage);
-  addMicroAtmosphere(T,root,route==='neural'?'retina':'iris',stage);
+  addMicroAtmosphere(T,root,route,stage);
   root.userData.anatomyRoute=route;
   root.userData.scale=stage;
   return root.children;
