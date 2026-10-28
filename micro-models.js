@@ -1,101 +1,241 @@
-// Original educational 3D illustrations. Each object is modeled, not derived from an
-// individual pupil photograph or a measured histology/molecular dataset.
-export function populateMicroScene(THREE,group,route,stage){
- const mat=(hex,opacity=1)=>new THREE.MeshPhysicalMaterial({color:hex,roughness:.75,metalness:0,clearcoat:.06,transparent:true,opacity,depthWrite:opacity===1});
- const M={
-  fiber:mat(route==='sclera'?0xd7ccb5:0xc8a784),
-  collagen:mat(0xe1d2ab),melanin:mat(0x49332b),
-  cell:mat(0xaa9175,.94),nucleus:mat(0x4e4655),
-  vessel:mat(0x9f4f56,.93),axon:mat(0xb5bec5,.95),
-  retinal:mat(0xb89f94,.9)
+// Irispectra Microworld — 3D educational illustrations, not optical reconstructions.
+// Connected to anatomical routes: iris stroma, scleral collagen, retinal laminae,
+// vessel endothelial lining, and optic nerve axons. Original procedural geometry.
+export function populateMicroScene(T,root,route,stage){
+ const rand=(i,s=1)=>{const a=Math.sin(i*127.13+s*19.71)*43758.5453;return a-Math.floor(a)};
+ const isIris=route==='iris',isSclera=route==='sclera';
+ const materials={
+  collagen:new T.MeshStandardMaterial({color:isSclera?0xd8caac:0xcab697,roughness:.67,metalness:0}),
+  collagenLight:new T.MeshStandardMaterial({color:0xf2ddbc,roughness:.55}),
+  connective:new T.MeshStandardMaterial({color:0x9a866e,roughness:.80,transparent:true,opacity:.68}),
+  cytoplasm:new T.MeshPhysicalMaterial({color:0xb4a18b,roughness:.39,clearcoat:.26,transparent:true,opacity:.93}),
+  melanocyte:new T.MeshPhysicalMaterial({color:0x9a897b,roughness:.38,clearcoat:.19,transparent:true,opacity:.95}),
+  cellMembrane:new T.MeshStandardMaterial({color:0xe7c9a5,roughness:.28,transparent:true,opacity:.26,side:T.DoubleSide}),
+  nucleus:new T.MeshStandardMaterial({color:0x565067,roughness:.58}),
+  pigment:new T.MeshStandardMaterial({color:0x50332a,roughness:.62}),
+  pigmentLight:new T.MeshStandardMaterial({color:0xa1794a,roughness:.59}),
+  vessel:new T.MeshPhysicalMaterial({color:0x91545b,roughness:.5,transparent:true,opacity:.83,side:T.DoubleSide}),
+  artery:new T.MeshStandardMaterial({color:0xb96862,roughness:.51}),
+  neuron:new T.MeshStandardMaterial({color:0xbdcac6,roughness:.52}),
+  neuralDark:new T.MeshStandardMaterial({color:0x7b9da2,roughness:.62}),
+  membrane:new T.MeshStandardMaterial({color:0x8c9992,roughness:.76,transparent:true,opacity:.58,side:T.DoubleSide}),
+  halo:new T.MeshBasicMaterial({color:isIris?0xa2c5b0:isSclera?0xbab59c:0xa8a1a7,transparent:true,opacity:.075,depthWrite:false,side:T.DoubleSide})
  };
- const sphere=new THREE.SphereGeometry(1,16,12),items=[];
- function mesh(g,m,p,scale){
-  const ob=new THREE.Mesh(g,m);ob.position.set(...p);
-  if(scale)ob.scale.set(...scale);
-  group.add(ob);items.push(ob);return ob;
+ const baseSphere=new T.SphereGeometry(1,13,10);
+ function mesh(geo,material,x=0,y=0,z=0){
+  const o=new T.Mesh(geo,material);o.position.set(x,y,z);root.add(o);return o;
  }
- function bead(x,y,z,r,m,scale=[1,1,1]){return mesh(sphere,m,[x,y,z],[r*scale[0],r*scale[1],r*scale[2]])}
- function tube(points,r,m){
-  const curve=new THREE.CatmullRomCurve3(points.map(p=>new THREE.Vector3(...p)));
-  return mesh(new THREE.TubeGeometry(curve,Math.max(24,points.length*5),r,7,false),m,[0,0,0]);
+ function ellipse(x,y,z,scale,material){
+  const o=mesh(baseSphere,material,x,y,z);o.scale.set(...scale);return o;
  }
- function random(i){return (Math.sin(i*1234.567+78.2)*43758.5453)%1}
- function fibrous(n=38,ordered=true){
+ function polyline(pts,width,material,segments=38){
+  const curve=new T.CatmullRomCurve3(pts.map(p=>new T.Vector3(...p)));
+  return mesh(new T.TubeGeometry(curve,segments,width,6,false),material);
+ }
+ function grains(count,mat,create){
+  const batch=new T.InstancedMesh(baseSphere,mat,count);
+  const dummy=new T.Object3D();
+  for(let i=0;i<count;i++){
+   const [x,y,z,r,sx=1,sy=1,sz=1]=create(i);
+   dummy.position.set(x,y,z);dummy.scale.set(r*sx,r*sy,r*sz);
+   dummy.rotation.set(rand(i,3)*.5,rand(i,4)*6.28,rand(i,5)*.5);
+   dummy.updateMatrix();batch.setMatrixAt(i,dummy.matrix);
+  }
+  batch.instanceMatrix.needsUpdate=true;batch.frustumCulled=false;root.add(batch);return batch;
+ }
+ function mist(){
+  const count=44;
+  grains(count,materials.halo,i=>{
+   const a=i*2.399,r=1.4+rand(i,11)*2.3;
+   return [Math.cos(a)*r,Math.sin(a)*r,(rand(i,9)-.5)*3,.04+rand(i,2)*.09];
+  });
+ }
+ function strands(n=26,gap=.65,interweave=false){
+  // Curved bundles leave an anterior opening rather than inventing a continuous slab.
   for(let i=0;i<n;i++){
-   const x=(i%9-4)*.52,y=(Math.floor(i/9)-2)*.34,z=Math.sin(i*1.3)*.42;
-   const a=[];
-   for(let k=0;k<=10;k++){
-    const v=(k/10-.5)*6;
-    a.push([ordered?v:x+v,y+Math.sin(v*.72+i*.65)*.12,z+Math.cos(v*.53+i)*.12]);
-   }
-   tube(a,.024+(i%4)*.006,i%5===0?M.collagen:M.fiber);
-  }
- }
- function fibroblast(x,y,z,f=1){
-  bead(x,y,z,.39*f,M.cell,[1.42,.61,.45]);
-  bead(x+.04*f,y,z+.18*f,.19*f,M.nucleus,[1,.73,.48]);
-  for(let i=0;i<5;i++){
-   const a=i*Math.PI*2/5,dx=Math.cos(a),dy=Math.sin(a);
-   tube([[x+dx*.24*f,y+dy*.13*f,z],[x+dx*.65*f,y+dy*.30*f,z+.1],[x+dx*1.02*f,y+dy*.47*f,z]],.024,M.cell);
-  }
- }
- function melanocyte(x,y,z,f=1){
-  bead(x,y,z,.34*f,M.cell,[1.13,.92,.63]);
-  bead(x,y,z+.17*f,.19*f,M.nucleus);
-  for(let i=0;i<7;i++){
-   const a=i*Math.PI*2/7,dx=Math.cos(a),dy=Math.sin(a);
-   tube([[x,y,z],[x+dx*.46*f,y+dy*.42*f,z+.06],[x+dx*.89*f,y+dy*.80*f,z-.03],[x+dx*1.26*f,y+dy*1.04*f,z]],.019,M.cell);
-  }
-  for(let i=0;i<29;i++){
-   const a=i*2.399,r=Math.sqrt(i/29)*.69*f;
-   bead(x+Math.cos(a)*r,y+Math.sin(a)*r*.7,z+.24*f,.039*f,M.melanin);
-  }
- }
- function helix(){
-  for(let chain=0;chain<3;chain++){
+   const y=(i-(n-1)/2)*.20;
+   const z=(rand(i,8)-.5)*.47-.33;
+   const side=i%2?1:-1;
    const pts=[];
-   for(let i=0;i<=110;i++){
-    const t=i/110,y=(t-.5)*5.4,a=i*.30+chain*2*Math.PI/3;
-    pts.push([Math.cos(a)*.48,y,Math.sin(a)*.48]);
-    if(i%10===0)bead(Math.cos(a)*.48,y,Math.sin(a)*.48,.08,chain===0?M.fiber:chain===1?M.collagen:M.cell);
+   for(let j=0;j<=12;j++){
+    const t=j/12,x=(t-.5)*6.3;
+    const corridor=Math.exp(-(x*x)/(.85+gap))*Math.exp(-y*y*2.2);
+    const bend=side*corridor*gap*.64;
+    pts.push([x,y+bend+Math.sin(x*1.1+i*.58)*.09,z+Math.cos(x*.7+i*.6)*.12]);
    }
-   tube(pts,.055,chain===0?M.fiber:chain===1?M.collagen:M.cell);
+   const obj=polyline(pts,.027+rand(i,7)*.023,i%4===0?materials.collagenLight:materials.collagen,48);
+   obj.userData.role='collagen fiber bundle';
+  }
+  if(interweave)for(let i=0;i<12;i++){
+   const x=(i-5.5)*.46,pts=[];
+   for(let j=0;j<=7;j++){
+    const t=j/7;
+    pts.push([x+.1*Math.sin(t*11+i), (t-.5)*3.3, -.7+Math.sin(t*8+i)*.1]);
+   }
+   polyline(pts,.016,materials.connective,25);
   }
  }
- function lamina(){
-  for(let row=0;row<6;row++){
-   const y=(row-2.5)*.46;
-   for(let i=0;i<15;i++){
-    const x=(i-7)*.35;
-    bead(x,y,Math.sin(i+row)*.06,row%2?.11:.16,row===0?M.retinal:row>=4?M.nucleus:M.cell,[1.3,.55,1.0]);
+ function dendrite(x,y,z,angle,length,material,width=.022){
+  const dir=[Math.cos(angle),Math.sin(angle)];
+  polyline([[x,y,z],[x+dir[0]*length*.32,y+dir[1]*length*.25,z+.10],
+    [x+dir[0]*length*.66,y+dir[1]*length*.63,z-.06],
+    [x+dir[0]*length,y+dir[1]*length,z+.045]],width,material,22);
+ }
+ function nucleus(x,y,z,r=.22){return ellipse(x,y,z,[r,r*.78,r*.7],materials.nucleus)}
+ function fibroblast(x,y,z,s=1){
+  ellipse(x,y,z,[.70*s,.24*s,.22*s],materials.cytoplasm);
+  nucleus(x+.03*s,y,z+.145*s,.18*s);
+  const membrane=ellipse(x,y,z,[.74*s,.29*s,.24*s],materials.cellMembrane);
+  membrane.userData.role='cell membrane';
+  for(let k=0;k<6;k++){
+   const a=k*2*Math.PI/6;
+   dendrite(x,y,z,a,1.20*s,materials.cytoplasm,.020*s);
+  }
+  return membrane;
+ }
+ function melanocyte(x,y,z,s=1){
+  ellipse(x,y,z,[.35*s,.31*s,.23*s],materials.melanocyte);
+  nucleus(x-.035*s,y,z+.19*s,.17*s);
+  for(let k=0;k<9;k++){
+   const a=k*2*Math.PI/9+.2;
+   dendrite(x,y,z,a,(k%2?1.35:1.85)*s,materials.melanocyte,.017*s);
+   dendrite(x+Math.cos(a)*.75*s,y+Math.sin(a)*.75*s,z+.03,a+.4,.38*s,materials.melanocyte,.009*s);
+  }
+  grains(73,materials.pigment,i=>{
+   const a=i*2.399,r=Math.sqrt(rand(i,16))*.45*s;
+   return [x+r*Math.cos(a),y+r*Math.sin(a)*.83,z+.26*s+rand(i,17)*.05*s,.025*s+rand(i,6)*.019*s];
+  });
+ }
+ function helixTriple(){
+  // Three schematic chains wound around one shared axis, not atomic coordinates.
+  for(let chain=0;chain<3;chain++){
+   const pts=[],p2=chain*2*Math.PI/3;
+   for(let j=0;j<=110;j++){
+    const t=j/110,ang=t*Math.PI*13+p2;
+    pts.push([.50*Math.cos(ang),(t-.5)*5.2,.50*Math.sin(ang)]);
    }
+   polyline(pts,.058,chain===0?materials.collagenLight:materials.collagen,180);
+   grains(48,chain===0?materials.collagenLight:materials.collagen,i=>{
+    const t=i/47,ang=t*Math.PI*13+p2;
+    return [.50*Math.cos(ang),(t-.5)*5.2,.50*Math.sin(ang),.075];
+   });
+  }
+  for(let j=0;j<17;j++){
+   const t=j/16,ang=t*Math.PI*13;
+   polyline([[.46*Math.cos(ang),(t-.5)*5.2,.46*Math.sin(ang)],
+     [.0,(t-.5)*5.2,.0],[-.46*Math.cos(ang),(t-.5)*5.2,-.46*Math.sin(ang)]],
+     .014,materials.connective,12);
   }
  }
+ function melanosome(x,y,z,s=.7){
+  ellipse(x,y,z,[s*.55,s*.30,s*.33],materials.melanocyte);
+  grains(34,materials.pigment,i=>{
+   const a=i*2.399,r=Math.sqrt(i/34)*s*.43;
+   return [x+Math.cos(a)*r,y+Math.sin(a)*r*.56,z+(rand(i,32)-.5)*s*.28,.041*s];
+  });
+ }
+ function retinalLayers(){
+  // Alternating neurite bands and cell strata; not a patient-specific histology slide.
+  for(let layer=0;layer<7;layer++){
+   const y=(layer-3)*.52;
+   const band=mesh(new T.PlaneGeometry(5.8,.42),layer%2?materials.membrane:materials.halo,0,y,-.56);
+   band.userData.role='retinal layer';
+   grains(21,layer===5?materials.nucleus:materials.neuron,i=>{
+    const x=(i-10)*.26;
+    return [x,y+(rand(i,layer)-.5)*.16,-.20+rand(i,8)*.4,.09+rand(i,9)*.055,1,.8,.7];
+   });
+  }
+  for(let i=0;i<14;i++){
+   const x=(i-6.5)*.35;
+   polyline([[x,-2.0,.18],[x+.08,-1.2,.19],[x-.02,-.34,.08],[x+.06,1.6,.15]],.033,materials.neuralDark,29);
+  }
+ }
+ function axonBundle(n=38){
+  for(let i=0;i<n;i++){
+   const a=i*2.399,rad=2.4*Math.sqrt(i/n);
+   const y=Math.cos(a)*rad,z=Math.sin(a)*rad*.43;
+   polyline([[-3,y-.10,z],[-1.5,y+.08,z+.15],[0,y-.07,z],[2.8,y+.11,z-.1]],.040+rand(i,7)*.029,
+     i%4===0?materials.collagenLight:materials.neuron,35);
+  }
+  for(let j=0;j<10;j++){
+   const x=(j-5)*.55;
+   ellipse(x,-2.4,-.6,[.14,.10,.20],materials.nucleus);
+  }
+ }
+ function vascularRing(){
+  const wall=mesh(new T.TorusGeometry(1.66,.37,18,86),materials.vessel,0,0,0);
+  wall.rotation.x=.19;
+  const hole=mesh(new T.CircleGeometry(1.30,88),materials.halo,0,0,-.23);
+  hole.userData.role='vessel lumen';
+  for(let i=0;i<30;i++){
+   const a=i*Math.PI*2/30,x=1.65*Math.cos(a),y=1.65*Math.sin(a);
+   const e=ellipse(x,y,.20,[.24,.115,.075],materials.cytoplasm);
+   e.rotation.z=a+Math.PI/2;
+   ellipse(x,y,.29,[.12,.09,.07],materials.nucleus);
+  }
+ }
+ function organelles(){
+  for(let i=0;i<11;i++){
+   const x=(rand(i,24)-.5)*3.8,y=(rand(i,25)-.5)*2.4;
+   ellipse(x,y,.5,[.12+rand(i,26)*.18,.17,.14],i%3?materials.neuron:materials.nucleus);
+  }
+ }
+ mist();
  if(stage===2){
-  if(route==='iris'||route==='sclera'){
-   fibrous(route==='sclera'?60:35);
-   if(route==='iris'){melanocyte(-1.1,-.38,.45,.75);fibroblast(1.3,.66,.45,.62)}
-   else for(let i=0;i<3;i++)fibroblast((i-1)*1.85,(i%2?-.8:.6),.35,.60);
-  }else if(route==='vessel'){
-   const wall=mesh(new THREE.TorusGeometry(1.7,.38,14,75),M.vessel,[0,0,0]);wall.rotation.x=.44;
-   for(let i=0;i<20;i++){const a=i*Math.PI/10;bead(Math.cos(a)*1.7,Math.sin(a)*1.7,.25,.15,M.cell)}
-  }else if(route==='nerve'){
-   for(let i=0;i<30;i++){let a=i*2.399,r=Math.sqrt(i/30)*2.2; tube([[-3,Math.sin(a)*r,Math.cos(a)*r],[-1,Math.sin(a)*r,Math.cos(a)*r],[2,Math.sin(a)*r,Math.cos(a)*r]],.065,M.axon)}
-  }else lamina();
+  if(isIris||isSclera){
+   strands(isSclera?44:34,isIris?.93:.25,true);
+   grains(isIris?100:46,materials.pigment,i=>{
+    const a=i*2.399,r=.7+rand(i,17)*1.9;
+    return [Math.cos(a)*r,Math.sin(a)*r,-.25+rand(i,19)*.24,.017+rand(i,2)*.023];
+   });
+   fibroblast(-1.5,-.88,.40,.55);
+   if(isIris)melanocyte(1.4,.85,.55,.52);
+  }else if(route==='vessel'){vascularRing();}
+  else if(route==='nerve'){axonBundle();}
+  else retinalLayers();
  }else if(stage===3){
-  if(route==='iris'){
-   melanocyte(-1.15,.5,0,1.12);fibroblast(1.25,-.6,.1,1.15);melanocyte(.75,1.25,-.6,.6);
-  }else if(route==='sclera'){fibroblast(0,0,0,1.8);fibrous(15)}
-  else if(route==='vessel'){for(let i=0;i<5;i++)fibroblast((i-2)*1.3,Math.sin(i)*.65,0,.85)}
-  else if(route==='nerve'){for(let i=0;i<18;i++)tube([[0,(i-9)*.26,-2],[0,(i-9)*.26,2]],.065,M.axon)}
-  else{for(let i=0;i<9;i++){const x=(i-4)*.63;bead(x,.3,0,.28,M.retinal,[.65,2.5,.75]);tube([[x,-.3,.1],[x,-1,.12],[x,-2,.14]],.045,M.axon)}}
- }else if(stage===4){
-  if(route==='iris'||route==='sclera'){helix();if(route==='iris')for(let i=0;i<25;i++){const a=i*2.399,r=Math.sqrt(i/25)*2.1;bead(Math.cos(a)*r,Math.sin(a)*r,(i%4-2)*.3,.08,M.melanin)}}
+  if(isIris){
+   // A pair of distinguishable cells, dendritic versus spindle-shaped.
+   strands(13,.2,false);melanocyte(-1.10,.15,.72,1.05);fibroblast(1.36,-.26,.6,1.03);
+   organelles();
+  }else if(isSclera){
+   strands(20,.2,true);fibroblast(0,0,.65,1.45);
+  }else if(route==='vessel'){
+   vascularRing();fibroblast(-1.0,-.60,1.0,.82);
+   ellipse(1.65,.45,.78,[.48,.32,.25],materials.cellMembrane);
+  }else if(route==='nerve'){axonBundle(22);nucleus(-.65,.6,.70,.30)}
   else{
-   for(let i=0;i<48;i++){const a=i*.67,x=Math.cos(a)*1.8,y=Math.sin(a)*1.1,z=(i-24)*.05;bead(x,y,z,.12,i%4?M.axon:M.nucleus)}
-   for(let i=0;i<5;i++){let pts=[];for(let k=0;k<=15;k++)pts.push([Math.sin(k*.43+i)*.9,(k/15-.5)*5.1,Math.cos(k*.43+i)*.8]);tube(pts,.035,M.axon)}
+   retinalLayers();
+   for(let i=0;i<5;i++){const x=(i-2)*.89;ellipse(x,.3,.7,[.23,.64,.25],materials.neuron)}
+  }
+ }else if(stage===4){
+  if(isIris||isSclera){
+   helixTriple();
+   if(isIris){
+    melanosome(-1.85,1.05,-1.10,.66);
+    melanosome(1.95,-.85,-1.0,.47);
+   }
+  }else if(route==='vessel'){
+   // Simplified junction proteins arranged along endothelial cell boundaries.
+   for(let k=0;k<3;k++)polyline([[-2.7,(k-1)*.7,0],[-.5,(k-1)*.7,.2],[2.7,(k-1)*.7,0]],.06,materials.neuralDark,36);
+   grains(55,materials.collagenLight,i=>{
+    const x=(i%11-5)*.49,y=(Math.floor(i/11)-2)*.46;
+    return [x,y,.1+rand(i,4)*.10,.09];
+   });
+  }else{
+   // Molecular-scale transport microtubules and illustrative synaptic clusters.
+   for(let i=0;i<7;i++){
+    const x=(i-3)*.45;
+    polyline([[x,-3,.15],[x+.20,-1.1,.30],[x,1.1,.22],[x+.12,3,.13]],.042,
+      i%2?materials.neuron:materials.neuralDark,50);
+   }
+   grains(60,materials.collagenLight,i=>{
+    const x=(i%12-5.5)*.44,y=(Math.floor(i/12)-2)*.55;
+    return [x,y,(rand(i,9)-.5)*.9,.065+rand(i,2)*.045];
+   });
   }
  }
- return items;
+ root.userData.anatomyRoute=route;
+ root.userData.scale=stage;
+ return root.children;
 }
