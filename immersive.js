@@ -1170,11 +1170,11 @@ function setActive(id){$('exploreBtn').classList.toggle('active',id==='exploreBt
 function updatePhotoSend(){
  const file=$('eyeFile').files?.[0];
  const email=$('atlasSenderEmail').value.trim();
- $('atlasPhotoSend').disabled=!(file&&$('atlasPhotoConsent').checked&&/^\\S+@\\S+\\.\\S+$/.test(email));
+ $('atlasPhotoSend').disabled=!(file&&$('atlasPhotoConsent').checked&&/^\S+@\S+\.\S+$/.test(email));
 }
 async function sendAtlasPhoto(){
  const file=$('eyeFile').files?.[0],email=$('atlasSenderEmail').value.trim();
- if(!file||!$('atlasPhotoConsent').checked||!/^\\S+@\\S+\\.\\S+$/.test(email))return;
+ if(!file||!$('atlasPhotoConsent').checked||!/^\S+@\S+\.\S+$/.test(email))return;
  const button=$('atlasPhotoSend'),status=$('atlasPhotoStatus');
  button.disabled=true;button.textContent='SENDING…';status.textContent='Sending your photo securely over HTTPS…';
  try{
