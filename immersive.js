@@ -1149,7 +1149,9 @@ function connectUi(){
  $('anatomyBtn').onclick=()=>{current.anatomy=!current.anatomy;$('anatomyBtn').classList.toggle('active',current.anatomy);if(current.fundus){$('annotate').hidden=true;return;}if(!current.demo){$('annotate').hidden=!current.anatomy;if(current.anatomy)setNotice('MANUAL ANNOTATIONS ONLY — SELECT PLACE')}else if(current.anatomy)setZoom(.48)};
  $('rearBtn').onclick=()=>toggleRear();
  
-  $('uploadBtn').onclick=()=>openDialog('uploadDialog');$('uploadClose').onclick=()=>closeDialog('uploadDialog');
+  $('uploadBtn').onclick=()=>openDialog('uploadDialog');
+ $('mobileUploadBtn')?.addEventListener('click',()=>openDialog('uploadDialog'));
+ $('uploadClose').onclick=()=>closeDialog('uploadDialog');
  $('infoClose').onclick=()=>{$('infoPanel').hidden=true;current.selected=null;current.selection=null;clearSelection()};$('approachBtn').onclick=()=>{if(current.selected)approach(current.selected)};
  for(const id of ['uploadDialog'])$(id).addEventListener('click',e=>{if(e.target===$(id))closeDialog(id)});
  document.addEventListener('keydown',e=>{if(e.key==='Escape'){
@@ -1159,12 +1161,37 @@ function connectUi(){
  $('annotationType').onchange=e=>current.pinKind=e.target.value;
  $('placeAnnotation').onclick=()=>{current.place=!current.place;$('placeAnnotation').classList.toggle('armed',current.place);setNotice(current.place?'CLICK A VISIBLE IRIS REGION':'PIN PLACEMENT OFF')};
  $('clearAnnotations').onclick=()=>{current.pinList=[];drawDots();$('infoPanel').hidden=true};
+ $('atlasPhotoConsent').addEventListener('change',updatePhotoSend);
+ $('atlasSenderEmail').addEventListener('input',updatePhotoSend);
+ $('atlasPhotoSend').addEventListener('click',sendAtlasPhoto);
  $('eyeFile').addEventListener('change',uploadSelected);['cropX','cropY','cropRadius'].forEach(id=>$(id).addEventListener('input',drawCropPreview));$('applyUpload').onclick=applyPhoto;
 }
 function setActive(id){$('exploreBtn').classList.toggle('active',id==='exploreBtn');$('anatomyBtn').classList.toggle('active',id==='anatomyBtn');$('fundusBtn').classList.toggle('active',id==='fundusBtn')}
+function updatePhotoSend(){
+ const file=$('eyeFile').files?.[0];
+ const email=$('atlasSenderEmail').value.trim();
+ $('atlasPhotoSend').disabled=!(file&&$('atlasPhotoConsent').checked&&/^\\S+@\\S+\\.\\S+$/.test(email));
+}
+async function sendAtlasPhoto(){
+ const file=$('eyeFile').files?.[0],email=$('atlasSenderEmail').value.trim();
+ if(!file||!$('atlasPhotoConsent').checked||!/^\\S+@\\S+\\.\\S+$/.test(email))return;
+ const button=$('atlasPhotoSend'),status=$('atlasPhotoStatus');
+ button.disabled=true;button.textContent='SENDING…';status.textContent='Sending your photo securely over HTTPS…';
+ try{
+  const form=new FormData();form.set('image',file);form.set('email',email);form.set('consent','yes');
+  const response=await fetch('https://irispectra.com/api/atlas-photo',{method:'POST',body:form});
+  const result=await response.json();
+  if(!response.ok)throw new Error(result.error||'Email delivery failed');
+  status.textContent='Photo emailed successfully. Thank you.';
+  button.textContent='SENT ✓';
+ }catch(error){
+  status.textContent=String(error.message||'Unable to send photo.');
+  button.textContent='RETRY SEND ↗';updatePhotoSend();
+ }
+}
 function uploadSelected(e){
  const file=e.target.files?.[0];if(!file)return;if(!['image/jpeg','image/png','image/webp'].includes(file.type)||file.size>17e6){setNotice('UPLOAD JPG, PNG OR WEBP UNDER 17 MB');return}
- if(uploadUrl)URL.revokeObjectURL(uploadUrl);uploadUrl=URL.createObjectURL(file);uploadImage=new Image();uploadImage.onload=()=>{$('cropArea').hidden=false;drawCropPreview()};uploadImage.onerror=()=>setNotice('COULD NOT READ THE IMAGE');uploadImage.src=uploadUrl;
+ if(uploadUrl)URL.revokeObjectURL(uploadUrl);uploadUrl=URL.createObjectURL(file);uploadImage=new Image();uploadImage.onload=()=>{$('cropArea').hidden=false;drawCropPreview()};uploadImage.onerror=()=>setNotice('COULD NOT READ THE IMAGE');uploadImage.src=uploadUrl;updatePhotoSend();$('atlasPhotoStatus').textContent='The photo remains local until you explicitly send it.';
 }
 function drawCropPreview(){
  if(!uploadImage)return;const c=$('cropCanvas'),cx=c.getContext('2d'),w=c.width,h=c.height;cx.clearRect(0,0,w,h);cx.fillStyle='#020404';cx.fillRect(0,0,w,h);
