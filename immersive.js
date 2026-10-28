@@ -231,6 +231,21 @@ function updateDeepWorld(){
   microNav?.update(dt,microMotionTime);
   setMicroGroupOpacity(activeMicro,microBlend*cross);
   setMicroGroupOpacity(previousMicro,microBlend*(1-cross));
+  // A viewer travelling toward the cell passes the bilayer. Fade only its
+  // foreground membrane geometry after the camera crosses the focal plane.
+  if(stage===4&&(route==='crypt'||route==='pigment')&&activeMicro){
+   const distance=microNav?.getStatus()?.distance??9;
+   const reveal=clamp((distance-3.12)/1.35,.045,1);
+   activeMicro.traverse(obj=>{
+    if(!obj.isMesh||obj.userData.depthBand!=='membrane')return;
+    const materials=Array.isArray(obj.material)?obj.material:[obj.material];
+    for(const material of materials){
+     material.opacity*=reveal;
+     material.transparent=true;
+     material.depthWrite=false;
+    }
+   });
+  }
   animateMicroAtmosphere(activeMicro,microMotionTime,microBlend*cross);
   animateMicroAtmosphere(previousMicro,microMotionTime,microBlend*(1-cross));
  }
