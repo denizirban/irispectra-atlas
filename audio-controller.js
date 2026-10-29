@@ -104,7 +104,7 @@ function buildStem(name){
       oscillator(low[3]*3,t,1.3-shift)*.042);
     v+=cyclicNoise(t,143,seed+11)*.025;
    }
-   target[i]=clamp(v,-.85,.85);
+   target[i]=v*.78; // Preserve natural transients without hard-clipping.
   }
  }
  return buffer;
