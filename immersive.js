@@ -515,7 +515,7 @@ function makeScene(){
  $('loading').classList.add('hidden');animate();
 }
 let microScene=null,microCamera=null,microBackdrop=null,microBlend=0,microNav=null;
-let microFrameHud=0,microLabelTimeout=null,lastMicroNodes='',lastJourneyStep=-1;
+let microFrameHud=0,microLabelTimeout=null,lastMicroNodes='',lastJourneyStep=-1,microHelpMode=null;
 function initializeMicroWorld(){
  microScene=new THREE.Scene();
  microCamera=new THREE.PerspectiveCamera(37,innerWidth/innerHeight,.025,100);
@@ -941,6 +941,8 @@ function pointerSetup(){
    if(pinchDistance>0){
     const delta=Math.log(Math.max(.01,dist/pinchDistance));
     if(microNav?.isActive()&&current.zoom>=.66){
+     // Two-finger drag pans across the tissue on touch devices.
+     microNav.shift(-(e.clientX-old.x)*.0065,(e.clientY-old.y)*.0065);
      const edge=microNav.dolly(delta*165);
      if(edge==='deeper')setZoom(BIO_TARGETS[Math.min(6,selectionStage()+1)]);
      else if(edge==='shallower')setZoom(BIO_TARGETS[Math.max(1,selectionStage()-1)]);
@@ -1086,6 +1088,14 @@ function updateMicroExplorerHUD(active,now){
  const hud=$('microExplorer');
  if(!hud)return;
  if(hud.hidden===active)hud.hidden=!active;
+ if(microHelpMode!==active){
+  microHelpMode=active;
+  const help=document.querySelector('.bottom-center');
+  const firstText=help&&[...help.childNodes].find(n=>n.nodeType===3);
+  if(firstText)firstText.nodeValue=active?
+   'DRAG TO LOOK · SCROLL TO TRAVEL · WASD TO MOVE ':
+   'DRAG TO ORBIT · SCROLL TO ENTER ';
+ }
  if(!active){$('microLabel').hidden=true;return}
  if(now-microFrameHud<100)return;
  microFrameHud=now;
