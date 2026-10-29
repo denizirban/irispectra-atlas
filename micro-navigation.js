@@ -36,11 +36,23 @@ export function createMicroNavigator(T, camera) {
     if(!active){keys.clear();pendingEdge=null;return;}
     if(!wasActive){reset(nextStage);return;}
     if(stage!==nextStage){
-      // Adjacent scenes have stable offsets. Continuing forward moves the
-      // viewer into the next scene without an artificial camera pullback.
-      stage=cap(nextStage,START_STAGE,6);
+      // Adjacent chapters keep an unbroken world-space trajectory. A direct
+      // timeline jump over several chapters is deliberate scene navigation:
+      // preserve local depth while translating to the selected chapter.
+      const oldStage=stage;
+      const selected=cap(nextStage,START_STAGE,6);
+      if(Math.abs(selected-oldStage)>1){
+        const jump=offsetForStage(selected)-offsetForStage(oldStage);
+        position.z+=jump;desired.z+=jump;
+      }
+      stage=selected;
       pendingEdge=null;focusPoint=null;
-      desired.z=cap(desired.z,origin()+MIN_DISTANCE,origin()+entryDistance()+FAR_MARGIN);
+      const newNear=origin()+MIN_DISTANCE;
+      const newFar=origin()+entryDistance()+FAR_MARGIN;
+      desired.z=cap(desired.z,newNear,newFar);
+      // Chapter buttons glide in toward a new structure rather than
+      // leaving the user looking across a large empty interstitial gap.
+      if(selected>oldStage)desired.z=Math.min(desired.z,origin()+entryDistance()-.65);
       lastGesture=performance.now();
     }
   }
