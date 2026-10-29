@@ -234,7 +234,10 @@ function construct(){
   error='Audio unavailable';
   console.warn('IRISPECTRA_AUDIO',e);
   for(const node of soundNodes){try{node.source.stop()}catch{}try{node.lfo?.stop()}catch{}}
-  soundNodes=[];
+  for(const voice of Object.values(routeVoices)){
+   for(const source of voice.sources){try{source.stop()}catch{}}
+  }
+  routeVoices={};soundNodes=[];
   sourceReady=false;
  }finally{building=false}
 }
@@ -463,5 +466,15 @@ window.addEventListener('pagehide',()=>{
  for(const node of activeEffects){try{node.stop()}catch{}}
  soundNodes=[];activeEffects.clear();live=false;
  try{ctx?.close()}catch{}
+});
+window.addEventListener('pageshow',e=>{
+ if(!e.persisted)return;
+ // Safari can restore this document from BFCache after AudioContext.close().
+ // Rebuild the graph on the next user gesture rather than resuming closed nodes.
+ ctx=null;master=null;musicBus=null;limiter=null;reverb=null;
+ fxInput=null;fxDelay=null;fxFeedback=null;fxSend=null;wet=null;
+ subsonic=null;bassShelf=null;airShelf=null;roomTone=null;
+ sourceReady=false;building=false;live=false;unlocked=false;
+ soundNodes=[];routeVoices={};activeEffects.clear();repaint();
 });
 repaint();
