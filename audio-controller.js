@@ -34,7 +34,7 @@ const CHORD=[110,146.8324,164.8138,220,261.6256,293.6648];
 const NOTE=[164.8138,220,261.6256,293.6648,329.6276,392,440];
 let ctx=null,master=null,limiter=null,reverb=null,wet=null;
 let musicBus=null,subsonic=null,bassShelf=null,airShelf=null,roomTone=null;
-let soundNodes=[],fxInput=null,fxDelay=null,fxFeedback=null,fxSend=null;
+let soundNodes=[],routeVoices={},fxInput=null,fxDelay=null,fxFeedback=null,fxSend=null;
 let muted=false,unlocked=false,live=false,building=false,level=.62,error='';
 let activeRoute='crypt',stage=0,depth=.07,lastStage=null;
 let lastSelect=0,lastStageSound=0,lastMove=0,lastZoom=0;
@@ -171,12 +171,42 @@ function graph(){
  wet=ctx.createGain();wet.gain.value=.12;
  reverb.connect(roomTone);roomTone.connect(wet);wet.connect(master);
 }
+// Distinct but harmonically compatible living tonal identities. Voices stay
+// phase-continuous; only a quiet route bus is crossfaded when the user travels.
+const ROUTE_HARMONICS={
+ crypt:[[146.8324,'sine',.32],[220,'sine',.17],[293.6648,'sine',.08]],
+ pigment:[[110,'sine',.37],[164.8138,'triangle',.07],[261.6256,'sine',.055]],
+ muscle:[[55,'sine',.20],[110,'sine',.26],[220,'triangle',.036]],
+ neural:[[220,'sine',.17],[329.6276,'sine',.15],[392,'sine',.09]]
+};
+function buildRouteVoices(at){
+ for(const [route,notes] of Object.entries(ROUTE_HARMONICS)){
+  const gain=ctx.createGain();gain.gain.value=0;
+  const filter=ctx.createBiquadFilter();filter.type='lowpass';
+  filter.frequency.value=route==='neural'?1720:route==='muscle'?720:1220;
+  filter.Q.value=.48;
+  const pan=ctx.createStereoPanner?.();
+  if(pan){pan.pan.value=route==='pigment'?-.08:route==='neural'?.08:0;
+   filter.connect(pan);pan.connect(gain)}
+  else filter.connect(gain);
+  gain.connect(musicBus);
+  const sources=[];
+  for(const [hz,type,amp] of notes){
+   const osc=ctx.createOscillator(),partial=ctx.createGain();
+   osc.type=type;osc.frequency.value=hz;partial.gain.value=amp;
+   osc.connect(partial);partial.connect(filter);osc.start(at);
+   sources.push(osc);
+  }
+  routeVoices[route]={gain,filter,pan,sources};
+ }
+}
 function construct(){
  if(sourceReady||building)return;
  building=true;
  try{
   const startAt=ctx.currentTime+.065;
   const buffers=STEMS.map(buildStem);
+  buildRouteVoices(startAt);
   soundNodes=STEMS.map((stem,i)=>{
    const source=ctx.createBufferSource();source.buffer=buffers[i];source.loop=true;
    const filter=ctx.createBiquadFilter();filter.type='lowpass';filter.Q.value=.28;
@@ -225,6 +255,11 @@ function setWorld(route=activeRoute,nextStage=stage,nextDepth=depth,immediate=fa
   if(node.pan)node.pan.pan.setTargetAtTime((i%2?.10:-.09)+character.pan,now,tau);
  }
  // The simulated acoustic space becomes closer and less bright at small scales.
+ for(const [name,voice] of Object.entries(routeVoices)){
+  const chosen=name===activeRoute;
+  const strength=chosen?(.12-(stage>=5?.035:0)):0;
+  voice.gain.gain.setTargetAtTime(strength,now,immediate?.12:1.65);
+ }
  if(wet)wet.gain.setTargetAtTime(.085+.045*(stage/6),now,1.35);
  if(roomTone)roomTone.frequency.setTargetAtTime(2650-stage*125,now,1.8);
  if(fxDelay)fxDelay.delayTime.setTargetAtTime(.176+stage*.006,now,2.0);
@@ -421,6 +456,9 @@ window.addEventListener('pagehide',()=>{
  for(const node of soundNodes){
   try{node.source.stop()}catch{}
   try{node.lfo?.stop()}catch{}
+ }
+ for(const voice of Object.values(routeVoices)){
+  for(const source of voice.sources){try{source.stop()}catch{}}
  }
  for(const node of activeEffects){try{node.stop()}catch{}}
  soundNodes=[];activeEffects.clear();live=false;
