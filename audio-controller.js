@@ -224,7 +224,10 @@ function setWorld(route=activeRoute,nextStage=stage,nextDepth=depth,immediate=fa
   node.filter.frequency.setTargetAtTime(clamp(cutoff,210,4800),now,tau);
   if(node.pan)node.pan.pan.setTargetAtTime((i%2?.10:-.09)+character.pan,now,tau);
  }
+ // The simulated acoustic space becomes closer and less bright at small scales.
  if(wet)wet.gain.setTargetAtTime(.085+.045*(stage/6),now,1.35);
+ if(roomTone)roomTone.frequency.setTargetAtTime(2650-stage*125,now,1.8);
+ if(fxDelay)fxDelay.delayTime.setTargetAtTime(.176+stage*.006,now,2.0);
 }
 function ramp(on){
  if(!ctx||!master)return;
@@ -375,6 +378,10 @@ function moveEvent(amount,x){
  const pan=clamp(((Number(x)||.5)*2-1)*.18,-.23,.23);
  const node=soundNodes[1];
  node?.pan?.pan.setTargetAtTime(pan,ctx.currentTime,.30);
+ // Transient spectral opening while travelling through connective tissue.
+ const speed=clamp(amount/48,0,1);
+ const cutoff=ROUTES[activeRoute].cut*(.80+.27*speed);
+ node?.filter?.frequency.setTargetAtTime(clamp(cutoff,450,3500),ctx.currentTime,.20);
 }
 button?.addEventListener('click',e=>{e.stopPropagation();toggle()});
 function gesture(e){
