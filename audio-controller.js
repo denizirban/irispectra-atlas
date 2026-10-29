@@ -367,7 +367,7 @@ function playPressure(direction='enter'){
  filter.frequency.setValueAtTime(entering?1220:270,now);
  filter.frequency.exponentialRampToValueAtTime(entering?320:1470,now+2.2);
  out.gain.setValueAtTime(.0001,now);
- out.gain.linearRampToValueAtTime(entering?.33:.31,now+.70);
+ out.gain.linearRampToValueAtTime(entering?.40:.37,now+.70);
  out.gain.setTargetAtTime(.0001,now+1.45,.42);
  source.connect(filter);filter.connect(out);out.connect(fxInput);
  out.connect(reverb);
