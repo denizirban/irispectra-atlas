@@ -418,7 +418,10 @@ window.IrispectraSound={
 window.addEventListener('pagehide',()=>{
  haltLongForm();
  if(stopTimer)clearTimeout(stopTimer);
- for(const node of soundNodes){try{node.source.stop()}catch{}}
+ for(const node of soundNodes){
+  try{node.source.stop()}catch{}
+  try{node.lfo?.stop()}catch{}
+ }
  for(const node of activeEffects){try{node.stop()}catch{}}
  soundNodes=[];activeEffects.clear();live=false;
  try{ctx?.close()}catch{}
