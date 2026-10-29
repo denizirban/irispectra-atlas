@@ -1,4 +1,5 @@
-// IRISPECTRA / LIVING SOUNDSCAPE v6 — Mastered Generative Spatial Audio
+// IRISPECTRA / LIVING SOUNDSCAPE v7 — Liquid Depth / Discovery Acoustics
+import {createLiquidBuffers} from './liquid-acoustics.js';
 // Four original procedural, phase-aligned ambient stems. No licensed music,
 // external samples, audio downloads, third-party trackers or MIDI playback.
 // Browsers require a user gesture before AudioContext can produce sound.
@@ -29,12 +30,14 @@ const DEPTH_MIX=[
  [.37,.29,.17,.46],
  [.24,.20,.12,.49]
 ];
-const CHORD=[110,146.8324,164.8138,220,261.6256,293.6648];
+// Lower, more textural register: avoid glassy or string-like high sine notes.
+const CHORD=[55,73.4162,82.4069,110,130.8128,164.8138];
 // A-minor pentatonic: gentle, cohesive interactions across all pathways.
 const NOTE=[164.8138,220,261.6256,293.6648,329.6276,392,440];
 let ctx=null,master=null,limiter=null,reverb=null,wet=null;
 let musicBus=null,subsonic=null,bassShelf=null,airShelf=null,roomTone=null;
 let soundNodes=[],routeVoices={},fxInput=null,fxDelay=null,fxFeedback=null,fxSend=null;
+let liquid=null,dropIndex=0;
 let muted=false,unlocked=false,live=false,building=false,level=.62,error='';
 let activeRoute='crypt',stage=0,depth=.07,lastStage=null;
 let lastSelect=0,lastStageSound=0,lastMove=0,lastZoom=0;
@@ -173,11 +176,12 @@ function graph(){
 }
 // Distinct but harmonically compatible living tonal identities. Voices stay
 // phase-continuous; only a quiet route bus is crossfaded when the user travels.
+// Slow, low-pressure resonances instead of audible bowed-note pads.
 const ROUTE_HARMONICS={
- crypt:[[146.8324,'sine',.32],[220,'sine',.17],[293.6648,'sine',.08]],
- pigment:[[110,'sine',.37],[164.8138,'triangle',.07],[261.6256,'sine',.055]],
- muscle:[[55,'sine',.20],[110,'sine',.26],[220,'triangle',.036]],
- neural:[[220,'sine',.17],[329.6276,'sine',.15],[392,'sine',.09]]
+ crypt:[[55,'sine',.24],[82.4069,'sine',.13]],
+ pigment:[[65.4064,'sine',.23],[98,'sine',.115]],
+ muscle:[[49,'sine',.25],[73.4162,'sine',.11]],
+ neural:[[73.4162,'sine',.19],[110,'sine',.09]]
 };
 function buildRouteVoices(at){
  for(const [route,notes] of Object.entries(ROUTE_HARMONICS)){
@@ -206,6 +210,7 @@ function construct(){
  try{
   const startAt=ctx.currentTime+.065;
   const buffers=STEMS.map(buildStem);
+  liquid=createLiquidBuffers(ctx);
   buildRouteVoices(startAt);
   soundNodes=STEMS.map((stem,i)=>{
    const source=ctx.createBufferSource();source.buffer=buffers[i];source.loop=true;
@@ -237,7 +242,7 @@ function construct(){
   for(const voice of Object.values(routeVoices)){
    for(const source of voice.sources){try{source.stop()}catch{}}
   }
-  routeVoices={};soundNodes=[];
+  routeVoices={};soundNodes=[];liquid=null;
   sourceReady=false;
  }finally{building=false}
 }
@@ -260,7 +265,7 @@ function setWorld(route=activeRoute,nextStage=stage,nextDepth=depth,immediate=fa
  // The simulated acoustic space becomes closer and less bright at small scales.
  for(const [name,voice] of Object.entries(routeVoices)){
   const chosen=name===activeRoute;
-  const strength=chosen?(.12-(stage>=5?.035:0)):0;
+  const strength=chosen?(.075-(stage>=5?.019:0)):0;
   voice.gain.gain.setTargetAtTime(strength,now,immediate?.12:1.65);
  }
  if(wet)wet.gain.setTargetAtTime(.085+.045*(stage/6),now,1.35);
@@ -465,7 +470,7 @@ window.addEventListener('pagehide',()=>{
   for(const source of voice.sources){try{source.stop()}catch{}}
  }
  for(const node of activeEffects){try{node.stop()}catch{}}
- soundNodes=[];activeEffects.clear();live=false;
+ soundNodes=[];activeEffects.clear();liquid=null;live=false;
  try{ctx?.close()}catch{}
 });
 window.addEventListener('pageshow',e=>{
@@ -476,6 +481,6 @@ window.addEventListener('pageshow',e=>{
  fxInput=null;fxDelay=null;fxFeedback=null;fxSend=null;wet=null;
  subsonic=null;bassShelf=null;airShelf=null;roomTone=null;
  sourceReady=false;building=false;live=false;unlocked=false;
- soundNodes=[];routeVoices={};activeEffects.clear();repaint();
+ soundNodes=[];routeVoices={};activeEffects.clear();liquid=null;repaint();
 });
 repaint();
