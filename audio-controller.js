@@ -1,501 +1,310 @@
-// IRISPECTRA / LIVING SOUNDSCAPE v7 — Liquid Depth / Discovery Acoustics
-import {createLiquidBuffers} from './liquid-acoustics.js';
-// Four original procedural, phase-aligned ambient stems. No licensed music,
-// external samples, audio downloads, third-party trackers or MIDI playback.
-// Browsers require a user gesture before AudioContext can produce sound.
+// IRISPECTRA — Cinematic Sound Engine v8.
+// No perpetual chimes, pitched UI pings, fake "bloop" notes or musical stingers.
+// Original environmental synthesis: diffuse currents, low pressure, wide space.
+// Sound is illustrative: not measured cellular motion or diagnostic information.
+import {createCinematicMaterials} from './cinematic-acoustics.js';
 const button=document.querySelector('#audioToggle');
 const status=document.querySelector('#audioStatus');
 const AudioCtor=window.AudioContext||window.webkitAudioContext;
-const PREF='irispectra-sonic-v4-muted'; // Respect existing saved preference.
+const PREF='irispectra-sonic-v4-muted'; // honor existing setting
 const clamp=(x,a,b)=>Math.max(a,Math.min(b,x));
-const smooth=(a,b,t)=>{const x=clamp((t-a)/(b-a),0,1);return x*x*(3-2*x)};
-const mobile=window.matchMedia?.('(max-width:820px)').matches??false;
-const reducedMotion=window.matchMedia?.('(prefers-reduced-motion: reduce)').matches??false;
-const LOOP_LENGTH=mobile?16:24;
-const STEMS=['bed','texture','pulse','details'];
-const ROUTES={
- crypt:{gain:[1,.95,.80,.72],cut:2250,pan:0},
- pigment:{gain:[.93,.83,.66,1.04],cut:1950,pan:-.08},
- muscle:{gain:[1.06,.76,1.02,.63],cut:1480,pan:.04},
- neural:{gain:[.83,.72,.58,1.10],cut:2920,pan:.10}
-};
-// Stage levels sum to a deliberately conservative amount; user volume and
-// compressor cap the result. No dramatic "reward" stingers in scientific UI.
-const DEPTH_MIX=[
- [.65,.10,.03,.02],
- [.68,.21,.05,.04],
- [.56,.39,.12,.09],
- [.53,.49,.27,.13],
- [.60,.48,.39,.18],
- [.37,.29,.17,.46],
- [.24,.20,.12,.49]
+const STEMS=['pressure','flow','life','space'];
+const MIX=[
+ [.57,.17,.07,.23], // eye
+ [.58,.25,.11,.26], // surface
+ [.63,.44,.30,.26], // stroma
+ [.66,.46,.45,.22], // cell
+ [.78,.52,.57,.15], // organelle
+ [.66,.36,.40,.33], // molecular
+ [.50,.26,.34,.48]  // atomic conceptual structures
 ];
-// Lower, more textural register: avoid glassy or string-like high sine notes.
-const CHORD=[55,73.4162,82.4069,110,130.8128,164.8138];
-// A-minor pentatonic: gentle, cohesive interactions across all pathways.
-const NOTE=[164.8138,220,261.6256,293.6648,329.6276,392,440];
-let ctx=null,master=null,limiter=null,reverb=null,wet=null;
-let musicBus=null,subsonic=null,bassShelf=null,airShelf=null,roomTone=null;
-let soundNodes=[],routeVoices={},fxInput=null,fxDelay=null,fxFeedback=null,fxSend=null;
-let liquid=null,dropIndex=0;
-let muted=false,unlocked=false,live=false,building=false,level=.62,error='';
-let activeRoute='crypt',stage=0,depth=.07,lastStage=null;
-let lastSelect=0,lastStageSound=0,lastMove=0,lastZoom=0;
-let stopTimer=0,gesturePending=false,sourceReady=false;
-let momentTimer=0,nextMomentAt=0,randomSeed=2417;
-const activeEffects=new Set();
-try{muted=localStorage.getItem(PREF)==='1'}catch{}
+const ROUTES={
+ crypt:{filter:1700,gain:[1,1,.90,.95],pan:0},
+ pigment:{filter:1490,gain:[1.03,.83,1.17,.89],pan:-.06},
+ muscle:{filter:1120,gain:[1.16,.76,1.03,.77],pan:.02},
+ neural:{filter:2150,gain:[.85,.89,.83,1.17],pan:.08}
+};
+let muted=false;try{muted=localStorage.getItem(PREF)==='1'}catch{}
+let ctx=null,materials=null,master=null,mixBus=null,effectsBus=null,compressor=null;
+let room=null,roomGain=null,roomFilter=null,subFilter=null,upperFilter=null;
+let tracks=[],activeSources=new Set(),currentRoute='crypt',stage=0,depth=.07;
+let playing=false,ready=false,building=false,previousStage=null,lastTransition=0,lastContact=0,lastMotion=0;
+let soundLevel=.64,stopTimer=0,environmentTimer=0,nextAccent=0,variation=0,error='';
 const icon=(on)=>on?
- '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9v6h4l5 4V5L8 9H4z"/><path d="M16.4 9a4 4 0 0 1 0 6"/><path d="M18.8 6.6a8 8 0 0 0 0 10.8"/></svg>':
+ '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9v6h4l5 4V5L8 9H4z"/><path d="M16.4 9a4 4 0 0 1 0 6"/><path d="M18.8 6.6a8 8 0 0 1 0 10.8"/></svg>':
  '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9v6h4l5 4V5L8 9H4z"/><path d="m17 9 5 6m0-6-5 6"/></svg>';
 function repaint(){
- const playing=live&&!muted&&ctx?.state==='running';
- const message=error||(muted?'Sound off':playing?'Sound on · Living Soundscape':'Sound ready · Tap to listen');
+ const on=playing&&!muted&&ctx?.state==='running';
+ const message=error||(muted?'Sound off':on?'Cinematic ambience on':'Tap to hear the Atlas');
  if(button){
-  button.innerHTML=icon(playing);
-  button.dataset.state=playing?'playing':muted?'muted':'ready';
+  button.innerHTML=icon(on);
+  button.dataset.state=on?'playing':muted?'muted':'ready';
   button.title=message;
-  button.setAttribute('aria-label',muted?'Enable Atlas sound':playing?'Mute Atlas sound':'Play Atlas sound');
-  button.setAttribute('aria-pressed',String(playing));
+  button.setAttribute('aria-label',on?'Mute Atlas ambience':'Enable Atlas ambience');
+  button.setAttribute('aria-pressed',String(on));
  }
  if(status)status.textContent=message;
 }
-function persist(){try{localStorage.setItem(PREF,muted?'1':'0')}catch{}}
-function hash(n,seed){
- let z=(n+seed*1129)|0;
- z^=z>>>16;z=Math.imul(z,0x7feb352d);z^=z>>>15;
- z=Math.imul(z,0x846ca68b);z^=z>>>16;
- return (z>>>0)/4294967295*2-1;
-}
-function cyclicNoise(t,points,seed){
- const x=t*points/LOOP_LENGTH;
- const i=Math.floor(x),f=x-i,v=f*f*(3-2*f);
- return hash(i%points,seed)*(1-v)+hash((i+1)%points,seed)*v;
-}
-const quantize=(f)=>Math.round(f*LOOP_LENGTH)/LOOP_LENGTH;
-function oscillator(f,t,phase=0){return Math.sin(2*Math.PI*quantize(f)*t+phase)}
-// All partial frequencies are quantized to exact loop periods. Bass stays
-// phase-coherent in the center while upper textures are decorrelated in stereo.
-// 24 kHz internal sample rate reduces iOS memory without audible loss for this
-// intentionally dark, low-bandwidth atmospheric composition.
-function buildStem(name){
- const sr=Math.min(ctx.sampleRate,24000),frames=Math.round(sr*LOOP_LENGTH);
- const buffer=ctx.createBuffer(2,frames,sr);
- const low=CHORD.map(quantize);
- const channels=[buffer.getChannelData(0),buffer.getChannelData(1)];
- for(let side=0;side<2;side++){
-  const target=channels[side],width=side?1:-1,seed=side?13:7;
-  for(let i=0;i<frames;i++){
-   const t=i/sr,u=t/LOOP_LENGTH;
-   const breath=.78+.22*Math.cos(2*Math.PI*u);
-   let v=0;
-   if(name==='bed'){
-    // Low pressure rather than prominent bowed/chord-like sustained notes.
-    const sub=.29*oscillator(low[0],t);
-    const bloom=.19*oscillator(low[1],t,.45)+.10*oscillator(low[2],t,1.1);
-    const distant=.035*oscillator(low[3],t,.5+width*.06);
-    v=(sub+bloom+distant)*(.73+.27*Math.cos(2*Math.PI*u));
-   }else if(name==='texture'){
-    // Periodic micro-granular noise: no loop-edge mismatch or hard clicks.
-    const broad=cyclicNoise(t,73,seed),fine=cyclicNoise(t,233,seed+3);
-    const motion=.56+.19*Math.cos(2*Math.PI*(u*3+side*.08));
-    v=(broad*.22+fine*.083
-      +oscillator(quantize(73.4162),t,side*.24)*.026)*motion;
-   }else if(name==='pulse'){
-    // Four slow swells per cycle; never a kick drum or heartbeat imitation.
-    const swell=Math.pow(.5-.5*Math.cos(2*Math.PI*(u*4+side*.014)),2.8);
-    v=swell*(oscillator(low[0]*.5,t)*.25
-      +oscillator(low[1],t,1.52+side*.12)*.095);
-   }else{
-    // Water-like micro-bubbles: few tiny resonant decays hidden in the bed,
-    // NOT repeating musical chimes or a string-like high register.
-    const trigger=(u*4+(side?.043:0))%1;
-    const envelope=(1-Math.exp(-trigger*120))*Math.exp(-trigger*28);
-    const bubble=oscillator(low[4]*1.43,t,side*.05);
-    const grain=cyclicNoise(t,149,seed+11);
-    v=.12*bubble*envelope+.014*grain*(.4+.6*envelope);
-
-   }
-   target[i]=v*.83;
-  }
- }
- return buffer;
-}
-// A dark, diffuse short room: first reflections give proximity; the later
-// exponential tail avoids the bright, metallic response of raw white noise.
 function makeRoom(){
- const sr=ctx.sampleRate,duration=1.48,n=Math.round(sr*duration);
- const response=ctx.createBuffer(2,n,sr);
+ const duration=1.05,n=Math.round(ctx.sampleRate*duration);
+ const impulse=ctx.createBuffer(2,n,ctx.sampleRate);
  for(let side=0;side<2;side++){
-  const data=response.getChannelData(side),seed=side?37:19;
-  let filtered=0;
+  const dst=impulse.getChannelData(side);let state=0,seed=(side+1)*1711;
   for(let i=0;i<n;i++){
-   const t=i/sr;
-   filtered=filtered*.84+hash(i,seed)*.16;
-   const tail=Math.pow(Math.max(0,1-t/duration),2.35)*.11;
-   const early=
-    (Math.abs(t-(side?.027:.021))<1/sr?.17:0)+
-    (Math.abs(t-(side?.059:.067))<1/sr?.12:0)+
-    (Math.abs(t-(side?.119:.104))<1/sr?.06:0);
-   data[i]=filtered*tail+early;
+   seed^=seed<<13;seed^=seed>>>17;seed^=seed<<5;
+   const w=(seed>>>0)/4294967295*2-1;
+   state=.84*state+.16*w;
+   const t=i/ctx.sampleRate,fade=Math.pow(1-t/duration,2.15);
+   const first=i===Math.round((side?.039:.029)*ctx.sampleRate)?.24:0;
+   const second=i===Math.round((side?.087:.073)*ctx.sampleRate)?.13:0;
+   dst[i]=state*fade*.11+first+second;
   }
  }
- return response;
+ return impulse;
 }
-// Mastering chain: coherent low end, a restrained midrange and soft top end.
-// No artificial loudness target is claimed; actual LUFS requires device renders.
-function graph(){
+function prepare(){
  if(ctx)return;
- if(!AudioCtor)throw Error('Web Audio unavailable.');
+ if(!AudioCtor)throw Error('Audio not supported on this browser');
  ctx=new AudioCtor({latencyHint:'playback'});
  master=ctx.createGain();master.gain.value=0;
- musicBus=ctx.createGain();musicBus.gain.value=1;
- musicBus.connect(master);
- fxInput=ctx.createGain();fxInput.gain.value=.54;fxInput.connect(master);
- subsonic=ctx.createBiquadFilter();subsonic.type='highpass';subsonic.frequency.value=29;
- subsonic.Q.value=.62;
- bassShelf=ctx.createBiquadFilter();bassShelf.type='lowshelf';
- bassShelf.frequency.value=175;bassShelf.gain.value=-1.8;
- airShelf=ctx.createBiquadFilter();airShelf.type='highshelf';
- airShelf.frequency.value=6900;airShelf.gain.value=-1.5;
- limiter=ctx.createDynamicsCompressor();
- limiter.threshold.value=-16;limiter.knee.value=9;limiter.ratio.value=2.4;
- limiter.attack.value=.009;limiter.release.value=.27;
- master.connect(subsonic);subsonic.connect(bassShelf);
- bassShelf.connect(airShelf);airShelf.connect(limiter);
- limiter.connect(ctx.destination);
- fxDelay=ctx.createDelay(.8);fxDelay.delayTime.value=.187;
- fxFeedback=ctx.createGain();fxFeedback.gain.value=.115;
- fxSend=ctx.createGain();fxSend.gain.value=.10;
- fxDelay.connect(fxFeedback);fxFeedback.connect(fxDelay);
- fxDelay.connect(fxSend);fxSend.connect(fxInput);
- reverb=ctx.createConvolver();reverb.normalize=false;reverb.buffer=makeRoom();
- roomTone=ctx.createBiquadFilter();roomTone.type='lowpass';roomTone.frequency.value=2350;
- wet=ctx.createGain();wet.gain.value=.12;
- reverb.connect(roomTone);roomTone.connect(wet);wet.connect(master);
-}
-// Distinct but harmonically compatible living tonal identities. Voices stay
-// phase-continuous; only a quiet route bus is crossfaded when the user travels.
-// Slow, low-pressure resonances instead of audible bowed-note pads.
-const ROUTE_HARMONICS={
- crypt:[[55,'sine',.24],[82.4069,'sine',.13]],
- pigment:[[65.4064,'sine',.23],[98,'sine',.115]],
- muscle:[[49,'sine',.25],[73.4162,'sine',.11]],
- neural:[[73.4162,'sine',.19],[110,'sine',.09]]
-};
-function buildRouteVoices(at){
- for(const [route,notes] of Object.entries(ROUTE_HARMONICS)){
-  const gain=ctx.createGain();gain.gain.value=0;
-  const filter=ctx.createBiquadFilter();filter.type='lowpass';
-  filter.frequency.value=route==='neural'?1720:route==='muscle'?720:1220;
-  filter.Q.value=.48;
-  const pan=ctx.createStereoPanner?.();
-  if(pan){pan.pan.value=route==='pigment'?-.08:route==='neural'?.08:0;
-   filter.connect(pan);pan.connect(gain)}
-  else filter.connect(gain);
-  gain.connect(musicBus);
-  const sources=[];
-  for(const [hz,type,amp] of notes){
-   const osc=ctx.createOscillator(),partial=ctx.createGain();
-   osc.type=type;osc.frequency.value=hz;partial.gain.value=amp;
-   osc.connect(partial);partial.connect(filter);osc.start(at);
-   sources.push(osc);
-  }
-  routeVoices[route]={gain,filter,pan,sources};
- }
+ mixBus=ctx.createGain();mixBus.gain.value=1;mixBus.connect(master);
+ effectsBus=ctx.createGain();effectsBus.gain.value=.72;effectsBus.connect(master);
+ subFilter=ctx.createBiquadFilter();subFilter.type='highpass';subFilter.frequency.value=29;
+ upperFilter=ctx.createBiquadFilter();upperFilter.type='lowpass';upperFilter.frequency.value=6800;upperFilter.Q.value=.6;
+ compressor=ctx.createDynamicsCompressor();
+ compressor.threshold.value=-17;compressor.knee.value=12;compressor.ratio.value=2.1;
+ compressor.attack.value=.018;compressor.release.value=.34;
+ master.connect(subFilter);subFilter.connect(upperFilter);
+ upperFilter.connect(compressor);compressor.connect(ctx.destination);
+ room=ctx.createConvolver();room.buffer=makeRoom();
+ roomFilter=ctx.createBiquadFilter();roomFilter.type='lowpass';roomFilter.frequency.value=1900;
+ roomGain=ctx.createGain();roomGain.gain.value=.085;
+ room.connect(roomFilter);roomFilter.connect(roomGain);roomGain.connect(master);
 }
 function construct(){
- if(sourceReady||building)return;
+ if(ready||building||!ctx)return;
  building=true;
  try{
-  const startAt=ctx.currentTime+.065;
-  const buffers=STEMS.map(buildStem);
-  liquid=createLiquidBuffers(ctx);
-  buildRouteVoices(startAt);
-  soundNodes=STEMS.map((stem,i)=>{
-   const source=ctx.createBufferSource();source.buffer=buffers[i];source.loop=true;
-   const filter=ctx.createBiquadFilter();filter.type='lowpass';filter.Q.value=.28;
-   const pan=ctx.createStereoPanner?.()||null;
+  materials=createCinematicMaterials(ctx,window.matchMedia?.('(max-width:820px)').matches??false);
+  const at=ctx.currentTime+.06;
+  tracks=STEMS.map((name,i)=>{
+   const source=ctx.createBufferSource();
+   source.buffer=materials.stems[name];source.loop=true;
+   const filter=ctx.createBiquadFilter();filter.type='lowpass';filter.Q.value=.45;
    const gain=ctx.createGain();gain.gain.value=0;
+   const pan=ctx.createStereoPanner?.()||null;
    source.connect(filter);
    if(pan){filter.connect(pan);pan.connect(gain)}
    else filter.connect(gain);
-   gain.connect(musicBus);
-   // Slow independent filter LFOs subtly evolve each stem across repeated
-   // loops (periods about 60–140 seconds), without introducing extra notes.
-   const lfo=ctx.createOscillator(),lfoDepth=ctx.createGain();
-   lfo.type='sine';lfo.frequency.value=.007+.003*i;
-   lfoDepth.gain.value=95+i*48;
-   lfo.connect(lfoDepth);lfoDepth.connect(filter.frequency);
-   lfo.start(startAt);
-   // Send very little of the ambient mix into a quiet synthetic room.
-   if(i===1||i===3)gain.connect(reverb);
-   source.start(startAt);
-   return {stem,source,filter,pan,gain,lfo,lfoDepth};
+   gain.connect(mixBus);
+   if(i===1||i===3){const send=ctx.createGain();send.gain.value=i===1?.075:.13;gain.connect(send);send.connect(room)}
+   source.start(at);
+   return {source,filter,gain,pan,name};
   });
-  sourceReady=true;
-  setWorld(activeRoute,stage,depth,true);
+  ready=true;
+  setWorld(currentRoute,stage,depth,true);
  }catch(e){
-  error='Audio unavailable';
-  console.warn('IRISPECTRA_AUDIO',e);
-  for(const node of soundNodes){try{node.source.stop()}catch{}try{node.lfo?.stop()}catch{}}
-  for(const voice of Object.values(routeVoices)){
-   for(const source of voice.sources){try{source.stop()}catch{}}
-  }
-  routeVoices={};soundNodes=[];liquid=null;
-  sourceReady=false;
+  error='Atlas sound unavailable';
+  console.warn('Irispectra audio:',e);
+  for(const n of tracks)try{n.source.stop()}catch{}
+  tracks=[];materials=null;ready=false;
  }finally{building=false}
 }
-function setWorld(route=activeRoute,nextStage=stage,nextDepth=depth,immediate=false){
- if(ROUTES[route])activeRoute=route;
- stage=clamp(Number.isFinite(nextStage)?Math.round(nextStage):stage,0,6);
- depth=clamp(Number.isFinite(nextDepth)?nextDepth:depth,0,1);
- if(!ctx||!sourceReady)return;
- const character=ROUTES[activeRoute],mix=DEPTH_MIX[stage];
- const now=ctx.currentTime,tau=immediate?.10:activeRoute==='neural'?1.15:.86;
- for(let i=0;i<soundNodes.length;i++){
-  const node=soundNodes[i],base=mix[i]*character.gain[i];
-  const slowShift=stage>3&&i===3?1+.10*(depth-.75):1;
-  node.gain.gain.setTargetAtTime(base*slowShift*.42,now,tau);
-  const cutoff=character.cut*(i===0?.62:i===1?1:i===2?.55:1.45)*
-   (1+.11*(depth-.5));
-  node.filter.frequency.setTargetAtTime(clamp(cutoff,210,4800),now,tau);
-  if(node.pan)node.pan.pan.setTargetAtTime((i%2?.10:-.09)+character.pan,now,tau);
+function setWorld(route=currentRoute,nextStage=stage,nextDepth=depth,instant=false){
+ if(ROUTES[route])currentRoute=route;
+ stage=clamp(Number.isFinite(Number(nextStage))?Math.round(Number(nextStage)):stage,0,6);
+ depth=clamp(Number.isFinite(Number(nextDepth))?Number(nextDepth):depth,0,1);
+ if(!ctx||!ready)return;
+ const now=ctx.currentTime,character=ROUTES[currentRoute];
+ const smooth=instant?.09:1.15;
+ for(let i=0;i<tracks.length;i++){
+  const track=tracks[i],gain=MIX[stage][i]*character.gain[i];
+  track.gain.gain.setTargetAtTime(gain*.70,now,smooth);
+  const movement=i===0?.60:i===1?1:i===2?1.12:1.6;
+  const cutoff=clamp(character.filter*movement*(1+.20*(depth-.5)),120,4600);
+  track.filter.frequency.setTargetAtTime(cutoff,now,smooth);
+  if(track.pan)track.pan.pan.setTargetAtTime((i%2?.07:-.06)+character.pan,now,smooth);
  }
- // The simulated acoustic space becomes closer and less bright at small scales.
- for(const [name,voice] of Object.entries(routeVoices)){
-  const chosen=name===activeRoute;
-  const strength=chosen?(.075-(stage>=5?.019:0)):0;
-  voice.gain.gain.setTargetAtTime(strength,now,immediate?.12:1.65);
- }
- if(wet)wet.gain.setTargetAtTime(.085+.045*(stage/6),now,1.35);
- if(roomTone)roomTone.frequency.setTargetAtTime(2650-stage*125,now,1.8);
- if(fxDelay)fxDelay.delayTime.setTargetAtTime(.176+stage*.006,now,2.0);
+ // Inside the object: darker and less diffuse. Outside: more open and airy.
+ const amount=stage/6;
+ if(roomGain)roomGain.gain.setTargetAtTime(.105-.062*amount,now,1.6);
+ if(roomFilter)roomFilter.frequency.setTargetAtTime(1950-790*amount,now,1.7);
+ if(upperFilter)upperFilter.frequency.setTargetAtTime(6200-2150*amount,now,2.1);
 }
-function ramp(on){
+function fade(to){
  if(!ctx||!master)return;
  const t=ctx.currentTime;
  master.gain.cancelScheduledValues(t);
- master.gain.setTargetAtTime(on?level:0,t,on?.55:.085);
+ master.gain.setTargetAtTime(to?soundLevel:0,t,to?.56:.09);
 }
-function activate(){
+function scheduleAccent(){
+ if(environmentTimer)return;
+ nextAccent=(ctx?.currentTime||0)+38;
+ environmentTimer=setInterval(()=>{
+  if(!playing||muted||document.hidden||!ctx||!ready)return;
+  if(ctx.currentTime<nextAccent)return;
+  // Very rare non-tonal movement. The music should breathe, not beep.
+  nextAccent=ctx.currentTime+38+(variation++%4)*8;
+  playContact(.2,'ambient');
+ },2400);
+}
+function stopAccents(){if(environmentTimer){clearInterval(environmentTimer);environmentTimer=0}}
+function start(){
  if(muted||document.hidden)return;
  if(stopTimer){clearTimeout(stopTimer);stopTimer=0}
- try{graph()}catch(e){error=e.message;repaint();return}
- try{
-  const promise=ctx.resume();
-  // resume() is invoked synchronously inside the user's gesture; creation
-  // is deferred to a microtask so the initial click is not blocked by DSP.
-  if(!sourceReady&&!building){
-   building=true;
-   Promise.resolve().then(()=>{
-    building=false;
-    if(!muted&&!document.hidden)construct();
-    if(sourceReady&&!muted)ramp(true);
-    live=sourceReady&&!muted;
-    unlocked=sourceReady||unlocked;
-    if(live)beginLongForm();
-    repaint();
-   });
-  }else{ramp(true);live=true;beginLongForm()}
-  if(promise?.catch)promise.catch(()=>{error='Tap sound to enable audio';live=false;repaint()});
- }catch(e){error='Tap sound to enable audio';repaint();return}
+ try{prepare()}catch(e){error=e.message;repaint();return}
+ const resumed=ctx.resume();
+ if(!ready&&!building){
+  building=true;
+  Promise.resolve().then(()=>{
+   building=false;
+   if(muted||document.hidden)return;
+   construct();
+   playing=ready;
+   if(playing){fade(true);scheduleAccent()}
+   repaint();
+  });
+ }else if(ready){playing=true;fade(true);scheduleAccent()}
+ if(resumed?.catch)resumed.catch(()=>{error='Tap speaker to start';playing=false;repaint()});
  error='';repaint();
 }
-function deactivate(){
- haltLongForm();
- live=false;
- if(!ctx){repaint();return}
- ramp(false);
+function stop(){
+ stopAccents();
+ playing=false;fade(false);
+ for(const source of activeSources)try{source.stop()}catch{}
+ activeSources.clear();
  if(stopTimer)clearTimeout(stopTimer);
- stopTimer=setTimeout(()=>{
+ if(ctx)stopTimer=setTimeout(()=>{
   stopTimer=0;
-  if(!live&&ctx?.state==='running')ctx.suspend().catch(()=>{});
+  if(!playing&&ctx.state==='running')ctx.suspend().catch(()=>{});
  },450);
- for(const node of activeEffects){try{node.stop()}catch{}}
- activeEffects.clear();
  repaint();
 }
 function toggle(){
- if(muted){muted=false;persist();activate()}
- else if(!live){activate()}
- else{muted=true;persist();deactivate()}
- repaint();
+ if(muted){muted=false;save();start()}
+ else if(!playing)start();
+ else{muted=true;save();stop()}
 }
-// Low-intensity, route-aware original sounds. No claim of literal cell audio.
-// An organic water-contact signature instead of a pitched UI chime.
-function playDrop(kind='select',pan=0,role=''){
- if(!live||muted||ctx?.state!=='running'||!liquid||activeEffects.size>=6)return;
- const now=ctx.currentTime;
- const isMolecular=/molecul|atom|bond|tyros|protein|enzyme|melanin/i.test(role);
- const isTissue=/collagen|fiber|stroma|crypt|membrane/i.test(role);
- const variant=kind==='ambient'?dropIndex++%4:isMolecular?3:isTissue?2:dropIndex++%2;
- const source=ctx.createBufferSource();source.buffer=liquid.drops[variant];
- source.playbackRate.value=kind==='ambient'?.94:stage>=5?1.13:1;
- const filter=ctx.createBiquadFilter();filter.type='lowpass';filter.Q.value=.31;
- filter.frequency.value=kind==='ambient'?970:isMolecular?2550:stage>=4?1450:2150;
- const out=ctx.createGain(),stereo=ctx.createStereoPanner?.();
- const volume=kind==='ambient'?.085:isMolecular?.18:.16;
- out.gain.setValueAtTime(.0001,now);
- out.gain.linearRampToValueAtTime(volume,now+.025);
- out.gain.exponentialRampToValueAtTime(.0001,now+source.buffer.duration/source.playbackRate.value);
- source.connect(filter);filter.connect(out);
- if(stereo){stereo.pan.value=clamp(pan,-.72,.72);out.connect(stereo);stereo.connect(fxInput)}
- else out.connect(fxInput);
- out.connect(reverb);
- activeEffects.add(source);
+function save(){try{localStorage.setItem(PREF,muted?'1':'0')}catch{}}
+// All foley is soft, texture-based. No pitched note on every click.
+function playContact(pan=.5,kind='select'){
+ if(!playing||muted||!ready||ctx?.state!=='running'||activeSources.size>=4)return;
+ const now=ctx.currentTime,index=(variation+++(stage%3))%3;
+ const source=ctx.createBufferSource();source.buffer=materials.contacts[index];
+ const gain=ctx.createGain(),filter=ctx.createBiquadFilter();
+ filter.type='lowpass';filter.Q.value=.3;
+ filter.frequency.value=kind==='ambient'?680:stage>3?1000:1550;
+ gain.gain.value=kind==='ambient'?.14:.26;
+ const stereo=ctx.createStereoPanner?.();
+ source.connect(filter);filter.connect(gain);
+ if(stereo){stereo.pan.value=clamp(pan,-.7,.7);gain.connect(stereo);stereo.connect(effectsBus)}
+ else gain.connect(effectsBus);
+ gain.connect(room);
+ activeSources.add(source);
  source.onended=()=>{
-  activeEffects.delete(source);
-  source.disconnect();filter.disconnect();out.disconnect();stereo?.disconnect();
+  activeSources.delete(source);source.disconnect();filter.disconnect();gain.disconnect();stereo?.disconnect();
  };
  source.start(now);
- if(kind!=='ambient'&&musicBus){
-  musicBus.gain.setTargetAtTime(.90,now,.09);
-  musicBus.gain.setTargetAtTime(1,now+.36,.65);
- }
 }
-// A slow, sub-audible-to-audible pressure wave and filtered water-current
-// texture marks scale boundaries: enter is a muffled descent, emerge an
-// opening breath. No high-pitched riser, or sci-fi "portal" sound.
-function playPressure(direction='enter'){
- if(!live||muted||ctx?.state!=='running'||!liquid||activeEffects.size>=6)return;
+function crossBoundary(entering){
+ if(!playing||muted||!ready||ctx?.state!=='running'||activeSources.size>=4)return;
  const now=ctx.currentTime;
- const source=ctx.createBufferSource();source.buffer=liquid.pressure[direction];
- const out=ctx.createGain(),filter=ctx.createBiquadFilter();
- filter.type='lowpass';filter.Q.value=.45;
- const entering=direction==='enter';
- filter.frequency.setValueAtTime(entering?1220:270,now);
- filter.frequency.exponentialRampToValueAtTime(entering?320:1470,now+2.2);
- out.gain.setValueAtTime(.0001,now);
- out.gain.linearRampToValueAtTime(entering?.40:.37,now+.70);
- out.gain.setTargetAtTime(.0001,now+1.45,.42);
- source.connect(filter);filter.connect(out);out.connect(fxInput);
- out.connect(reverb);
- activeEffects.add(source);
+ const source=ctx.createBufferSource();
+ source.buffer=materials.movement[entering?'enter':'exit'];
+ const gain=ctx.createGain(),filter=ctx.createBiquadFilter();
+ filter.type='lowpass';filter.Q.value=.36;
+ filter.frequency.setValueAtTime(entering?1600:280,now);
+ filter.frequency.exponentialRampToValueAtTime(entering?450:1950,now+1.75);
+ gain.gain.value=.66;
+ source.connect(filter);filter.connect(gain);gain.connect(effectsBus);
+ gain.connect(room);
+ activeSources.add(source);
  source.onended=()=>{
-  activeEffects.delete(source);source.disconnect();filter.disconnect();out.disconnect();
+  activeSources.delete(source);source.disconnect();filter.disconnect();gain.disconnect();
  };
  source.start(now);
- if(musicBus){
-  musicBus.gain.setTargetAtTime(.72,now,.28);
-  musicBus.gain.setTargetAtTime(1,now+1.55,.80);
- }
+ // A momentary acoustic recession makes the motion feel like passing through
+ // a membrane, rather than a short effect layered on a static soundtrack.
+ mixBus.gain.setTargetAtTime(.56,now,.26);
+ mixBus.gain.setTargetAtTime(1,now+1.12,.85);
 }
-function random01(){
- randomSeed=(Math.imul(randomSeed,1664525)+1013904223)>>>0;
- return randomSeed/4294967296;
+function onStage(value,route){
+ const was=stage;
+ setWorld(route||currentRoute,value,depth);
+ if(previousStage===null){previousStage=stage;return}
+ if(was===stage)return;
+ previousStage=stage;
+ const now=performance.now();
+ if(now-lastTransition<1150)return;
+ lastTransition=now;
+ crossBoundary(stage>was);
 }
-// Long-form variation without a repeating melody or heavy sound-file downloads.
-function advanceLongForm(){
- if(!live||muted||!ctx||document.hidden||ctx.state!=='running')return;
- const now=ctx.currentTime;
- if(now<nextMomentAt)return;
- const stretch=stage<2?1.25:stage>4?.82:1;
- nextMomentAt=now+(18+random01()*23)*stretch*(reducedMotion?1.35:1);
- playDrop('ambient',random01()*1.25-.625,'water');
+function onSelect(role,x){
+ const now=performance.now();
+ if(now-lastContact<650)return;
+ lastContact=now;
+ // User explicitly selected a structure: understated material contact.
+ const xNorm=Number.isFinite(Number(x))?Number(x):.5;
+ playContact(clamp(xNorm*2-1,-1,1),String(role||'structure'));
 }
-function beginLongForm(){
- if(!ctx||momentTimer)return;
- nextMomentAt=ctx.currentTime+18+random01()*12;
- momentTimer=setInterval(advanceLongForm,1900);
-}
-function haltLongForm(){
- if(momentTimer){clearInterval(momentTimer);momentTimer=0}
-}
-function stageEvent(value,route){
- const previous=stage;
- setWorld(route||activeRoute,value,depth);
- if(lastStage===null){lastStage=stage;return}
- if(previous===stage||lastStage===stage)return;
- lastStage=stage;
- const t=performance.now();
- if(t-lastStageSound<1300)return;
- lastStageSound=t;
- playPressure(stage>previous?'enter':'emerge');
-}
-function selectEvent(kind,x){
- const t=performance.now();
- if(t-lastSelect<320)return;
- lastSelect=t;
- const n=String(kind||'structure');
- playDrop('select',clamp((Number(x)||.5)*2-1,-1,1),n);
-}
-function zoomEvent(z){
- depth=clamp(Number(z)||0,0,1);
- if(!sourceReady)return;
- const t=performance.now();
- if(t-lastZoom<130)return;
- lastZoom=t;setWorld(activeRoute,stage,depth);
-}
-function moveEvent(amount,x){
- if(!sourceReady||!live||amount<3)return;
- const t=performance.now();
- if(t-lastMove<140)return;
- lastMove=t;
- // Movement changes space, not a new note every time a pointer moves.
- const pan=clamp(((Number(x)||.5)*2-1)*.18,-.23,.23);
- const node=soundNodes[1];
- node?.pan?.pan.setTargetAtTime(pan,ctx.currentTime,.30);
- // Transient spectral opening while travelling through connective tissue.
- const speed=clamp(amount/48,0,1);
- const cutoff=ROUTES[activeRoute].cut*(.80+.27*speed);
- node?.filter?.frequency.setTargetAtTime(clamp(cutoff,450,3500),ctx.currentTime,.20);
+function onMove(amount,x){
+ if(!ready||!playing||amount<3)return;
+ const now=performance.now();
+ if(now-lastMotion<180)return;
+ lastMotion=now;
+ const flow=tracks[1];
+ const xNorm=Number.isFinite(Number(x))?Number(x):.5;
+ if(flow?.pan)flow.pan.pan.setTargetAtTime(clamp(xNorm*2-1,-.45,.45)*.36,ctx.currentTime,.45);
+ const v=clamp(amount/55,0,1);
+ flow?.filter.frequency.setTargetAtTime(
+  clamp(ROUTES[currentRoute].filter*(.73+.28*v),360,2900),
+  ctx.currentTime,.3);
 }
 button?.addEventListener('click',e=>{e.stopPropagation();toggle()});
-function gesture(e){
- if(muted||live||document.hidden)return;
- if(button?.contains(e.target))return;
- if(e.type==='keydown'&&['Tab','Shift','Control','Alt','Meta'].includes(e.key))return;
- if(gesturePending)return;
- gesturePending=true;activate();
- Promise.resolve().then(()=>{gesturePending=false});
+function unlock(e){
+ if(muted||playing||document.hidden||button?.contains(e.target))return;
+ if(e.type==='keydown'&&['Tab','Shift','Alt','Control','Meta'].includes(e.key))return;
+ start();
 }
-for(const type of ['pointerdown','keydown','touchstart','wheel']){
- document.addEventListener(type,gesture,{passive:true,capture:true});
+for(const event of ['pointerdown','keydown','touchstart']){
+ document.addEventListener(event,unlock,{passive:true,capture:true});
 }
 document.addEventListener('visibilitychange',()=>{
- if(document.hidden){if(live)deactivate()}
- else if(unlocked&&!muted){activate()}
+ if(document.hidden){if(playing)stop()}
+ // Restart only on a new gesture: prevents surprise audio on tab return.
 });
 window.addEventListener('irispectra-sound',e=>{
- const detail=e.detail||{};
- if(detail.type==='route')setWorld(detail.route,stage,depth);
- else if(detail.type==='stage')stageEvent(detail.stage,detail.route);
- else if(detail.type==='zoom')zoomEvent(detail.zoom);
- else if(detail.type==='select')selectEvent(detail.kind,detail.x);
- else if(detail.type==='move')moveEvent(detail.amount,detail.x);
+ const d=e.detail||{};
+ if(d.type==='route')setWorld(d.route,stage,depth);
+ else if(d.type==='stage')onStage(d.stage,d.route);
+ else if(d.type==='zoom')setWorld(currentRoute,stage,d.zoom);
+ else if(d.type==='select')onSelect(d.kind,d.x);
+ else if(d.type==='move')onMove(d.amount,d.x);
 });
 window.IrispectraSound={
- start:activate,
- setEnabled(value){muted=!value;persist();if(muted)deactivate();else activate()},
- setWorld, 
- setVolume(v){level=clamp(Number(v)||0,0,1);if(live)ramp(true)},
- getStatus:()=>({muted,playing:live&&!muted,context:ctx?.state||'not-started',
-  stage,route:activeRoute,depth,stems:soundNodes.length,length:LOOP_LENGTH,
-  engine:'Living Soundscape v7 · Liquid Depth',error})
+ start,
+ setEnabled(on){muted=!on;save();if(muted)stop();else start()},
+ setWorld,
+ setVolume(v){soundLevel=clamp(Number(v)||0,0,1);if(playing)fade(true)},
+ getStatus:()=>({
+  version:'Cinematic Acoustics v8',playing:playing&&!muted,muted,
+  stage,route:currentRoute,depth,
+  stems:tracks.length,context:ctx?.state||'not-started',error
+ })
 };
 window.addEventListener('pagehide',()=>{
- haltLongForm();
+ stopAccents();
  if(stopTimer)clearTimeout(stopTimer);
- for(const node of soundNodes){
-  try{node.source.stop()}catch{}
-  try{node.lfo?.stop()}catch{}
- }
- for(const voice of Object.values(routeVoices)){
-  for(const source of voice.sources){try{source.stop()}catch{}}
- }
- for(const node of activeEffects){try{node.stop()}catch{}}
- soundNodes=[];activeEffects.clear();liquid=null;live=false;
+ for(const node of tracks)try{node.source.stop()}catch{}
+ for(const node of activeSources)try{node.stop()}catch{}
+ activeSources.clear();tracks=[];materials=null;ready=false;playing=false;
  try{ctx?.close()}catch{}
 });
 window.addEventListener('pageshow',e=>{
  if(!e.persisted)return;
- // Safari can restore this document from BFCache after AudioContext.close().
- // Rebuild the graph on the next user gesture rather than resuming closed nodes.
- ctx=null;master=null;musicBus=null;limiter=null;reverb=null;
- fxInput=null;fxDelay=null;fxFeedback=null;fxSend=null;wet=null;
- subsonic=null;bassShelf=null;airShelf=null;roomTone=null;
- sourceReady=false;building=false;live=false;unlocked=false;
- soundNodes=[];routeVoices={};activeEffects.clear();liquid=null;repaint();
+ ctx=null;master=null;mixBus=null;effectsBus=null;room=null;roomGain=null;
+ roomFilter=null;subFilter=null;upperFilter=null;compressor=null;
+ tracks=[];activeSources.clear();materials=null;ready=false;building=false;
+ playing=false;repaint();
 });
 repaint();
