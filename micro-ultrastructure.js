@@ -122,10 +122,54 @@ export function createCristaeInterior(T,group,mobile){
  batch.userData.role='ATP synthase-like particles (illustrative)';group.add(batch);
 }
 
+// A softly irregular, lobe-based protein envelope communicates folded
+// enzyme structure more convincingly than a single plastic ellipsoid.
+// It is intentionally not an experimentally determined protein model.
+export function createTyrosinaseEnvelope(T,group,mobile){
+ const center=new T.Group();
+ center.position.set(-.8,0,0);group.add(center);
+ const coreMat=new T.MeshPhysicalMaterial({
+  color:0x6f9b90,roughness:.59,clearcoat:.07,
+  transparent:true,opacity:.62,depthWrite:false
+ });
+ const core=new T.Mesh(new T.SphereGeometry(1,mobile?18:26,mobile?12:18),coreMat);
+ core.scale.set(1.15,.86,.73);
+ core.userData.role='Tyrosinase conceptual protein envelope';
+ center.add(core);
+ const beadGeo=new T.IcosahedronGeometry(.095,1);
+ const beadMat=new T.MeshStandardMaterial({color:0x85a99a,roughness:.62});
+ const count=mobile?105:210,batch=new T.InstancedMesh(beadGeo,beadMat,count);
+ const temp=new T.Object3D();
+ for(let i=0;i<count;i++){
+  const t=(i+.5)/count,phi=i*2.39996323,r=Math.sqrt(Math.max(0,1-(2*t-1)*(2*t-1)));
+  const wrinkle=1+.09*Math.sin(phi*4+t*41)+.05*Math.cos(i*.83);
+  temp.position.set(1.14*r*Math.cos(phi)*wrinkle,
+   .85*(2*t-1)*wrinkle,.72*r*Math.sin(phi)*wrinkle);
+  temp.scale.setScalar(.68+(i%7)*.094);
+  temp.rotation.set(i*.17,i*.29,i*.13);temp.updateMatrix();
+  batch.setMatrixAt(i,temp.matrix);
+ }
+ batch.instanceMatrix.needsUpdate=true;
+ batch.userData.role='Folded enzyme surface (conceptual)';
+ center.add(batch);
+ // The two sites symbolize tyrosinase's copper-containing catalytic center;
+ // they do not imply measured atom or residue coordinates.
+ const copperMat=new T.MeshStandardMaterial({color:0xc89663,metalness:.25,roughness:.4});
+ for(const dx of [-.14,.14]){
+  const metal=new T.Mesh(new T.SphereGeometry(.12,12,9),copperMat);
+  metal.position.set(.19+dx,-.09,.80);
+  metal.userData.role='Tyrosinase copper cofactor (schematic)';
+  center.add(metal);
+ }
+ center.userData.bioMotion={kind:'molecule',phase:1.1,amplitude:.014,
+  restScale:center.scale.clone(),restPosition:center.position.clone()};
+}
+
 // L-tyrosine connectivity: a phenolic aromatic ring linked to an amino-acid
 // backbone. Heavy atoms only, implicit hydrogens; these are layout coordinates,
 // not a measured 3D conformer. This replaces arbitrary fake covalent chains.
 export function createTyrosineMotif(T,group,mobile){
+ const assembly=new T.Group();group.add(assembly);
  const atoms=[],bonds=[],radius=.67;
  for(let i=0;i<6;i++){
   const a=Math.PI*2*i/6;
@@ -153,7 +197,7 @@ export function createTyrosineMotif(T,group,mobile){
   const mesh=new T.Mesh(geo,mats[atom.symbol]);
   mesh.position.set(...atom.p);
   mesh.scale.setScalar(atom.symbol==='C'?.135:.145);
-  mesh.userData.role='L-Tyrosine atom: '+atom.symbol;group.add(mesh);
+  mesh.userData.role='Tyrosine atom: '+atom.symbol;assembly.add(mesh);
  }
  const line=new T.MeshStandardMaterial({color:0xbac4bb,roughness:.50});
  for(const [i,j] of bonds){
@@ -162,7 +206,9 @@ export function createTyrosineMotif(T,group,mobile){
   const stick=new T.Mesh(new T.CylinderGeometry(.035,.035,dir.length(),6),line);
   stick.position.copy(a).add(b).multiplyScalar(.5);
   stick.quaternion.setFromUnitVectors(new T.Vector3(0,1,0),dir.normalize());
-  stick.userData.role='L-Tyrosine bond (schematic)';group.add(stick);
+  stick.userData.role='Tyrosine bond (schematic)';assembly.add(stick);
  }
- group.userData.molecule='L-tyrosine / heavy-atom connectivity; hydrogens implicit';
+ assembly.userData.bioMotion={kind:'molecule',phase:.42,amplitude:.013,
+  restScale:assembly.scale.clone(),restPosition:assembly.position.clone()};
+ group.userData.molecule='Tyrosine heavy-atom connectivity; hydrogens implicit';
 }
