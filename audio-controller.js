@@ -30,13 +30,16 @@ const DEPTH_MIX=[
  [.24,.20,.12,.49]
 ];
 const CHORD=[110,146.8324,164.8138,220,261.6256,293.6648];
-const NOTE=[196,220,246.9417,293.6648,329.6276,392,440];
+// A-minor pentatonic: gentle, cohesive interactions across all pathways.
+const NOTE=[164.8138,220,261.6256,293.6648,329.6276,392,440];
 let ctx=null,master=null,limiter=null,reverb=null,wet=null;
+let musicBus=null,subsonic=null,bassShelf=null,airShelf=null,roomTone=null;
 let soundNodes=[],fxInput=null,fxDelay=null,fxFeedback=null,fxSend=null;
 let muted=false,unlocked=false,live=false,building=false,level=.62,error='';
 let activeRoute='crypt',stage=0,depth=.07,lastStage=null;
 let lastSelect=0,lastStageSound=0,lastMove=0,lastZoom=0;
 let stopTimer=0,gesturePending=false,sourceReady=false;
+let momentTimer=0,nextMomentAt=0,randomSeed=2417;
 const activeEffects=new Set();
 try{muted=localStorage.getItem(PREF)==='1'}catch{}
 const icon=(on)=>on?
@@ -136,24 +139,37 @@ function makeRoom(){
  }
  return response;
 }
+// Mastering chain: coherent low end, a restrained midrange and soft top end.
+// No artificial loudness target is claimed; actual LUFS requires device renders.
 function graph(){
  if(ctx)return;
- if(!AudioCtor)throw Error('Web Audio is not supported by this browser.');
+ if(!AudioCtor)throw Error('Web Audio unavailable.');
  ctx=new AudioCtor({latencyHint:'playback'});
  master=ctx.createGain();master.gain.value=0;
+ musicBus=ctx.createGain();musicBus.gain.value=1;
+ musicBus.connect(master);
+ fxInput=ctx.createGain();fxInput.gain.value=.54;fxInput.connect(master);
+ subsonic=ctx.createBiquadFilter();subsonic.type='highpass';subsonic.frequency.value=29;
+ subsonic.Q.value=.62;
+ bassShelf=ctx.createBiquadFilter();bassShelf.type='lowshelf';
+ bassShelf.frequency.value=175;bassShelf.gain.value=-1.8;
+ airShelf=ctx.createBiquadFilter();airShelf.type='highshelf';
+ airShelf.frequency.value=6900;airShelf.gain.value=-1.5;
  limiter=ctx.createDynamicsCompressor();
- limiter.threshold.value=-21;limiter.knee.value=18;limiter.ratio.value=2.7;
- limiter.attack.value=.013;limiter.release.value=.31;
- master.connect(limiter);limiter.connect(ctx.destination);
- fxInput=ctx.createGain();fxInput.gain.value=.65;fxInput.connect(master);
- fxDelay=ctx.createDelay(.8);fxDelay.delayTime.value=.19;
- fxFeedback=ctx.createGain();fxFeedback.gain.value=.12;
+ limiter.threshold.value=-16;limiter.knee.value=9;limiter.ratio.value=2.4;
+ limiter.attack.value=.009;limiter.release.value=.27;
+ master.connect(subsonic);subsonic.connect(bassShelf);
+ bassShelf.connect(airShelf);airShelf.connect(limiter);
+ limiter.connect(ctx.destination);
+ fxDelay=ctx.createDelay(.8);fxDelay.delayTime.value=.187;
+ fxFeedback=ctx.createGain();fxFeedback.gain.value=.115;
  fxSend=ctx.createGain();fxSend.gain.value=.10;
  fxDelay.connect(fxFeedback);fxFeedback.connect(fxDelay);
  fxDelay.connect(fxSend);fxSend.connect(fxInput);
- reverb=ctx.createConvolver();reverb.buffer=makeRoom();
- wet=ctx.createGain();wet.gain.value=.095;
- reverb.connect(wet);wet.connect(master);
+ reverb=ctx.createConvolver();reverb.normalize=false;reverb.buffer=makeRoom();
+ roomTone=ctx.createBiquadFilter();roomTone.type='lowpass';roomTone.frequency.value=2350;
+ wet=ctx.createGain();wet.gain.value=.12;
+ reverb.connect(roomTone);roomTone.connect(wet);wet.connect(master);
 }
 function construct(){
  if(sourceReady||building)return;
@@ -169,7 +185,7 @@ function construct(){
    source.connect(filter);
    if(pan){filter.connect(pan);pan.connect(gain)}
    else filter.connect(gain);
-   gain.connect(master);
+   gain.connect(musicBus);
    // Slow independent filter LFOs subtly evolve each stem across repeated
    // loops (periods about 60–140 seconds), without introducing extra notes.
    const lfo=ctx.createOscillator(),lfoDepth=ctx.createGain();
