@@ -1,4 +1,4 @@
-// IRISPECTRA / LIVING SOUNDSCAPE v5
+// IRISPECTRA / LIVING SOUNDSCAPE v6 — Mastered Generative Spatial Audio
 // Four original procedural, phase-aligned ambient stems. No licensed music,
 // external samples, audio downloads, third-party trackers or MIDI playback.
 // Browsers require a user gesture before AudioContext can produce sound.
@@ -451,7 +451,8 @@ window.IrispectraSound={
  setWorld, 
  setVolume(v){level=clamp(Number(v)||0,0,1);if(live)ramp(true)},
  getStatus:()=>({muted,playing:live&&!muted,context:ctx?.state||'not-started',
-  stage,route:activeRoute,depth,stems:soundNodes.length,length:LOOP_LENGTH,error})
+  stage,route:activeRoute,depth,stems:soundNodes.length,length:LOOP_LENGTH,
+  engine:'Living Soundscape v6',error})
 };
 window.addEventListener('pagehide',()=>{
  haltLongForm();
