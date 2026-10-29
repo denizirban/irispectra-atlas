@@ -1,4 +1,5 @@
-// IRISPECTRA / LIVING SOUNDSCAPE v6 — Mastered Generative Spatial Audio
+// IRISPECTRA / LIVING SOUNDSCAPE v7 — Liquid Depth / Discovery Acoustics
+import {createLiquidBuffers} from './liquid-acoustics.js';
 // Four original procedural, phase-aligned ambient stems. No licensed music,
 // external samples, audio downloads, third-party trackers or MIDI playback.
 // Browsers require a user gesture before AudioContext can produce sound.
@@ -29,12 +30,14 @@ const DEPTH_MIX=[
  [.37,.29,.17,.46],
  [.24,.20,.12,.49]
 ];
-const CHORD=[110,146.8324,164.8138,220,261.6256,293.6648];
+// Lower, more textural register: avoid glassy or string-like high sine notes.
+const CHORD=[55,73.4162,82.4069,110,130.8128,164.8138];
 // A-minor pentatonic: gentle, cohesive interactions across all pathways.
 const NOTE=[164.8138,220,261.6256,293.6648,329.6276,392,440];
 let ctx=null,master=null,limiter=null,reverb=null,wet=null;
 let musicBus=null,subsonic=null,bassShelf=null,airShelf=null,roomTone=null;
 let soundNodes=[],routeVoices={},fxInput=null,fxDelay=null,fxFeedback=null,fxSend=null;
+let liquid=null,dropIndex=0;
 let muted=false,unlocked=false,live=false,building=false,level=.62,error='';
 let activeRoute='crypt',stage=0,depth=.07,lastStage=null;
 let lastSelect=0,lastStageSound=0,lastMove=0,lastZoom=0;
@@ -87,13 +90,11 @@ function buildStem(name){
    const breath=.78+.22*Math.cos(2*Math.PI*u);
    let v=0;
    if(name==='bed'){
-    // Mono-compatible foundations with softly divergent upper harmonics.
-    const foundation=.34*oscillator(low[0],t)+.21*oscillator(low[1],t,.51)
-     +.14*oscillator(low[2],t,1.27);
-    const halo=.082*oscillator(low[3],t,.72+width*.13)
-     +.056*oscillator(low[4],t,.88+width*.34)
-     +.025*oscillator(low[5],t,.3+width*.53);
-    v=(foundation+halo)*breath;
+    // Low pressure rather than prominent bowed/chord-like sustained notes.
+    const sub=.29*oscillator(low[0],t);
+    const bloom=.19*oscillator(low[1],t,.45)+.10*oscillator(low[2],t,1.1);
+    const distant=.035*oscillator(low[3],t,.5+width*.06);
+    v=(sub+bloom+distant)*(.73+.27*Math.cos(2*Math.PI*u));
    }else if(name==='texture'){
     // Periodic micro-granular noise: no loop-edge mismatch or hard clicks.
     const broad=cyclicNoise(t,73,seed),fine=cyclicNoise(t,233,seed+3);
@@ -106,12 +107,14 @@ function buildStem(name){
     v=swell*(oscillator(low[0]*.5,t)*.25
       +oscillator(low[1],t,1.52+side*.12)*.095);
    }else{
-    // Upper-register micro highlights, restrained so they remain listenable.
-    const shimmer=Math.pow(.5+.5*Math.cos(2*Math.PI*(u*5+side*.05)),3)*.5;
-    v=shimmer*(oscillator(low[2]*2,t,side*.28)*.13
-      +oscillator(low[4]*2,t,1.1+side*.4)*.075
-      +oscillator(low[3]*3,t,1.3-side*.15)*.027);
-    v+=cyclicNoise(t,149,seed+11)*.014;
+    // Water-like micro-bubbles: few tiny resonant decays hidden in the bed,
+    // NOT repeating musical chimes or a string-like high register.
+    const trigger=(u*4+(side?.043:0))%1;
+    const envelope=(1-Math.exp(-trigger*120))*Math.exp(-trigger*28);
+    const bubble=oscillator(low[4]*1.43,t,side*.05);
+    const grain=cyclicNoise(t,149,seed+11);
+    v=.12*bubble*envelope+.014*grain*(.4+.6*envelope);
+
    }
    target[i]=v*.83;
   }
@@ -173,11 +176,12 @@ function graph(){
 }
 // Distinct but harmonically compatible living tonal identities. Voices stay
 // phase-continuous; only a quiet route bus is crossfaded when the user travels.
+// Slow, low-pressure resonances instead of audible bowed-note pads.
 const ROUTE_HARMONICS={
- crypt:[[146.8324,'sine',.32],[220,'sine',.17],[293.6648,'sine',.08]],
- pigment:[[110,'sine',.37],[164.8138,'triangle',.07],[261.6256,'sine',.055]],
- muscle:[[55,'sine',.20],[110,'sine',.26],[220,'triangle',.036]],
- neural:[[220,'sine',.17],[329.6276,'sine',.15],[392,'sine',.09]]
+ crypt:[[55,'sine',.24],[82.4069,'sine',.13]],
+ pigment:[[65.4064,'sine',.23],[98,'sine',.115]],
+ muscle:[[49,'sine',.25],[73.4162,'sine',.11]],
+ neural:[[73.4162,'sine',.19],[110,'sine',.09]]
 };
 function buildRouteVoices(at){
  for(const [route,notes] of Object.entries(ROUTE_HARMONICS)){
@@ -206,6 +210,7 @@ function construct(){
  try{
   const startAt=ctx.currentTime+.065;
   const buffers=STEMS.map(buildStem);
+  liquid=createLiquidBuffers(ctx);
   buildRouteVoices(startAt);
   soundNodes=STEMS.map((stem,i)=>{
    const source=ctx.createBufferSource();source.buffer=buffers[i];source.loop=true;
@@ -237,7 +242,7 @@ function construct(){
   for(const voice of Object.values(routeVoices)){
    for(const source of voice.sources){try{source.stop()}catch{}}
   }
-  routeVoices={};soundNodes=[];
+  routeVoices={};soundNodes=[];liquid=null;
   sourceReady=false;
  }finally{building=false}
 }
@@ -260,7 +265,7 @@ function setWorld(route=activeRoute,nextStage=stage,nextDepth=depth,immediate=fa
  // The simulated acoustic space becomes closer and less bright at small scales.
  for(const [name,voice] of Object.entries(routeVoices)){
   const chosen=name===activeRoute;
-  const strength=chosen?(.12-(stage>=5?.035:0)):0;
+  const strength=chosen?(.075-(stage>=5?.019:0)):0;
   voice.gain.gain.setTargetAtTime(strength,now,immediate?.12:1.65);
  }
  if(wet)wet.gain.setTargetAtTime(.085+.045*(stage/6),now,1.35);
@@ -318,43 +323,62 @@ function toggle(){
  repaint();
 }
 // Low-intensity, route-aware original sounds. No claim of literal cell audio.
-function tone(freq,type='select',volume=.045,pan=0,role=''){
- if(!live||muted||!ctx||ctx.state!=='running'||activeEffects.size>=14)return;
- const now=ctx.currentTime,duration=type==='glimmer'?2.4:type==='stage'?.88:.34;
- const attack=type==='glimmer'?.24:type==='stage'?.055:.018;
- const low=ctx.createBiquadFilter(),output=ctx.createGain();
- low.type='lowpass';low.Q.value=.4;
- low.frequency.value=type==='glimmer'?1450:type==='stage'?1720:2100;
- output.gain.setValueAtTime(.00001,now);
- output.gain.linearRampToValueAtTime(Math.max(.0003,volume),now+attack);
- output.gain.exponentialRampToValueAtTime(.00001,now+duration);
- low.connect(output);
- const stereo=ctx.createStereoPanner?.();
- if(stereo){stereo.pan.value=clamp(pan,-.58,.58);output.connect(stereo);stereo.connect(fxInput)}
- else output.connect(fxInput);
- output.connect(fxDelay);
- const molecular=/molecul|atom|bond|tyros|protein|enzyme|melanin/i.test(role);
- const tissue=/collagen|fiber|stroma|crypt|membrane/i.test(role);
- const ratios=type==='glimmer'?[1,2.003,3.012]:type==='stage'?[1,1.5,2.01]:
-  molecular?[1,2.002,3.985]:tissue?[1,1.496,2.01]:[1,1.91];
- const weights=type==='glimmer'?[1,.16,.04]:type==='stage'?[1,.15,.04]:[1,.16,.035];
- let remaining=ratios.length;
- for(let j=0;j<ratios.length;j++){
-  const osc=ctx.createOscillator(),amp=ctx.createGain();
-  const hz=Math.max(55,Math.min(2600,freq*ratios[j]));
-  osc.type='sine';osc.frequency.setValueAtTime(hz*(type==='glimmer'?.998:.976),now);
-  osc.frequency.exponentialRampToValueAtTime(hz,now+(type==='glimmer'?.7:.12));
-  amp.gain.value=weights[j];osc.connect(amp);amp.connect(low);
-  activeEffects.add(osc);
-  osc.onended=()=>{
-   activeEffects.delete(osc);osc.disconnect();amp.disconnect();
-   if(--remaining===0){low.disconnect();output.disconnect();stereo?.disconnect()}
-  };
-  osc.start(now);osc.stop(now+duration+.025);
+// An organic water-contact signature instead of a pitched UI chime.
+function playDrop(kind='select',pan=0,role=''){
+ if(!live||muted||ctx?.state!=='running'||!liquid||activeEffects.size>=6)return;
+ const now=ctx.currentTime;
+ const isMolecular=/molecul|atom|bond|tyros|protein|enzyme|melanin/i.test(role);
+ const isTissue=/collagen|fiber|stroma|crypt|membrane/i.test(role);
+ const variant=kind==='ambient'?dropIndex++%4:isMolecular?3:isTissue?2:dropIndex++%2;
+ const source=ctx.createBufferSource();source.buffer=liquid.drops[variant];
+ source.playbackRate.value=kind==='ambient'?.94:stage>=5?1.13:1;
+ const filter=ctx.createBiquadFilter();filter.type='lowpass';filter.Q.value=.31;
+ filter.frequency.value=kind==='ambient'?970:isMolecular?2550:stage>=4?1450:2150;
+ const out=ctx.createGain(),stereo=ctx.createStereoPanner?.();
+ const volume=kind==='ambient'?.085:isMolecular?.18:.16;
+ out.gain.setValueAtTime(.0001,now);
+ out.gain.linearRampToValueAtTime(volume,now+.025);
+ out.gain.exponentialRampToValueAtTime(.0001,now+source.buffer.duration/source.playbackRate.value);
+ source.connect(filter);filter.connect(out);
+ if(stereo){stereo.pan.value=clamp(pan,-.72,.72);out.connect(stereo);stereo.connect(fxInput)}
+ else out.connect(fxInput);
+ out.connect(reverb);
+ activeEffects.add(source);
+ source.onended=()=>{
+  activeEffects.delete(source);
+  source.disconnect();filter.disconnect();out.disconnect();stereo?.disconnect();
+ };
+ source.start(now);
+ if(kind!=='ambient'&&musicBus){
+  musicBus.gain.setTargetAtTime(.90,now,.09);
+  musicBus.gain.setTargetAtTime(1,now+.36,.65);
  }
- if(type!=='glimmer'&&musicBus){
-  musicBus.gain.setTargetAtTime(.84,now,.07);
-  musicBus.gain.setTargetAtTime(1,now+duration*.65,.40);
+}
+// A slow, sub-audible-to-audible pressure wave and filtered water-current
+// texture marks scale boundaries: enter is a muffled descent, emerge an
+// opening breath. No high-pitched riser, or sci-fi "portal" sound.
+function playPressure(direction='enter'){
+ if(!live||muted||ctx?.state!=='running'||!liquid||activeEffects.size>=6)return;
+ const now=ctx.currentTime;
+ const source=ctx.createBufferSource();source.buffer=liquid.pressure[direction];
+ const out=ctx.createGain(),filter=ctx.createBiquadFilter();
+ filter.type='lowpass';filter.Q.value=.45;
+ const entering=direction==='enter';
+ filter.frequency.setValueAtTime(entering?1220:270,now);
+ filter.frequency.exponentialRampToValueAtTime(entering?320:1470,now+2.2);
+ out.gain.setValueAtTime(.0001,now);
+ out.gain.linearRampToValueAtTime(entering?.40:.37,now+.70);
+ out.gain.setTargetAtTime(.0001,now+1.45,.42);
+ source.connect(filter);filter.connect(out);out.connect(fxInput);
+ out.connect(reverb);
+ activeEffects.add(source);
+ source.onended=()=>{
+  activeEffects.delete(source);source.disconnect();filter.disconnect();out.disconnect();
+ };
+ source.start(now);
+ if(musicBus){
+  musicBus.gain.setTargetAtTime(.72,now,.28);
+  musicBus.gain.setTargetAtTime(1,now+1.55,.80);
  }
 }
 function random01(){
@@ -368,9 +392,7 @@ function advanceLongForm(){
  if(now<nextMomentAt)return;
  const stretch=stage<2?1.25:stage>4?.82:1;
  nextMomentAt=now+(18+random01()*23)*stretch*(reducedMotion?1.35:1);
- tone(NOTE[Math.floor(random01()*NOTE.length)]*
-  (stage<=2?.5:stage>=5?1:.75),'glimmer',.008+random01()*.006,
-  random01()*.68-.34,'molecule');
+ playDrop('ambient',random01()*1.25-.625,'water');
 }
 function beginLongForm(){
  if(!ctx||momentTimer)return;
@@ -389,16 +411,14 @@ function stageEvent(value,route){
  const t=performance.now();
  if(t-lastStageSound<1300)return;
  lastStageSound=t;
- tone(NOTE[stage], 'stage',.035);
+ playPressure(stage>previous?'enter':'emerge');
 }
 function selectEvent(kind,x){
  const t=performance.now();
  if(t-lastSelect<320)return;
  lastSelect=t;
  const n=String(kind||'structure');
- const hashCode=[...n].reduce((sum,ch)=>(sum+ch.charCodeAt(0)*7)%97,0);
- tone(NOTE[hashCode%NOTE.length]*(stage>4?1.12:1),'select',.043,
-  clamp((Number(x)||.5)*2-1,-1,1),n);
+ playDrop('select',clamp((Number(x)||.5)*2-1,-1,1),n);
 }
 function zoomEvent(z){
  depth=clamp(Number(z)||0,0,1);
@@ -452,7 +472,7 @@ window.IrispectraSound={
  setVolume(v){level=clamp(Number(v)||0,0,1);if(live)ramp(true)},
  getStatus:()=>({muted,playing:live&&!muted,context:ctx?.state||'not-started',
   stage,route:activeRoute,depth,stems:soundNodes.length,length:LOOP_LENGTH,
-  engine:'Living Soundscape v6',error})
+  engine:'Living Soundscape v7 · Liquid Depth',error})
 };
 window.addEventListener('pagehide',()=>{
  haltLongForm();
@@ -465,7 +485,7 @@ window.addEventListener('pagehide',()=>{
   for(const source of voice.sources){try{source.stop()}catch{}}
  }
  for(const node of activeEffects){try{node.stop()}catch{}}
- soundNodes=[];activeEffects.clear();live=false;
+ soundNodes=[];activeEffects.clear();liquid=null;live=false;
  try{ctx?.close()}catch{}
 });
 window.addEventListener('pageshow',e=>{
@@ -476,6 +496,6 @@ window.addEventListener('pageshow',e=>{
  fxInput=null;fxDelay=null;fxFeedback=null;fxSend=null;wet=null;
  subsonic=null;bassShelf=null;airShelf=null;roomTone=null;
  sourceReady=false;building=false;live=false;unlocked=false;
- soundNodes=[];routeVoices={};activeEffects.clear();repaint();
+ soundNodes=[];routeVoices={};activeEffects.clear();liquid=null;repaint();
 });
 repaint();
