@@ -45,7 +45,8 @@ export function createCinematicMaterials(ctx,compact=false){
     }else if(name==='flow'){
      const wash=noise(t,59,seed,loopLength)*.56
        +noise(t,217,seed+6,loopLength)*.23
-       +noise(t,1201,seed+12,loopLength)*.075;
+       +noise(t,1201,seed+12,loopLength)*.075
+       +noise(t,9173,seed+19,loopLength)*.09;
      const current=.54+.32*(.5+.5*Math.cos(TAU*(u*3+side*.14)));
      v=wash*current*.32;
     }else if(name==='life'){
@@ -53,11 +54,14 @@ export function createCinematicMaterials(ctx,compact=false){
      const longwave=noise(t,17,seed+41,loopLength);
      const tiny=noise(t,431,seed+12,loopLength);
      const grains=noise(t,1511,seed+32,loopLength);
-     v=(longwave*.18+tiny*.10+grains*.035)*(.38+.46*slow);
+     const softMicro=noise(t,11003,seed+68,loopLength);
+     v=(longwave*.18+tiny*.10+grains*.035+
+        softMicro*.054)*(.38+.46*slow);
     }else{
      // Distant spacious "air" made of diffuse non-pitched texture.
      v=(noise(t,103,seed+81,loopLength)*.31+
-       noise(t,1933,seed+24,loopLength)*.11)*(.52+.32*slow)*.36;
+       noise(t,1933,seed+24,loopLength)*.11+
+       noise(t,17011,seed+55,loopLength)*.14)*(.52+.32*slow)*.36;
     }
     data[i]=clamp(v,-.7,.7);
    }
@@ -81,8 +85,8 @@ export function createCinematicMaterials(ctx,compact=false){
     mid=mid*.68+m*.32;
     const envelope=Math.pow(Math.sin(Math.PI*u),1.7);
     const pressure=direction==='enter'
-      ?(.30*veryLow+.34*low+.08*mid*(1-u))
-      :(.32*veryLow+.24*low+.14*mid*u);
+      ?(.30*veryLow+.34*low+.20*mid*(1-u))
+      :(.32*veryLow+.24*low+.25*mid*u);
     const tailFade=Math.min(1,(duration-t)*28);
     data[i]=pressure*envelope*clamp(tailFade,0,1)*.66;
    }
