@@ -8,6 +8,8 @@
     <a class="brand" href="/" aria-label="Irispectra home"><span class="brand-symbol"><i></i></span><span>IRISPECTRA</span></a>
     <span class="header-sub">OPTICAL ATLAS <span class="mute">—</span> VOL. 001</span>
     <button class="text-button top-guide" id="aboutBtn" type="button">ABOUT <span class="arrow">↗</span></button>
+    <button class="audio-toggle" id="audioToggle" type="button" aria-pressed="false" aria-label="Play Atlas sound" title="Atlas Living Soundscape"><span aria-hidden="true">♫</span></button>
+    <span class="visually-hidden" id="audioStatus" role="status" aria-live="polite"></span>
   </header>
   <div class="side left">
     <div class="side-caption"><span class="shortline"></span> <span id="sceneNumber">01 / THE HUMAN EYE</span></div>
@@ -76,4 +78,4 @@
   </div>
   <div class="annotate" id="annotate" hidden><label for="annotationType">MANUAL ANNOTATION</label><select id="annotationType"><option value="crypt">CRYPT-LIKE REGION</option><option value="collarette">COLLARETTE</option><option value="furrow">CONTRACTION FURROW</option><option value="radial">RADIAL TEXTURE</option><option value="limbal">LIMBAL BOUNDARY</option></select><button id="placeAnnotation" type="button">+ PLACE</button><button id="clearAnnotations" type="button">CLEAR</button></div>
 </main>
-<script type="module" src="/immersive.js"></script><script defer src="/science-atlas.js"></script></body></html>
+<script type="module" src="/immersive.js"></script><script defer src="/science-atlas.js"></script><script type="module" src="/audio-controller.js"></script></body></html>
