@@ -10,8 +10,8 @@ const guide={
   2:[['Stromal melanocyte','Produces melanin in the iris','Cells within pigmented stroma'],['Pigment granule','Pigment-bearing particulate material','Uneven pigment dots']],
   3:[['Melanocyte','Dendritic pigment-producing cell','Branching cell extensions'],['Melanocyte dendrite','Extension of a melanocyte','Slender dendritic processes']],
   4:[['Melanosome','Pigment-containing organelle','Dense granules within a membrane'],['Golgi apparatus','Processes and sorts cell products','Stacked internal cisternae']],
-  5:[['Tyrosinase enzyme surface (schematic)','Enzyme involved in melanogenesis','Illustrative enzyme surface'],['Melanin polymer motif','Heterogeneous pigment-derived subunits','Simplified polymer motifs']],
-  6:[['Atom: N','Nitrogen in a representative pigment fragment','Schematic atom-and-bond geometry']]},
+  5:[['Tyrosinase conceptual protein envelope','Enzyme involved in melanogenesis','Folded teaching model, not crystallographic coordinates'],['Melanin polymer motif','Heterogeneous pigment-derived subunits','Simplified polymer motifs']],
+  6:[['Tyrosine atom: N','Nitrogen in the tyrosine precursor','Heavy-atom connectivity; hydrogens implicit']]},
  muscle:{
   2:[['Iris sphincter smooth muscle','Constricts the pupil','Circumferential fibers'],['Iris dilator muscle','Dilates the pupil','Radial contractile fibers']],
   3:[['Iris smooth muscle cell','Cell containing actin and myosin','Elongated contractile cell'],['Contractile actomyosin','Filaments producing contractile force','Parallel intracellular strands']],
