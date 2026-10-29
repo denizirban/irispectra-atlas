@@ -591,7 +591,7 @@ function updatePassiveDepth(){
   const previousDepth=lastDepth;
   lastDepth=stage;
   window.dispatchEvent(new CustomEvent('irispectra-sound',{detail:{
-   type:'stage',stage,previous:previousDepth
+   type:'stage',stage,previous:previousDepth,route:activeBioRoute
   }}));
   $('depthTitle').textContent=current.fundus&&stage===0?'RETINA':SCALE_NAMES[stage];
   $('depthHint').classList.toggle('micro',stage>=2);
@@ -641,6 +641,7 @@ function setZoom(value){
 function enterFundus(){
  if(current.fundus||current.fundusTransition)return;
  activeBioRoute='neural';
+ window.dispatchEvent(new CustomEvent('irispectra-sound',{detail:{type:'route',route:activeBioRoute}}));
  if(current.rear)toggleRear();
  current.fundusTransition=true;current.selected=null;current.selection=null;current.targetYaw=0;current.targetPitch=0;
  current.focusTarget.set(0,0,1.13);setZoom(.95);$('infoPanel').hidden=true;$('enterBtn').disabled=true;
@@ -669,6 +670,7 @@ function exitFundus(){
 }
 function reset(){
  activeBioRoute='crypt';bioGuided=false;
+ window.dispatchEvent(new CustomEvent('irispectra-sound',{detail:{type:'route',route:activeBioRoute}}));
  clearTimeout(fundusTimer);current.fundusTransition=false;$('enterBtn').disabled=false;
  if(current.fundus)exitFundus();if(current.rear)toggleRear();current.selected=null;current.selection=null;current.focusTarget.set(0,0,0);current.focus.set(0,0,0);current.zoom=.07;current.targetZoom=.07;current.targetYaw=0;current.targetPitch=0;setZoom(.07);$('infoPanel').hidden=true;clearSelection()}
 function approach(p){current.selected=p;if(current.fundus&&deepRoute==='iris')deepRoute='retina';if(current.fundus)current.fundusTarget.copy(p);else current.focusTarget.copy(p);setZoom(.84);updateSelectionCard();}
@@ -740,6 +742,7 @@ function setIrisSelection(spec,index=-1,origin='eye',zoneOverride=null){
  else if(spec.kind==='crypt'||spec.kind==='collarette')activeBioRoute='crypt';
  else if(spec.kind==='radial'||spec.kind==='pigment')activeBioRoute='pigment';
  else if(spec.kind==='furrow')activeBioRoute='muscle';
+ window.dispatchEvent(new CustomEvent('irispectra-sound',{detail:{type:'route',route:activeBioRoute}}));
  window.dispatchEvent(new CustomEvent('irispectra-sound',{detail:{
   type:'select',kind:spec.kind||'iris',x:(1+Math.cos(spec.angle??0))/2
  }}));
@@ -997,6 +1000,7 @@ function selectBioRoute(route){
   return;
  }
  activeBioRoute=route;
+ window.dispatchEvent(new CustomEvent('irispectra-sound',{detail:{type:'route',route:activeBioRoute}}));
  if(route==='neural')deepRoute='retina';
  else deepRoute='iris';
  // This changes a representative route, not the original photographed specimen.
