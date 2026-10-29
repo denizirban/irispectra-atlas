@@ -1,5 +1,5 @@
 // IRISPECTRA / Route-aware biological worlds.
-import {createCurvedBilayer,createCristaeInterior,createTyrosineMotif} from './micro-ultrastructure.js';
+import {createCurvedBilayer,createCristaeInterior,createTyrosineMotif,createTyrosinaseEnvelope} from './micro-ultrastructure.js';
 // The scenes are conceptual scientific visualizations, never patient-derived
 // volumetric scans, atomistic simulations, or measured protein coordinates.
 export const BIO_STAGES=['WHOLE EYE','IRIS SURFACE','TISSUE','CELLULAR','ORGANELLE','MOLECULAR','ATOMIC'];
@@ -471,7 +471,11 @@ export function populateBioWorld(T,group,route,stage){
    mito(-.75,.25,-.65);
    // Additional organelles create visible near/far parallax after the bilayer.
    mito(1.65,.84,-1.62);
-   sphere(-2.05,-.90,-2.0,[.33,.22,.28],mats.cell,'Transport vesicle');
+   const vesicle=sphere(-2.05,-.90,-2.0,[.33,.22,.28],mats.cell,'Transport vesicle');
+   vesicle.userData.bioMotion={kind:'transport',phase:2.1,amplitude:.17,
+    restScale:vesicle.scale.clone(),restPosition:vesicle.position.clone()};
+   path([[-2.7,-.91,-2.01],[-2.15,-.87,-1.99],[-1.5,-.88,-1.93]],
+    .016,mats.gold,'Cytoskeletal transport track (schematic)');
    sphere(1.35,-.4,-.76,[.72,.64,.42],mats.cell,'Cell nucleus');
    sphere(1.35,-.4,-.28,[.24,.2,.14],mats.dark,'Nucleolus');
    for(let j=0;j<7;j++){
@@ -488,13 +492,7 @@ export function populateBioWorld(T,group,route,stage){
  if(stage===5){
   if(route==='crypt'){collagen();
   }else if(route==='pigment'){
-   // Schematic enzyme surface, melanin subunits and substrate.
-   sphere(-.8,0,0,[1.2,.82,.70],mats.green,'Tyrosinase enzyme surface (schematic)');
-   for(let i=0;i<46;i++){
-    const a=i*2.399,r=.84*Math.sqrt((i+.5)/46);
-    sphere(-.8+Math.cos(a)*r,Math.sin(a)*r*.74,.48,[.08,.08,.08],
-     i%4===0?mats.gold:mats.dark,'Tyrosinase surface residue');
-   }
+   createTyrosinaseEnvelope(T,group,mobile);
    for(let i=0;i<11;i++){
     const a=i*1.07,x=1.3+Math.sin(a)*.9,y=(i-5)*.22;
     sphere(x,y,-.05,[.13,.13,.13],mats.pigment,'Melanin polymer motif');
