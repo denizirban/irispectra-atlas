@@ -252,6 +252,7 @@ function tone(f,type='select',volume=.055,pan=0){
  output.connect(fxDelay);
  const partials=type==='stage'?[1,1.5,2.01]:[1,1.91];
  const gains=type==='stage'?[.67,.19,.055]:[1,.11];
+ let remaining=partials.length;
  for(let j=0;j<partials.length;j++){
   const source=ctx.createOscillator(),amp=ctx.createGain();
   source.type='sine';
@@ -262,7 +263,8 @@ function tone(f,type='select',volume=.055,pan=0){
   source.onended=()=>{
    activeEffects.delete(source);
    source.disconnect();amp.disconnect();
-   if(!activeEffects.size){low.disconnect();output.disconnect();stereo?.disconnect()}
+   remaining--;
+   if(remaining===0){low.disconnect();output.disconnect();stereo?.disconnect()}
   };
   source.start(now);source.stop(now+duration+.025);
  }
