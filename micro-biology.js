@@ -23,7 +23,7 @@ export const BIO_ROUTES={
    ['Melanocyte','Dendritic melanocyte containing melanosomes'],
    ['Melanosome','Pigment-containing intracellular organelle'],
    ['Tyrosinase / melanin','Enzyme-driven melanogenesis and melanin polymer'],
-   ['Indole-derived motifs','Representative eumelanin chemistry, not one fixed polymer structure']
+   ['Tyrosine precursor','Tyrosine heavy-atom connectivity, with implicit hydrogen atoms; schematic biochemical precursor']
   ]},
  muscle:{name:'Pupil & Muscle',label:'PUPIL',description:'Pupillary aperture, iris smooth muscle and calcium-controlled contraction',
   anchor:{kind:'pupil',radius:.20,angle:1.18},family:'iris',
@@ -65,7 +65,7 @@ export function bioInfo(route,stage){
    ['Cell','Pigment granules are packaged in melanosomes'],
    ['Organelle','Melanosome maturation controls pigment deposition'],
    ['Chemistry','Tyrosinase catalyzes early reactions in melanogenesis'],
-   ['Atoms','Melanin is heterogeneous; shown chemistry is illustrative']
+   ['Precursor','Tyrosine contributes to melanin biosynthesis; this is a schematic connectivity view']
   ],
   muscle:[
    ['Opening','The pupil regulates the amount of light entering the eye'],
