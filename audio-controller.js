@@ -90,13 +90,11 @@ function buildStem(name){
    const breath=.78+.22*Math.cos(2*Math.PI*u);
    let v=0;
    if(name==='bed'){
-    // Mono-compatible foundations with softly divergent upper harmonics.
-    const foundation=.34*oscillator(low[0],t)+.21*oscillator(low[1],t,.51)
-     +.14*oscillator(low[2],t,1.27);
-    const halo=.082*oscillator(low[3],t,.72+width*.13)
-     +.056*oscillator(low[4],t,.88+width*.34)
-     +.025*oscillator(low[5],t,.3+width*.53);
-    v=(foundation+halo)*breath;
+    // Low pressure rather than prominent bowed/chord-like sustained notes.
+    const sub=.29*oscillator(low[0],t);
+    const bloom=.19*oscillator(low[1],t,.45)+.10*oscillator(low[2],t,1.1);
+    const distant=.035*oscillator(low[3],t,.5+width*.06);
+    v=(sub+bloom+distant)*(.73+.27*Math.cos(2*Math.PI*u));
    }else if(name==='texture'){
     // Periodic micro-granular noise: no loop-edge mismatch or hard clicks.
     const broad=cyclicNoise(t,73,seed),fine=cyclicNoise(t,233,seed+3);
@@ -109,12 +107,14 @@ function buildStem(name){
     v=swell*(oscillator(low[0]*.5,t)*.25
       +oscillator(low[1],t,1.52+side*.12)*.095);
    }else{
-    // Upper-register micro highlights, restrained so they remain listenable.
-    const shimmer=Math.pow(.5+.5*Math.cos(2*Math.PI*(u*5+side*.05)),3)*.5;
-    v=shimmer*(oscillator(low[2]*2,t,side*.28)*.13
-      +oscillator(low[4]*2,t,1.1+side*.4)*.075
-      +oscillator(low[3]*3,t,1.3-side*.15)*.027);
-    v+=cyclicNoise(t,149,seed+11)*.014;
+    // Water-like micro-bubbles: few tiny resonant decays hidden in the bed,
+    // NOT repeating musical chimes or a string-like high register.
+    const trigger=(u*4+(side?.043:0))%1;
+    const envelope=(1-Math.exp(-trigger*120))*Math.exp(-trigger*28);
+    const bubble=oscillator(low[4]*1.43,t,side*.05);
+    const grain=cyclicNoise(t,149,seed+11);
+    v=.12*bubble*envelope+.014*grain*(.4+.6*envelope);
+
    }
    target[i]=v*.83;
   }
