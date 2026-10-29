@@ -68,57 +68,70 @@ function cyclicNoise(t,points,seed){
 }
 const quantize=(f)=>Math.round(f*LOOP_LENGTH)/LOOP_LENGTH;
 function oscillator(f,t,phase=0){return Math.sin(2*Math.PI*quantize(f)*t+phase)}
+// All partial frequencies are quantized to exact loop periods. Bass stays
+// phase-coherent in the center while upper textures are decorrelated in stereo.
+// 24 kHz internal sample rate reduces iOS memory without audible loss for this
+// intentionally dark, low-bandwidth atmospheric composition.
 function buildStem(name){
- const sr=ctx.sampleRate,frames=Math.round(sr*LOOP_LENGTH);
+ const sr=Math.min(ctx.sampleRate,24000),frames=Math.round(sr*LOOP_LENGTH);
  const buffer=ctx.createBuffer(2,frames,sr);
- const left=buffer.getChannelData(0),right=buffer.getChannelData(1);
  const low=CHORD.map(quantize);
- // Every oscillator, envelope and texture is exactly periodic at loop length.
- // Left/right variation is phase-shifted rather than duplicated mono audio.
+ const channels=[buffer.getChannelData(0),buffer.getChannelData(1)];
  for(let side=0;side<2;side++){
-  const target=side?right:left,shift=side?.42:0,seed=side?13:7;
+  const target=channels[side],width=side?1:-1,seed=side?13:7;
   for(let i=0;i<frames;i++){
-   const t=i/sr,cycle=t/LOOP_LENGTH;
-   const breath=.72+.28*Math.cos(2*Math.PI*cycle);
+   const t=i/sr,u=t/LOOP_LENGTH;
+   const breath=.78+.22*Math.cos(2*Math.PI*u);
    let v=0;
    if(name==='bed'){
-    v=(.42*oscillator(low[0],t,shift)+
-       .28*oscillator(low[1],t,.51+shift)+
-       .17*oscillator(low[2],t,1.3-shift)+
-       .12*oscillator(low[3],t,.72+shift))*breath;
-    v+=.055*oscillator(low[4],t,shift+.8)*(.65+.35*Math.cos(2*Math.PI*cycle*2));
+    // Mono-compatible foundations with softly divergent upper harmonics.
+    const foundation=.34*oscillator(low[0],t)+.21*oscillator(low[1],t,.51)
+     +.14*oscillator(low[2],t,1.27);
+    const halo=.082*oscillator(low[3],t,.72+width*.13)
+     +.056*oscillator(low[4],t,.88+width*.34)
+     +.025*oscillator(low[5],t,.3+width*.53);
+    v=(foundation+halo)*breath;
    }else if(name==='texture'){
-    const p=cyclicNoise(t,72,seed),q=cyclicNoise(t,251,seed+3);
-    const movement=.48+.25*Math.cos(2*Math.PI*(cycle*3+shift));
-    v=(p*.34+q*.12+oscillator(quantize(73.4162),t,shift)*.045)*movement;
+    // Periodic micro-granular noise: no loop-edge mismatch or hard clicks.
+    const broad=cyclicNoise(t,73,seed),fine=cyclicNoise(t,233,seed+3);
+    const motion=.56+.19*Math.cos(2*Math.PI*(u*3+side*.08));
+    v=(broad*.22+fine*.083
+      +oscillator(quantize(73.4162),t,side*.24)*.026)*motion;
    }else if(name==='pulse'){
-    // Very slow, non-percussive periodic amplitude rise and release.
-    const breath2=Math.pow(.5-.5*Math.cos(2*Math.PI*(cycle*4+side*.04)),3);
-    v=breath2*(oscillator(low[0]*.5,t,shift)*.26+
-       oscillator(low[1],t,1.7+shift)*.12);
+    // Four slow swells per cycle; never a kick drum or heartbeat imitation.
+    const swell=Math.pow(.5-.5*Math.cos(2*Math.PI*(u*4+side*.014)),2.8);
+    v=swell*(oscillator(low[0]*.5,t)*.25
+      +oscillator(low[1],t,1.52+side*.12)*.095);
    }else{
-    // Sparse, filtered crystal-like colors; a continuous texture not a tune.
-    const shimmer=(.5+.5*Math.cos(2*Math.PI*(cycle*5+shift)))*.52;
-    v=shimmer*(oscillator(low[2]*2,t,shift)*.16+
-      oscillator(low[4]*2,t,1.1+shift)*.095+
-      oscillator(low[3]*3,t,1.3-shift)*.042);
-    v+=cyclicNoise(t,143,seed+11)*.025;
+    // Upper-register micro highlights, restrained so they remain listenable.
+    const shimmer=Math.pow(.5+.5*Math.cos(2*Math.PI*(u*5+side*.05)),3)*.5;
+    v=shimmer*(oscillator(low[2]*2,t,side*.28)*.13
+      +oscillator(low[4]*2,t,1.1+side*.4)*.075
+      +oscillator(low[3]*3,t,1.3-side*.15)*.027);
+    v+=cyclicNoise(t,149,seed+11)*.014;
    }
-   target[i]=v*.78; // Preserve natural transients without hard-clipping.
+   target[i]=v*.83;
   }
  }
  return buffer;
 }
+// A dark, diffuse short room: first reflections give proximity; the later
+// exponential tail avoids the bright, metallic response of raw white noise.
 function makeRoom(){
- const sr=ctx.sampleRate,duration=1.15,n=Math.round(sr*duration);
+ const sr=ctx.sampleRate,duration=1.48,n=Math.round(sr*duration);
  const response=ctx.createBuffer(2,n,sr);
  for(let side=0;side<2;side++){
-  const a=response.getChannelData(side),seed=side?37:19;
-  let smoothed=0;
+  const data=response.getChannelData(side),seed=side?37:19;
+  let filtered=0;
   for(let i=0;i<n;i++){
    const t=i/sr;
-   smoothed=smoothed*.71+hash(i,seed)*.29;
-   a[i]=smoothed*Math.pow(1-t/duration,2.3)*.22;
+   filtered=filtered*.84+hash(i,seed)*.16;
+   const tail=Math.pow(Math.max(0,1-t/duration),2.35)*.11;
+   const early=
+    (Math.abs(t-(side?.027:.021))<1/sr?.17:0)+
+    (Math.abs(t-(side?.059:.067))<1/sr?.12:0)+
+    (Math.abs(t-(side?.119:.104))<1/sr?.06:0);
+   data[i]=filtered*tail+early;
   }
  }
  return response;
