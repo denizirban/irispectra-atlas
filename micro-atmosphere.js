@@ -102,6 +102,17 @@ export function addMicroAtmosphere(T,group,route,stage){
 export function animateMicroAtmosphere(group,t,fade){
  if(!group)return;
  const p=group.userData.microParticles,a=group.userData.aura;
+ // Animate only annotated biological objects, using original geometry and
+ // non-destructive scale variation. No physics or measured rates are implied.
+ const movers=group.userData.bioMovers;
+ if(movers){
+  for(const obj of movers){
+   const m=obj.userData.bioMotion,rest=m.restScale;
+   const phase=t*(m.kind==='organelle'?.56:.31)+m.phase;
+   const wave=Math.sin(phase)*m.amplitude;
+   obj.scale.set(rest.x*(1+wave),rest.y*(1-wave*.55),rest.z*(1+wave*.35));
+  }
+ }
  if(p){
   p.rotation.z=Math.sin(t*.14)*.16;
   p.position.y=Math.sin(t*.36)*.12;
