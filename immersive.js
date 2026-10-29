@@ -213,6 +213,8 @@ function updateDeepWorld(){
   disposeMicroGroup(previousMicro);
   previousMicro=activeMicro;
   activeMicro=new THREE.Group();deepGroup.add(activeMicro);
+  // Chapters occupy consecutive positions in a shared spatial world.
+  activeMicro.position.z=microNav?.getStageOffset(stage)??0;
   populateMicroScene(THREE,activeMicro,route,stage);
   microStage=stage;microRoute=route;microTransitionStart=now;
   microNav?.setActive(true,stage);
@@ -229,6 +231,16 @@ function updateDeepWorld(){
   deepGroup.scale.setScalar(1);
   microNav?.setActive(navigationActive,stage);
   microNav?.update(dt,microMotionTime);
+  const edge=microNav?.consumeEdge();
+  if(edge==='deeper')setZoom(BIO_TARGETS[Math.min(6,stage+1)]);
+  else if(edge==='shallower')setZoom(BIO_TARGETS[Math.max(1,stage-1)]);
+  else if(edge==='surface')setZoom(.49);
+  // The background must travel with the camera in deep negative world Z.
+  if(microBackdrop){
+   microBackdrop.quaternion.copy(microCamera.quaternion);
+   microBackdrop.position.copy(microCamera.position).add(
+    new THREE.Vector3(0,0,-18.5).applyQuaternion(microCamera.quaternion));
+  }
   setMicroGroupOpacity(activeMicro,microBlend*cross);
   setMicroGroupOpacity(previousMicro,microBlend*(1-cross));
   // A viewer travelling toward the cell passes the bilayer. Fade only its
@@ -916,7 +928,15 @@ function pointerSetup(){
   if(pointers.size===2){
    pinchGesture=true;
    const v=[...pointers.values()],dist=Math.hypot(v[0].x-v[1].x,v[0].y-v[1].y);
-   if(pinchDistance>0)setZoom(current.targetZoom+Math.log(Math.max(.01,dist/pinchDistance))*.26);
+   if(pinchDistance>0){
+    const delta=Math.log(Math.max(.01,dist/pinchDistance));
+    if(microNav?.isActive()&&current.zoom>=.66){
+     const edge=microNav.dolly(delta*165);
+     if(edge==='deeper')setZoom(BIO_TARGETS[Math.min(6,selectionStage()+1)]);
+     else if(edge==='shallower')setZoom(BIO_TARGETS[Math.max(1,selectionStage()-1)]);
+     else if(edge==='surface')setZoom(.49);
+    }else setZoom(current.targetZoom+delta*.26);
+   }
    pinchDistance=dist;return;
   }
   if(microNav?.isActive()){
@@ -1061,13 +1081,19 @@ function updateMicroExplorerHUD(active,now){
  microFrameHud=now;
  const data=microNav?.getStatus();if(!data)return;
  $('microTravel').style.width=Math.round(data.progress*100)+'%';
- $('microDistance').textContent=Math.round(data.progress*100)+'% DEPTH';
+ $('microDistance').textContent=Math.round(data.progress*100)+'% THROUGH CHAPTER';
  $('microGlide').textContent=data.glide?'DRIFT ON':'DRIFT OFF';
  $('microStageName').textContent=BIO_STAGES[data.stage]||'MICRO';
  const chapter=bioInfo(activeBioRoute,Math.max(2,data.stage));
  $('microChapter').textContent=(bioGuided?BIO_ROUTES[activeBioRoute].name+' / ':'')+chapter.short;
  const steps=['THE HUMAN EYE','IRIS MORPHOLOGY','STROMAL ARCHITECTURE','CELLULAR WORLD','INSIDE THE CELL','MOLECULAR STRUCTURE','CHEMICAL FOUNDATIONS'];
- const names=activeBioRoute==='crypt'?['THE HUMAN EYE','IRIS CRYPT','INSIDE THE STROMA','MEET THE FIBROBLAST','MITOCHONDRIAL CRISTAE','COLLAGEN TRIPLE HELIX','PEPTIDE CHEMISTRY']:steps;
+ const routeTitles={
+  crypt:['THE HUMAN EYE','IRIS CRYPT','INSIDE THE STROMA','MEET THE FIBROBLAST','MITOCHONDRIAL CRISTAE','COLLAGEN TRIPLE HELIX','PEPTIDE CHEMISTRY'],
+  pigment:['THE HUMAN EYE','IRIS PIGMENT','PIGMENTED STROMA','MEET THE MELANOCYTE','INSIDE THE MELANOSOME','MELANIN CHEMISTRY','INDOLE-DERIVED MOTIFS'],
+  muscle:['THE HUMAN EYE','PUPIL EDGE','IRIS MUSCLE','SMOOTH MUSCLE CELL','INTRACELLULAR CALCIUM','ACTIN & MYOSIN','CALCIUM IONS'],
+  neural:['THE HUMAN EYE','NEURAL RETINA','RETINAL LAMINAE','RETINAL NEURONS','PHOTORECEPTOR DISCS','RHODOPSIN SIGNALING','RETINAL CHROMOPHORE']
+ };
+ const names=routeTitles[activeBioRoute]||steps;
  $('microJourneyStep').textContent=String(data.stage+1).padStart(2,'0')+' / 07';
  $('microJourneyTitle').textContent=names[data.stage]||'MICRO EXPEDITION';
  $('microJourneyScale').textContent=data.stage===4&&activeBioRoute==='crypt'?'ORGANELLE CUTAWAY · SCHEMATIC':data.stage>=5?'SCHEMATIC MOLECULAR MODEL':'ILLUSTRATIVE BIOLOGY';
