@@ -1,4 +1,5 @@
 // IRISPECTRA / Route-aware biological worlds.
+import {createCurvedBilayer,createCristaeInterior,createTyrosineMotif} from './micro-ultrastructure.js';
 // The scenes are conceptual scientific visualizations, never patient-derived
 // volumetric scans, atomistic simulations, or measured protein coordinates.
 export const BIO_STAGES=['WHOLE EYE','IRIS SURFACE','TISSUE','CELLULAR','ORGANELLE','MOLECULAR','ATOMIC'];
@@ -105,6 +106,31 @@ export function populateBioWorld(T,group,route,stage){
   gold:new T.MeshStandardMaterial({color:0xd5b57a,roughness:.47}),
   line:new T.MeshStandardMaterial({color:0x9daaa0,roughness:.44})
  };
+ // Shared low-amplitude synthetic height texture gives cell membranes
+ // and organelles a matte ultrastructural finish rather than plastic gloss.
+ const surfaceBump=()=>{
+  const c=document.createElement('canvas');c.width=c.height=128;
+  const ctx=c.getContext('2d');if(!ctx)return null;
+  const frame=ctx.createImageData(128,128);
+  for(let yy=0;yy<128;yy++)for(let xx=0;xx<128;xx++){
+   const salt=Math.sin((xx+13)*127.1+(yy+23)*311.7)*43758.5453;
+   const grain=salt-Math.floor(salt);
+   const hills=Math.sin(xx*.34+Math.cos(yy*.11))*Math.cos(yy*.41+Math.sin(xx*.08));
+   const value=Math.max(0,Math.min(255,126+hills*23+(grain-.5)*35));
+   const p=(yy*128+xx)*4;
+   frame.data[p]=frame.data[p+1]=frame.data[p+2]=value;
+   frame.data[p+3]=255;
+  }
+  ctx.putImageData(frame,0,0);
+  const texture=new T.CanvasTexture(c);
+  texture.wrapS=texture.wrapT=T.RepeatWrapping;
+  texture.repeat.set(2,2);
+  return texture;
+ };
+ const detail=surfaceBump();
+ if(detail)for(const [mat,depth] of [[mats.cell,.018],[mats.membrane,.011],[mats.pink,.014]]){
+  mat.bumpMap=detail;mat.bumpScale=depth;
+ }
  const add=(geo,mat,x=0,y=0,z=0,role='')=>{
   const o=new T.Mesh(geo,mat);o.position.set(x,y,z);
   if(role)o.userData.role=role;
@@ -160,47 +186,8 @@ export function populateBioWorld(T,group,route,stage){
  };
  // Cutaway membrane: two phospholipid head planes, tails and transmembrane channels.
  // Schematic proportions, intentionally not an atomistic molecular model.
- const membranePatch=(x=0,y=0,z=0)=>{
-  const count=mobile?168:320;
-  const headGeo=new T.IcosahedronGeometry(.045,1);
-  const headMat=new T.MeshStandardMaterial({color:0xa9c6ad,roughness:.52});
-  const tailMat=new T.MeshStandardMaterial({color:0xc7a980,roughness:.72});
-  const heads=new T.InstancedMesh(headGeo,headMat,count*2);
-  const tails=new T.InstancedMesh(new T.CylinderGeometry(.009,.009,.155,5),tailMat,count*2);
-  const dummy=new T.Object3D();
-  for(let layer=0;layer<2;layer++){
-   for(let i=0;i<count;i++){
-    const col=i%Math.ceil(Math.sqrt(count)),row=Math.floor(i/Math.ceil(Math.sqrt(count)));
-    const pitch=3.65/Math.ceil(Math.sqrt(count));
-    const px=x+(col-(Math.ceil(Math.sqrt(count))-1)/2)*pitch;
-    const py=y+(row-(Math.ceil(Math.sqrt(count))-1)/2)*pitch;
-    const phase=Math.sin(px*2.1+py*1.7)*.07;
-    const side=layer===0?1:-1;
-    dummy.position.set(px,py,z+phase+side*.125);
-    dummy.scale.setScalar(.82+.12*rand(i,layer));dummy.updateMatrix();
-    heads.setMatrixAt(layer*count+i,dummy.matrix);
-    dummy.position.z=z+phase+side*.054;
-    dummy.scale.set(1,.9,1);
-    dummy.rotation.set(Math.PI/2,0,0);dummy.updateMatrix();
-    tails.setMatrixAt(layer*count+i,dummy.matrix);
-    dummy.rotation.set(0,0,0);
-   }
-  }
-  heads.instanceMatrix.needsUpdate=true;tails.instanceMatrix.needsUpdate=true;
-  heads.userData.role='Phospholipid hydrophilic head';
-  tails.userData.role='Phospholipid hydrophobic tails';
-  heads.userData.depthBand='membrane';tails.userData.depthBand='membrane';
-  group.add(heads,tails);
-  for(let i=0;i<(mobile?5:9);i++){
-   const px=x+(rand(i,31)-.5)*3.1,py=y+(rand(i,32)-.5)*2.7;
-   const channel=add(new T.CylinderGeometry(.088,.11,.48,12,1),mats.green,
-     px,py,z,'Transmembrane protein');
-   channel.rotation.x=Math.PI/2;channel.material=channel.material.clone();channel.userData.depthBand='membrane';
-   const pore=add(new T.CylinderGeometry(.029,.029,.49,9,1),mats.dark,
-     px,py,z,'Membrane protein channel pore');
-   pore.rotation.x=Math.PI/2;pore.material=pore.material.clone();pore.userData.depthBand='membrane';
-  }
- };
+ const membranePatch=(x=0,y=0,z=0)=>
+  createCurvedBilayer(T,group,mobile,x,y,z);
  const cellBody=(x,y,z,role,scale=[.76,.43,.34])=>{
   animate(sphere(x,y,z,scale,mats.cell,role),'surface',x+y,.007);
   animate(sphere(x,y,z,scale.map(v=>v*1.035),mats.membrane,role+' plasma membrane'),'surface',x-y,.012);
@@ -223,44 +210,22 @@ export function populateBioWorld(T,group,route,stage){
  };
  // Large-scale mitochondrial cutaway: folds are traversable architectural
  // membranes, not a literal nanometre-scale reconstruction.
- const mitoInterior=()=>{
-  const shell=add(new T.CylinderGeometry(3.25,3.05,8,36,1,true),mats.membrane,0,0,-1.55,'Mitochondrial cutaway boundary');
-  shell.rotation.x=Math.PI/2;
-  const foldMat=new T.MeshPhysicalMaterial({color:0xb78565,roughness:.48,metalness:0,
-   side:T.DoubleSide,transparent:true,opacity:.82,depthWrite:false});
-  for(let k=0;k<(mobile?7:11);k++){
-   const centerX=(k-(mobile?3:5))*.61;
-   const verts=[],idx=[],rows=mobile?14:22,cols=mobile?18:30;
-   for(let j=0;j<=rows;j++){
-    const t=j/rows,y=(t-.5)*5.9;
-    for(let i=0;i<=cols;i++){
-     const u=i/cols,z=-4.6+u*6.1;
-     const bend=Math.sin(u*Math.PI*2.8+k*.56)*(.22+.08*Math.cos(t*Math.PI*2));
-     const pinch=.11*Math.cos(t*Math.PI*4+u*5+k);
-     verts.push(centerX+bend+pinch,y,z);
-     if(j<rows&&i<cols){
-      const a=j*(cols+1)+i;
-      idx.push(a,a+cols+1,a+1,a+1,a+cols+1,a+cols+2);
-     }
-    }
-   }
-   const geo=new T.BufferGeometry();
-   geo.setAttribute('position',new T.Float32BufferAttribute(verts,3));
-   geo.setIndex(idx);geo.computeVertexNormals();
-   const fold=add(geo,foldMat,0,0,0,'Inner mitochondrial membrane / crista');
-   fold.userData.depthBand='crista';
-  }
-  const n=mobile?50:105,geo=new T.IcosahedronGeometry(.045,0);
-  const dots=new T.InstancedMesh(geo,mats.pale,n),d=new T.Object3D();
-  for(let i=0;i<n;i++){
-   d.position.set((rand(i,41)-.5)*6.4,(rand(i,42)-.5)*5.7,-4.4+rand(i,43)*5.7);
-   d.scale.setScalar(.45+rand(i,44)*1.1);d.updateMatrix();dots.setMatrixAt(i,d.matrix);
-  }
-  dots.instanceMatrix.needsUpdate=true;dots.userData.role='Mitochondrial matrix granule';group.add(dots);
- };
+ const mitoInterior=()=>createCristaeInterior(T,group,mobile);
  const melanosome=(x,y,z)=>{
-  animate(sphere(x,y,z,[.69,.40,.40],mats.dark,'Melanosome'),'organelle',x+y,.007);
-  animate(sphere(x,y,z,[.73,.44,.44],mats.membrane,'Melanosome membrane'),'organelle',x-y,.007);
+  // Separate translucent shells reveal internal melanin deposits without
+  // implying a precise melanosome ultrastructure from an iris photograph.
+  const contentMat=mats.dark.clone();
+  contentMat.transparent=true;contentMat.opacity=.44;contentMat.depthWrite=false;
+  const shellMat=mats.membrane.clone();
+  shellMat.opacity=.24;shellMat.depthWrite=false;
+  animate(sphere(x,y,z,[.69,.40,.40],contentMat,'Melanosome pigment matrix'),'organelle',x+y,.008);
+  animate(sphere(x,y,z,[.73,.44,.44],shellMat,'Melanosome membrane'),'organelle',x+y,.008);
+  for(let i=0;i<(mobile?5:9);i++){
+   const p=(i-(mobile?2:4))*.068;
+   path([[x-.48,y+p*.6,z-.09*Math.sin(i)],[x-.14,y+p,z+.04*Math.cos(i)],
+    [x+.37,y+p*.7,z+.07*Math.sin(i*.7)]],.009,mats.pigment,
+    'Melanosome internal pigment fibril (schematic)');
+  }
   const n=mobile?45:90;
   const dummy=new T.Object3D(),mesh=new T.InstancedMesh(new T.SphereGeometry(.052,7,6),mats.pigment,n);
   for(let i=0;i<n;i++){
@@ -556,7 +521,9 @@ export function populateBioWorld(T,group,route,stage){
   }
  }
  // ATOMIC 6 — CPK-colored atoms, shared bonds; NOT computed coordinates.
- if(stage===6){
+ if(stage===6&&route==='pigment'){
+  createTyrosineMotif(T,group,mobile);
+ }else if(stage===6){
   const motifs={
    crypt:['N','C','C','O','N','C','O','H','H','C','O','C'],
    pigment:['C','C','N','C','O','C','O','C','C','N','H','H'],
