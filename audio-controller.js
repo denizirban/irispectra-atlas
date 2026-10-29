@@ -244,7 +244,8 @@ function onSelect(role,x){
  if(now-lastContact<650)return;
  lastContact=now;
  // User explicitly selected a structure: understated material contact.
- playContact(clamp((Number(x)??.5)*2-1,-1,1),String(role||'structure'));
+ const xNorm=Number.isFinite(Number(x))?Number(x):.5;
+ playContact(clamp(xNorm*2-1,-1,1),String(role||'structure'));
 }
 function onMove(amount,x){
  if(!ready||!playing||amount<3)return;
@@ -252,7 +253,8 @@ function onMove(amount,x){
  if(now-lastMotion<180)return;
  lastMotion=now;
  const flow=tracks[1];
- if(flow?.pan)flow.pan.pan.setTargetAtTime(clamp((Number(x)??.5)*2-1,-.45,.45)*.36,ctx.currentTime,.45);
+ const xNorm=Number.isFinite(Number(x))?Number(x):.5;
+ if(flow?.pan)flow.pan.pan.setTargetAtTime(clamp(xNorm*2-1,-.45,.45)*.36,ctx.currentTime,.45);
  const v=clamp(amount/55,0,1);
  flow?.filter.frequency.setTargetAtTime(
   clamp(ROUTES[currentRoute].filter*(.73+.28*v),360,2900),
