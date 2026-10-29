@@ -108,9 +108,17 @@ export function animateMicroAtmosphere(group,t,fade){
  if(movers){
   for(const obj of movers){
    const m=obj.userData.bioMotion,rest=m.restScale;
-   const phase=t*(m.kind==='organelle'?.56:.31)+m.phase;
+   const phase=t*(m.kind==='organelle'?.56:m.kind==='transport'?.48:m.kind==='molecule'?.25:.31)+m.phase;
    const wave=Math.sin(phase)*m.amplitude;
-   obj.scale.set(rest.x*(1+wave),rest.y*(1-wave*.55),rest.z*(1+wave*.35));
+   if(m.kind==='transport'&&m.restPosition){
+    obj.position.set(m.restPosition.x+wave,m.restPosition.y,
+     m.restPosition.z+.012*Math.sin(phase*1.7));
+   }else if(m.kind==='molecule'){
+    obj.rotation.y=wave*2.2;
+    obj.rotation.x=Math.cos(phase*.67)*m.amplitude;
+   }else{
+    obj.scale.set(rest.x*(1+wave),rest.y*(1-wave*.55),rest.z*(1+wave*.35));
+   }
   }
  }
  if(p){
