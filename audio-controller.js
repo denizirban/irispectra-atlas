@@ -224,6 +224,7 @@ function setWorld(route=activeRoute,nextStage=stage,nextDepth=depth,immediate=fa
   node.filter.frequency.setTargetAtTime(clamp(cutoff,210,4800),now,tau);
   if(node.pan)node.pan.pan.setTargetAtTime((i%2?.10:-.09)+character.pan,now,tau);
  }
+ if(wet)wet.gain.setTargetAtTime(.085+.045*(stage/6),now,1.35);
 }
 function ramp(on){
  if(!ctx||!master)return;
@@ -247,14 +248,16 @@ function activate(){
     if(sourceReady&&!muted)ramp(true);
     live=sourceReady&&!muted;
     unlocked=sourceReady||unlocked;
+    if(live)beginLongForm();
     repaint();
    });
-  }else{ramp(true);live=true}
+  }else{ramp(true);live=true;beginLongForm()}
   if(promise?.catch)promise.catch(()=>{error='Tap sound to enable audio';live=false;repaint()});
  }catch(e){error='Tap sound to enable audio';repaint();return}
  error='';repaint();
 }
 function deactivate(){
+ haltLongForm();
  live=false;
  if(!ctx){repaint();return}
  ramp(false);
@@ -273,37 +276,68 @@ function toggle(){
  else{muted=true;persist();deactivate()}
  repaint();
 }
-function tone(f,type='select',volume=.055,pan=0){
- if(!live||muted||!ctx||ctx.state!=='running')return;
- const now=ctx.currentTime,duration=type==='stage'?.82:.32;
- const output=ctx.createGain(),low=ctx.createBiquadFilter();
- low.type='lowpass';low.frequency.value=type==='stage'?1900:2400;
+// Low-intensity, route-aware original sounds. No claim of literal cell audio.
+function tone(freq,type='select',volume=.045,pan=0,role=''){
+ if(!live||muted||!ctx||ctx.state!=='running'||activeEffects.size>=14)return;
+ const now=ctx.currentTime,duration=type==='glimmer'?2.4:type==='stage'?.88:.34;
+ const attack=type==='glimmer'?.24:type==='stage'?.055:.018;
+ const low=ctx.createBiquadFilter(),output=ctx.createGain();
+ low.type='lowpass';low.Q.value=.4;
+ low.frequency.value=type==='glimmer'?1450:type==='stage'?1720:2100;
  output.gain.setValueAtTime(.00001,now);
- output.gain.exponentialRampToValueAtTime(Math.max(.0003,volume),now+.025);
+ output.gain.linearRampToValueAtTime(Math.max(.0003,volume),now+attack);
  output.gain.exponentialRampToValueAtTime(.00001,now+duration);
  low.connect(output);
  const stereo=ctx.createStereoPanner?.();
- if(stereo){stereo.pan.value=clamp(pan,-.45,.45);output.connect(stereo);stereo.connect(fxInput)}
+ if(stereo){stereo.pan.value=clamp(pan,-.58,.58);output.connect(stereo);stereo.connect(fxInput)}
  else output.connect(fxInput);
  output.connect(fxDelay);
- const partials=type==='stage'?[1,1.5,2.01]:[1,1.91];
- const gains=type==='stage'?[.67,.19,.055]:[1,.11];
- let remaining=partials.length;
- for(let j=0;j<partials.length;j++){
-  const source=ctx.createOscillator(),amp=ctx.createGain();
-  source.type='sine';
-  source.frequency.setValueAtTime(f*partials[j]*.97,now);
-  source.frequency.exponentialRampToValueAtTime(f*partials[j],now+.09);
-  amp.gain.value=gains[j];source.connect(amp);amp.connect(low);
-  activeEffects.add(source);
-  source.onended=()=>{
-   activeEffects.delete(source);
-   source.disconnect();amp.disconnect();
-   remaining--;
-   if(remaining===0){low.disconnect();output.disconnect();stereo?.disconnect()}
+ const molecular=/molecul|atom|bond|tyros|protein|enzyme|melanin/i.test(role);
+ const tissue=/collagen|fiber|stroma|crypt|membrane/i.test(role);
+ const ratios=type==='glimmer'?[1,2.003,3.012]:type==='stage'?[1,1.5,2.01]:
+  molecular?[1,2.002,3.985]:tissue?[1,1.496,2.01]:[1,1.91];
+ const weights=type==='glimmer'?[1,.16,.04]:type==='stage'?[1,.15,.04]:[1,.16,.035];
+ let remaining=ratios.length;
+ for(let j=0;j<ratios.length;j++){
+  const osc=ctx.createOscillator(),amp=ctx.createGain();
+  const hz=Math.max(55,Math.min(2600,freq*ratios[j]));
+  osc.type='sine';osc.frequency.setValueAtTime(hz*(type==='glimmer'?.998:.976),now);
+  osc.frequency.exponentialRampToValueAtTime(hz,now+(type==='glimmer'?.7:.12));
+  amp.gain.value=weights[j];osc.connect(amp);amp.connect(low);
+  activeEffects.add(osc);
+  osc.onended=()=>{
+   activeEffects.delete(osc);osc.disconnect();amp.disconnect();
+   if(--remaining===0){low.disconnect();output.disconnect();stereo?.disconnect()}
   };
-  source.start(now);source.stop(now+duration+.025);
+  osc.start(now);osc.stop(now+duration+.025);
  }
+ if(type!=='glimmer'&&musicBus){
+  musicBus.gain.setTargetAtTime(.84,now,.07);
+  musicBus.gain.setTargetAtTime(1,now+duration*.65,.40);
+ }
+}
+function random01(){
+ randomSeed=(Math.imul(randomSeed,1664525)+1013904223)>>>0;
+ return randomSeed/4294967296;
+}
+// Long-form variation without a repeating melody or heavy sound-file downloads.
+function advanceLongForm(){
+ if(!live||muted||!ctx||document.hidden||ctx.state!=='running')return;
+ const now=ctx.currentTime;
+ if(now<nextMomentAt)return;
+ const stretch=stage<2?1.25:stage>4?.82:1;
+ nextMomentAt=now+(18+random01()*23)*stretch*(reducedMotion?1.35:1);
+ tone(NOTE[Math.floor(random01()*NOTE.length)]*
+  (stage<=2?.5:stage>=5?1:.75),'glimmer',.008+random01()*.006,
+  random01()*.68-.34,'molecule');
+}
+function beginLongForm(){
+ if(!ctx||momentTimer)return;
+ nextMomentAt=ctx.currentTime+18+random01()*12;
+ momentTimer=setInterval(advanceLongForm,1900);
+}
+function haltLongForm(){
+ if(momentTimer){clearInterval(momentTimer);momentTimer=0}
 }
 function stageEvent(value,route){
  const previous=stage;
@@ -322,8 +356,8 @@ function selectEvent(kind,x){
  lastSelect=t;
  const n=String(kind||'structure');
  const hashCode=[...n].reduce((sum,ch)=>(sum+ch.charCodeAt(0)*7)%97,0);
- tone(NOTE[hashCode%NOTE.length]*(stage>4?1.2:1), 'select',.048,
-  clamp((Number(x)||.5)*2-1,-1,1));
+ tone(NOTE[hashCode%NOTE.length]*(stage>4?1.12:1),'select',.043,
+  clamp((Number(x)||.5)*2-1,-1,1),n);
 }
 function zoomEvent(z){
  depth=clamp(Number(z)||0,0,1);
@@ -375,6 +409,7 @@ window.IrispectraSound={
   stage,route:activeRoute,depth,stems:soundNodes.length,length:LOOP_LENGTH,error})
 };
 window.addEventListener('pagehide',()=>{
+ haltLongForm();
  if(stopTimer)clearTimeout(stopTimer);
  for(const node of soundNodes){try{node.source.stop()}catch{}}
  for(const node of activeEffects){try{node.stop()}catch{}}
