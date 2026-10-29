@@ -120,6 +120,12 @@ export function populateBioWorld(T,group,route,stage){
   pos.setXYZ(i,x*(1+noise),y*(1+noise),z*(1+noise));
  }
  organicGeo.computeVertexNormals();
+ // Each mesh has independent resting proportions; animation is subtle and
+ // conceptual, rather than a simulation of measured cellular kinetics.
+ const animate=(mesh,kind,phase,amplitude)=>{
+  mesh.userData.bioMotion={kind,phase,amplitude,restScale:mesh.scale.clone()};
+  return mesh;
+ };
  const sphere=(x,y,z,scale,material,role='')=>{
   const o=add(role.includes('membrane')||role.includes('Fibroblast')||role.includes('Melanocyte')?organicGeo:sphereGeo,material,x,y,z,role);o.scale.set(...scale);return o;
  };
@@ -196,15 +202,15 @@ export function populateBioWorld(T,group,route,stage){
   }
  };
  const cellBody=(x,y,z,role,scale=[.76,.43,.34])=>{
-  sphere(x,y,z,scale,mats.cell,role);
-  sphere(x,y,z,scale.map(v=>v*1.035),mats.membrane,role+' plasma membrane');
+  animate(sphere(x,y,z,scale,mats.cell,role),'surface',x+y,.007);
+  animate(sphere(x,y,z,scale.map(v=>v*1.035),mats.membrane,role+' plasma membrane'),'surface',x-y,.012);
   sphere(x-.11,y+.04,z+.23,[.25,.19,.14],mats.dark,role+' nucleus');
   sphere(x-.17,y+.07,z+.37,[.07,.07,.045],mats.gold,'Nucleolus');
  };
  const mito=(x,y,z)=>{
-  const o=add(organicGeo,mats.pink,x,y,z,'Mitochondrion');o.scale.set(.73,.30,.31);
+  const o=add(organicGeo,mats.pink,x,y,z,'Mitochondrion');o.scale.set(.73,.30,.31);animate(o,'organelle',x+y,.012);
   const membrane=add(organicGeo,mats.membrane,x,y,z,'Mitochondrial outer membrane');
-  membrane.scale.set(.77,.335,.345);
+  membrane.scale.set(.77,.335,.345);animate(membrane,'organelle',x-y,.01);
   for(let k=0;k<11;k++){
    const xx=x+(k-5)*.115,fold=[];
    for(let j=0;j<=12;j++){
@@ -253,8 +259,8 @@ export function populateBioWorld(T,group,route,stage){
   dots.instanceMatrix.needsUpdate=true;dots.userData.role='Mitochondrial matrix granule';group.add(dots);
  };
  const melanosome=(x,y,z)=>{
-  sphere(x,y,z,[.69,.40,.40],mats.dark,'Melanosome');
-  sphere(x,y,z,[.73,.44,.44],mats.membrane,'Melanosome membrane');
+  animate(sphere(x,y,z,[.69,.40,.40],mats.dark,'Melanosome'),'organelle',x+y,.007);
+  animate(sphere(x,y,z,[.73,.44,.44],mats.membrane,'Melanosome membrane'),'organelle',x-y,.007);
   const n=mobile?45:90;
   const dummy=new T.Object3D(),mesh=new T.InstancedMesh(new T.SphereGeometry(.052,7,6),mats.pigment,n);
   for(let i=0;i<n;i++){
@@ -581,5 +587,7 @@ export function populateBioWorld(T,group,route,stage){
    atom(x-.1,y+.14,-.42,'H',.06);
   }
  }
+ group.userData.bioMovers=[];
+ group.traverse(o=>{if(o.userData?.bioMotion)group.userData.bioMovers.push(o);});
  group.userData.bioRoute=r.name;group.userData.bioStage=stage;
 }
