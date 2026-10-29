@@ -173,15 +173,25 @@ let activeMicro=null,previousMicro=null,microStage=-1,microRoute='',microTransit
 let microMotionTime=0,lastMicroFrame=0;
 function disposeMicroGroup(group){
  if(!group)return;
- const geometries=new Set(),materials=new Set();
- group.traverse(obj=>{if(obj.isMesh||obj.isPoints||obj.isLine){
+ const geometries=new Set(),materials=new Set(),textures=new Set();
+ group.traverse(obj=>{
+  if(!(obj.isMesh||obj.isPoints||obj.isLine))return;
   if(obj.geometry)geometries.add(obj.geometry);
-  if(Array.isArray(obj.material))obj.material.forEach(m=>materials.add(m));
-  else if(obj.material)materials.add(obj.material);
- }});
+  const mats=Array.isArray(obj.material)?obj.material:[obj.material];
+  for(const mat of mats)if(mat)materials.add(mat);
+ });
+ // Detail maps are shared between several materials inside a chapter.
+ // Dispose them only once, alongside geometry, to avoid growing GPU memory.
+ for(const mat of materials)for(const key of [
+  'map','bumpMap','normalMap','roughnessMap','metalnessMap','alphaMap',
+  'emissiveMap','aoMap','displacementMap','envMap'
+ ]){
+  if(mat[key]?.isTexture)textures.add(mat[key]);
+ }
  group.parent?.remove(group);
  geometries.forEach(geo=>geo.dispose());
- materials.forEach(mat=>{if(mat.map)mat.map.dispose();mat.dispose()});
+ materials.forEach(mat=>mat.dispose());
+ textures.forEach(texture=>texture.dispose());
 }
 function setMicroGroupOpacity(group,factor){
  if(!group)return;
