@@ -185,16 +185,26 @@ function disposeMicroGroup(group){
 }
 function setMicroGroupOpacity(group,factor){
  if(!group)return;
- group.traverse(obj=>{if(!obj.isMesh)return;
-  const mats=Array.isArray(obj.material)?obj.material:[obj.material];
-  for(const m of mats){
-   if(m.userData.macroOriginalOpacity===undefined)m.userData.macroOriginalOpacity=m.opacity??1;
-   const original=m.userData.macroOriginalOpacity;
-   m.opacity=original*factor;
-   m.transparent=m.opacity<.99;
-   m.depthWrite=m.opacity>.975;
-  }
- });
+ // Cache material references: many stromal fibers share one material.
+ // Do not traverse hundreds of meshes on every animation frame.
+ if(!group.userData.fadeMaterials){
+  const unique=new Set();
+  group.traverse(obj=>{
+   if(!obj.isMesh)return;
+   const mats=Array.isArray(obj.material)?obj.material:[obj.material];
+   for(const mat of mats)if(mat)unique.add(mat);
+  });
+  group.userData.fadeMaterials=[...unique].map(material=>({
+   material,opacity:material.opacity??1,
+   transparent:!!material.transparent,depthWrite:!!material.depthWrite
+  }));
+ }
+ for(const entry of group.userData.fadeMaterials){
+  const {material}=entry;
+  material.opacity=entry.opacity*factor;
+  material.transparent=entry.transparent||material.opacity<.999;
+  material.depthWrite=entry.depthWrite&&material.opacity>.975;
+ }
 }
 function updateDeepWorld(){
  if(!deepGroup||!microScene)return;
@@ -833,7 +843,7 @@ function selectByTap(x,y,{preserveZoom=false}={}){
  if(deepGroup?.visible&&microNav?.isActive()){
   ray.setFromCamera(v,microCamera);
   deepGroup.updateMatrixWorld(true);
-  const hits=ray.intersectObject(deepGroup,true).filter(h=>
+  const hits=ray.intersectObject(activeMicro||deepGroup,true).filter(h=>
    h.object.isMesh&&!h.object.userData.decorative&&!h.object.parent?.userData.decorative
   );
   if(!hits.length){$('microLabel').hidden=true;return false;}
@@ -1089,7 +1099,7 @@ function updateMicroExplorerHUD(active,now){
  const steps=['THE HUMAN EYE','IRIS MORPHOLOGY','STROMAL ARCHITECTURE','CELLULAR WORLD','INSIDE THE CELL','MOLECULAR STRUCTURE','CHEMICAL FOUNDATIONS'];
  const routeTitles={
   crypt:['THE HUMAN EYE','IRIS CRYPT','INSIDE THE STROMA','MEET THE FIBROBLAST','MITOCHONDRIAL CRISTAE','COLLAGEN TRIPLE HELIX','PEPTIDE CHEMISTRY'],
-  pigment:['THE HUMAN EYE','IRIS PIGMENT','PIGMENTED STROMA','MEET THE MELANOCYTE','INSIDE THE MELANOSOME','MELANIN CHEMISTRY','INDOLE-DERIVED MOTIFS'],
+  pigment:['THE HUMAN EYE','IRIS PIGMENT','PIGMENTED STROMA','MEET THE MELANOCYTE','MELANOSOMES & ORGANELLES','MELANIN CHEMISTRY','INDOLE-DERIVED MOTIFS'],
   muscle:['THE HUMAN EYE','PUPIL EDGE','IRIS MUSCLE','SMOOTH MUSCLE CELL','INTRACELLULAR CALCIUM','ACTIN & MYOSIN','CALCIUM IONS'],
   neural:['THE HUMAN EYE','NEURAL RETINA','RETINAL LAMINAE','RETINAL NEURONS','PHOTORECEPTOR DISCS','RHODOPSIN SIGNALING','RETINAL CHROMOPHORE']
  };
