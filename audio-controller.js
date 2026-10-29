@@ -206,38 +206,12 @@ function playContact(pan=.5,kind='select'){
  };
  source.start(now);
 }
-function crossBoundary(entering){
- if(!playing||muted||!ready||ctx?.state!=='running'||activeSources.size>=4)return;
- const now=ctx.currentTime;
- const source=ctx.createBufferSource();
- source.buffer=materials.movement[entering?'enter':'exit'];
- const gain=ctx.createGain(),filter=ctx.createBiquadFilter();
- filter.type='lowpass';filter.Q.value=.36;
- filter.frequency.setValueAtTime(entering?1600:280,now);
- filter.frequency.exponentialRampToValueAtTime(entering?450:1950,now+1.75);
- gain.gain.value=.66;
- source.connect(filter);filter.connect(gain);gain.connect(effectsBus);
- gain.connect(room);
- activeSources.add(source);
- source.onended=()=>{
-  activeSources.delete(source);source.disconnect();filter.disconnect();gain.disconnect();
- };
- source.start(now);
- // A momentary acoustic recession makes the motion feel like passing through
- // a membrane, rather than a short effect layered on a static soundtrack.
- mixBus.gain.setTargetAtTime(.56,now,.26);
- mixBus.gain.setTargetAtTime(1,now+1.12,.85);
-}
+// Zoom in/out is intentionally silent as an event. Existing ambient layers
+// morph through lowpass, room response and level: no one-shot chime, riser,
+// whoosh or pressure transient competes with exploration.
 function onStage(value,route){
- const was=stage;
  setWorld(route||currentRoute,value,depth);
- if(previousStage===null){previousStage=stage;return}
- if(was===stage)return;
  previousStage=stage;
- const now=performance.now();
- if(now-lastTransition<1150)return;
- lastTransition=now;
- crossBoundary(stage>was);
 }
 function onSelect(role,x){
  const now=performance.now();
