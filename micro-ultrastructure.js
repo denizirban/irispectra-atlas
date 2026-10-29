@@ -177,13 +177,13 @@ export function createTyrosineMotif(T,group,mobile){
   bonds.push([i,(i+1)%6]);
  }
  const extras=[
-  ['C',-.02,0,.10],        // benzylic carbon
-  ['C',.69,.31,.14],       // alpha carbon
-  ['C',1.50,.15,.08],      // carboxyl carbon
-  ['N',.60,1.04,.12],      // amine
-  ['O',2.04,.76,.08],      // carbonyl oxygen
-  ['O',1.78,-.63,.04],     // hydroxyl oxygen
-  ['O',-2.19,0,.02]       // phenolic oxygen
+  ['C',.38,0,.10],         // benzylic carbon
+  ['C',1.05,.28,.14],      // alpha carbon
+  ['C',1.76,.15,.08],      // carboxyl carbon
+  ['N',1.04,1.05,.12],     // amine
+  ['O',2.32,.76,.08],      // carbonyl oxygen
+  ['O',2.02,-.63,.04],     // hydroxyl oxygen
+  ['O',-2.39,0,.02]       // phenolic oxygen
  ];
  for(const [symbol,x,y,z] of extras)atoms.push({symbol,p:[x,y,z]});
  bonds.push([0,6],[6,7],[7,8],[7,9],[8,10],[8,11],[3,12]);
@@ -208,6 +208,13 @@ export function createTyrosineMotif(T,group,mobile){
   stick.quaternion.setFromUnitVectors(new T.Vector3(0,1,0),dir.normalize());
   stick.userData.role='Tyrosine bond (schematic)';assembly.add(stick);
  }
+ // A faint inner circle denotes delocalization in the aromatic ring,
+ // rather than inventing a specific bond-order arrangement in the demo.
+ const aromatic=new T.Mesh(new T.TorusGeometry(.53,.012,5,mobile?36:64),
+  new T.MeshStandardMaterial({color:0x9eb1b4,roughness:.51}));
+ aromatic.position.set(-1,0,.11);
+ aromatic.userData.role='Tyrosine aromatic ring / delocalized electrons';
+ assembly.add(aromatic);
  assembly.userData.bioMotion={kind:'molecule',phase:.42,amplitude:.013,
   restScale:assembly.scale.clone(),restPosition:assembly.position.clone()};
  group.userData.molecule='Tyrosine heavy-atom connectivity; hydrogens implicit';
