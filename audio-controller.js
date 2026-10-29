@@ -357,30 +357,9 @@ function playDrop(kind='select',pan=0,role=''){
 // A slow, sub-audible-to-audible pressure wave and filtered water-current
 // texture marks scale boundaries: enter is a muffled descent, emerge an
 // opening breath. No high-pitched riser, or sci-fi "portal" sound.
-function playPressure(direction='enter'){
- if(!live||muted||ctx?.state!=='running'||!liquid||activeEffects.size>=6)return;
- const now=ctx.currentTime;
- const source=ctx.createBufferSource();source.buffer=liquid.pressure[direction];
- const out=ctx.createGain(),filter=ctx.createBiquadFilter();
- filter.type='lowpass';filter.Q.value=.45;
- const entering=direction==='enter';
- filter.frequency.setValueAtTime(entering?1220:270,now);
- filter.frequency.exponentialRampToValueAtTime(entering?320:1470,now+2.2);
- out.gain.setValueAtTime(.0001,now);
- out.gain.linearRampToValueAtTime(entering?.40:.37,now+.70);
- out.gain.setTargetAtTime(.0001,now+1.45,.42);
- source.connect(filter);filter.connect(out);out.connect(fxInput);
- out.connect(reverb);
- activeEffects.add(source);
- source.onended=()=>{
-  activeEffects.delete(source);source.disconnect();filter.disconnect();out.disconnect();
- };
- source.start(now);
- if(musicBus){
-  musicBus.gain.setTargetAtTime(.72,now,.28);
-  musicBus.gain.setTargetAtTime(1,now+1.55,.80);
- }
-}
+// Deliberately no one-shot sound for zoom or scale boundaries. The four
+// ambient layers already morph continuously with the depth and route.
+// A distinct swell was perceived as a bell/chime and interrupted immersion.
 function random01(){
  randomSeed=(Math.imul(randomSeed,1664525)+1013904223)>>>0;
  return randomSeed/4294967296;
@@ -403,15 +382,10 @@ function haltLongForm(){
  if(momentTimer){clearInterval(momentTimer);momentTimer=0}
 }
 function stageEvent(value,route){
- const previous=stage;
+ // Silent zoom transitions: only EQ, stereo field and the ambient blend move.
+ // No droplet, chime, swoosh, pressure sample or transient is triggered here.
  setWorld(route||activeRoute,value,depth);
- if(lastStage===null){lastStage=stage;return}
- if(previous===stage||lastStage===stage)return;
  lastStage=stage;
- const t=performance.now();
- if(t-lastStageSound<1300)return;
- lastStageSound=t;
- playPressure(stage>previous?'enter':'emerge');
 }
 function selectEvent(kind,x){
  const t=performance.now();
