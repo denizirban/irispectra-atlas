@@ -1,3 +1,4 @@
+const prefersReducedMotion=typeof window!=='undefined'&&window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
 // Subtle microscopy-inspired optical depth. Lightweight WebGL geometry generated
 // for every active layer; no photographic scan / patient-specific representation.
 export function addMicroAtmosphere(T,group,route,stage){
@@ -105,7 +106,7 @@ export function animateMicroAtmosphere(group,t,fade){
  // Animate only annotated biological objects, using original geometry and
  // non-destructive scale variation. No physics or measured rates are implied.
  const movers=group.userData.bioMovers;
- if(movers){
+ if(movers&&!prefersReducedMotion){
   for(const obj of movers){
    const m=obj.userData.bioMotion,rest=m.restScale;
    const phase=t*(m.kind==='organelle'?.56:m.kind==='transport'?.48:m.kind==='molecule'?.25:.31)+m.phase;
@@ -122,9 +123,9 @@ export function animateMicroAtmosphere(group,t,fade){
   }
  }
  if(p){
-  p.rotation.z=Math.sin(t*.14)*.16;
-  p.position.y=Math.sin(t*.36)*.12;
+  p.rotation.z=prefersReducedMotion?0:Math.sin(t*.14)*.16;
+  p.position.y=prefersReducedMotion?0:Math.sin(t*.36)*.12;
   p.material.opacity=.25*fade;
  }
- if(a){a.material.opacity=(.74+Math.sin(t*.33)*.1)*fade;}
+ if(a){a.material.opacity=(.74+(prefersReducedMotion?0:Math.sin(t*.33)*.1))*fade;}
 }
