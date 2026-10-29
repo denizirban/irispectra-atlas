@@ -378,44 +378,14 @@ export function populateBioWorld(T,group,route,stage){
     }
    }
   }else if(route==='pigment'){
-   // Anatomically informed connective matrix, built in depth-separated
-   // planes so users can travel between real 3D collagen fibers.
-   const fiberLayers=mobile?3:5,perLayer=mobile?11:19;
-   for(let layer=0;layer<fiberLayers;layer++){
-    const z=-2.65+layer*1.28;
-    for(let i=0;i<perLayer;i++){
-     const y=(i-(perLayer-1)/2)*(.33+(layer%2)*.03);
-     const points=[];
-     for(let j=0;j<=12;j++){
-      const u=j/12,x=(u-.5)*7.7;
-      points.push([x,y+.10*Math.sin(u*8.2+i*.73+layer),
-       z+.10*Math.cos(u*9+i*.53+layer)]);
-     }
-     path(points,.018+(i%4)*.006,
-      (i+layer)%4===0?mats.pale:mats.matrix,'Stromal collagen bundle');
-    }
-   }
    for(let i=0;i<10;i++){
     const a=i*2.399,r=1.0+1.8*Math.sqrt((i+.5)/10);
-    const x=Math.cos(a)*r,y=Math.sin(a)*r*.80;
-    cellBody(x,y,.3,'Stromal melanocyte',[.42,.23,.20]);
-    // Dendritic processes extend through the connective tissue.
-    for(let j=0;j<3;j++){
-     const dir=a+j*2.094;
-     path([[x,y,.36],[x+.27*Math.cos(dir),y+.22*Math.sin(dir),.24],
-      [x+.66*Math.cos(dir),y+.46*Math.sin(dir),.03]],
-      .014,mats.cell,'Melanocyte dendritic process');
-    }
+    cellBody(Math.cos(a)*r,Math.sin(a)*r*.80,.3,'Stromal melanocyte',[.42,.23,.20]);
    }
    cellBody(-1.35,-1.35,-.15,'Stromal fibroblast',[.53,.22,.19]);
-   capillary();
-   // Pigmented inclusions are positioned inside/near melanocyte bodies
-   // rather than floating uniformly throughout the extracellular matrix.
-   for(let i=0;i<30;i++){
-    const k=i%10,a=k*2.399,r=1.0+1.8*Math.sqrt((k+.5)/10);
-    const x=Math.cos(a)*r,y=Math.sin(a)*r*.80,ang=i*2.399;
-    sphere(x+.16*Math.cos(ang),y+.09*Math.sin(ang),.42,
-     [.024,.024,.024],mats.pigment,'Melanocyte pigment inclusion');
+   for(let i=0;i<36;i++){
+    const a=i*2.399,r=.9+2*Math.sqrt((i+.5)/36);
+    sphere(Math.cos(a)*r,Math.sin(a)*r*.85,.62,[.038,.038,.038],mats.pigment,'Pigment granule');
    }
   }else if(route==='muscle'){
    for(let i=0;i<26;i++){
@@ -483,9 +453,6 @@ export function populateBioWorld(T,group,route,stage){
   if(route==='crypt'||route==='pigment')membranePatch(0,0,3.28);
   if(route==='pigment'){
    melanosome(-.8,.15,.3);
-   // Additional organelles extend behind the focal plane for parallax.
-   melanosome(1.55,.92,-1.65);
-   melanosome(-1.75,-.78,-2.05);
    sphere(1.4,-1.0,.1,[.62,.35,.30],mats.cell,'Golgi apparatus');
    for(let j=0;j<8;j++)path([[.65,-1.2+j*.07,.25],[1.40,-1.32+j*.07,.35],
      [2.22,-1.17+j*.07,.20]],.02,mats.gold,'Golgi cisterna');
