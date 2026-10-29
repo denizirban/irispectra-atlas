@@ -157,17 +157,24 @@ function construct(){
    if(pan){filter.connect(pan);pan.connect(gain)}
    else filter.connect(gain);
    gain.connect(master);
+   // Slow independent filter LFOs subtly evolve each stem across repeated
+   // loops (periods about 60–140 seconds), without introducing extra notes.
+   const lfo=ctx.createOscillator(),lfoDepth=ctx.createGain();
+   lfo.type='sine';lfo.frequency.value=.007+.003*i;
+   lfoDepth.gain.value=95+i*48;
+   lfo.connect(lfoDepth);lfoDepth.connect(filter.frequency);
+   lfo.start(startAt);
    // Send very little of the ambient mix into a quiet synthetic room.
    if(i===1||i===3)gain.connect(reverb);
    source.start(startAt);
-   return {stem,source,filter,pan,gain};
+   return {stem,source,filter,pan,gain,lfo,lfoDepth};
   });
   sourceReady=true;
   setWorld(activeRoute,stage,depth,true);
  }catch(e){
   error='Audio unavailable';
   console.warn('IRISPECTRA_AUDIO',e);
-  for(const node of soundNodes){try{node.source.stop()}catch{}}
+  for(const node of soundNodes){try{node.source.stop()}catch{}try{node.lfo?.stop()}catch{}}
   soundNodes=[];
   sourceReady=false;
  }finally{building=false}
